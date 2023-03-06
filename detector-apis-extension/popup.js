@@ -7,7 +7,7 @@ window.addEventListener("load", async (event) => {
         for (let element of Object.keys(items)) {
             for (const element2 of Object.keys(items)) {
                 if (items[element] === element2) {
-                    let curlCommand = items[element] + "-curl"
+                    let curlCommand = items[element] + "-curl-detector-apis"
                     let statusAndRequestID = items[element2].split("|")
                     trContent += `<tr><td><button type="button" class="btn btn-info" id=${curlCommand}>Copy</button></td><td>${items[element]}</td><td>${statusAndRequestID[0]}</td><td>${statusAndRequestID[1]}</td></tr>`
 
@@ -32,11 +32,12 @@ window.addEventListener("load", async (event) => {
 function copyCurl(curlCommand, items) {
     for (let element of Object.keys(items)) {
         for (const element2 of Object.keys(items)) {
-            if (items[element] === element2 && element2 + "-curl" === curlCommand) {
+            if (items[element] === element2 && element2 + "-curl-detector-apis" === curlCommand) {
                 navigator.clipboard.writeText(items[curlCommand]).then(r => {
                     console.log(r)
                     alert("Copied !")
                 })
+                break
             }
         }
     }
