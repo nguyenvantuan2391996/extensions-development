@@ -1,8 +1,9 @@
 importScripts('constants.js')
+importScripts('utils.js')
 
 chrome.webRequest.onBeforeRequest.addListener(
     async function (details) {
-        await chrome.storage.local.set({[generateUniqueKey()]: details.url})
+        await chrome.storage.local.set({[generateUniqueKey(PATTERN_API_NAME_DETECTOR_API)]: details.url})
     },
     {urls: ["<all_urls>"]}
 );
@@ -38,17 +39,15 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     ["requestHeaders"]
 );
 
-
-function generateUniqueKey() {
-    const prefix = PATTERN_API_NAME_DETECTOR_API
-    const randomString = Math.random().toString(36).substring(2, 12)
-    return `${prefix}_${randomString}`
-}
-
 // load main website
-chrome.tabs.onUpdated.addListener(  function (tabId, changeInfo, tab) {
-    console.log(tab)
-    if (changeInfo.status === LOADING) {
-        chrome.storage.local.clear()
-    }
+chrome.tabs.onUpdated.addListener(  async function (tabId, changeInfo, tab) {
+    await chrome.tabs.query({
+        active: true,
+        lastFocusedWindow: true
+    }, function(tabs) {
+        if (changeInfo.status === LOADING && !checkUndefined(tabs[0]) && !checkUndefined(tab) && tabs[0].url === tab.url) {
+            console.log(tab.url)
+            chrome.storage.local.clear()
+        }
+    })
 })

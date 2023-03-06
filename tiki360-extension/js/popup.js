@@ -90,10 +90,10 @@ window.addEventListener("load", async (event) => {
                 }
             }
         }
-        document.querySelector("#table-result>tbody").innerHTML = `<tbody>${trContent}</tbody>`
+        document.querySelector("#table-result-detector-apis>tbody").innerHTML = `<tbody>${trContent}</tbody>`
 
         // handle list button
-        let listTR = document.querySelector("#table-result>tbody").getElementsByTagName("tr")
+        let listTR = document.querySelector("#table-result-detector-apis>tbody").getElementsByTagName("tr")
         for (const trTag of listTR) {
             let buttonID = trTag.getElementsByTagName("td")[0].getElementsByTagName("button")[0].id
 

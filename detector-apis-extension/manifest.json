@@ -1,13 +1,13 @@
 {
-  "name": "Tiki360 extension",
-  "description": "The extension supports getting Tiki360's information: token, customer id, order code,...and auto-buy insurance.",
+  "name": "Detector APIs Extension",
+  "description": "The extension supports getting all APIs and CURL command when load a website.",
   "version": "1.0",
   "action": {
-    "default_popup": "popup.html",
-    "default_icon": "logo.png"
+    "default_popup": "src/popup.html",
+    "default_icon": "images/detector-apis-extension.png"
   },
   "icons": {
-    "128": "logo.png"
+    "128": "images/detector-apis-extension.png"
   },
   "content_scripts": [
     {
@@ -15,13 +15,14 @@
         "<all_urls>"
       ],
       "js": [
-        "constants.js"
+        "js/constants.js",
+        "js/utils.js"
       ],
       "run_at": "document_start"
     }
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "js/background.js"
   },
   "host_permissions": [
     "*://*/*"
