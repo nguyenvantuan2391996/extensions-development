@@ -1,0 +1,85 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>The extension supports for Tiki360</title>
+</head>
+<link rel="stylesheet" href="popup.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha.6/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<body>
+
+<div class="container" style="width: 800px">
+    <div class="input-group">
+        <span class="input-group-addon hidden-xs">
+          <strong>Customer token</strong>
+        </span>
+        <span id="button-token" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+        </span>
+        <label for="input-token"></label><input type="text" id="input-token" class="form-control" value="">
+    </div>
+
+    <div class="input-group">
+        <span class="input-group-addon hidden-xs">
+          <strong>Customer ID</strong>
+        </span>
+        <span id="button-customer-id" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+        </span>
+        <label for="input-customer-id"></label><input type="text" id="input-customer-id" class="form-control" value="">
+    </div>
+
+    <div class="input-group">
+        <span class="input-group-addon hidden-xs">
+          <strong>Order code</strong>
+        </span>
+        <span id="button-order-code" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+        </span>
+        <label for="input-order-code"></label><input type="text" id="input-order-code" class="form-control" value="">
+    </div>
+
+    <div class="input-group">
+        <span class="input-group-addon hidden-xs">
+          <strong>Policy ID</strong>
+        </span>
+        <span id="button-policy-id" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+        </span>
+        <label for="input-policy-id"></label><input type="text" id="input-policy-id" class="form-control" value="">
+    </div>
+
+    <div class="input-group">
+        <span class="input-group-addon hidden-xs">
+          <strong>Booking code</strong>
+        </span>
+        <span id="button-booking-code" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+        </span>
+        <label for="input-booking-code"></label><input type="text" id="input-booking-code" class="form-control" value="">
+    </div>
+
+    <div class="input-group">
+        <div class="table-responsive">
+            <table class="table" id="table-result">
+                <thead>
+                <tr>
+                    <th>Curl</th>
+                    <th>URL</th>
+                    <th>Status</th>
+                    <th>Request-ID</th>
+                </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
+
+<script src="popup.js"></script>
+<script src="constants.js"></script>

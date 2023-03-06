@@ -9,4 +9,7 @@
 
 I will be super happy if you could help me endorse some skills or knowledge on my [LinkedIn](https://www.linkedin.com/in/tuan-nguyen-van-555315156/) profile that you believe I have.
 
-# extensions-development
+# About tiki360-extension
+- The extension supports getting Tiki360's information: token, customer id, order code,...and auto-buy insurance.
+- The extension is developed by Tuan Nguyen.
+- Contact me: nguyenvantuan2391996@gmail.com

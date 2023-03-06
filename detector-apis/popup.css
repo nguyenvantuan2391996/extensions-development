@@ -1,0 +1,34 @@
+.input-group {
+    margin-top: 30px;
+    position: relative;
+}
+
+.input-group {
+    position: relative;
+}
+
+.input-group-addon {
+    border: none;
+}
+
+.copy-button {
+    cursor: pointer;
+    background: #f1bb3a;
+}
+
+@media (min-width: 850px) {
+    .copied {
+        left: 350px;
+    }
+
+    .linkname {
+        display: block;
+        background: #3b3e45;
+        color: #fff;
+    }
+}
+
+body {
+    width: 850px;
+    height: 500px;
+}
