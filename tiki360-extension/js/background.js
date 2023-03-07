@@ -58,8 +58,13 @@ function generateUniqueKey() {
 }
 
 // load main website
-chrome.tabs.onUpdated.addListener( function (tabId, changeInfo, tab) {
-    if (changeInfo.status === LOADING) {
-        chrome.storage.local.clear()
-    }
+chrome.tabs.onUpdated.addListener( async function (tabId, changeInfo, tab) {
+    await chrome.tabs.query({
+        active: true,
+        lastFocusedWindow: true
+    }, function(tabs) {
+        if (changeInfo.status === LOADING && !checkUndefined(tabs[0]) && !checkUndefined(tab) && tabs[0].url === tab.url) {
+            chrome.storage.local.clear()
+        }
+    })
 })
