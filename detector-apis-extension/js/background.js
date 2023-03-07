@@ -46,7 +46,6 @@ chrome.tabs.onUpdated.addListener(  async function (tabId, changeInfo, tab) {
         lastFocusedWindow: true
     }, function(tabs) {
         if (changeInfo.status === LOADING && !checkUndefined(tabs[0]) && !checkUndefined(tab) && tabs[0].url === tab.url) {
-            console.log(tab.url)
             chrome.storage.local.clear()
         }
     })
