@@ -12,18 +12,25 @@ chrome.webRequest.onHeadersReceived.addListener(
      async function (details) {
          let headers = details.responseHeaders
          let infoRequest = details.statusCode + "|"
-         for (const header of headers) {
-             if (header.name.toLowerCase() === X_REQUEST_ID_DETECTOR_API) {
-                 infoRequest += header.value
-                 break
-             }
-         }
+
+         infoRequest += getValueHeaderByKey(X_REQUEST_ID_DETECTOR_API, headers) + "|"
+         infoRequest += getValueHeaderByKey(CONTENT_TYPE, headers)
 
          await chrome.storage.local.set({[details.url]: infoRequest})
      },
     {urls: ["<all_urls>"]},
     ['responseHeaders', 'extraHeaders']
 )
+
+function getValueHeaderByKey(key, headers) {
+    for (const header of headers) {
+        if (header.name.toLowerCase() === key) {
+            return header.value
+        }
+    }
+
+    return ""
+}
 
 chrome.webRequest.onBeforeSendHeaders.addListener(
     async function (details) {

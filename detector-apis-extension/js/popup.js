@@ -9,7 +9,7 @@ window.addEventListener("load", async (event) => {
                 if (items[element] === element2) {
                     let curlCommand = items[element] + "-curl-detector-apis"
                     let statusAndRequestID = items[element2].split("|")
-                    if (statusAndRequestID[1] !== "") {
+                    if (statusAndRequestID[2].includes(CONTENT_TYPE_JSON)) {
                         trContent += `<tr><td><button type="button" class="btn btn-info" id=${curlCommand}>Copy</button></td><td>${items[element]}</td><td>${statusAndRequestID[0]}</td><td>${statusAndRequestID[1]}</td></tr>`
                     }
                     break
