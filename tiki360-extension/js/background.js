@@ -1,4 +1,5 @@
 importScripts('constants.js')
+importScripts('utils.js')
 
 chrome.webRequest.onBeforeRequest.addListener(
     async function (details) {
