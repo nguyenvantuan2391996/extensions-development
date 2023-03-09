@@ -30,11 +30,8 @@
   ],
   "permissions": [
     "storage",
-    "activeTab",
     "tabs",
-    "webRequest",
-    "declarativeNetRequest",
-    "identity"
+    "webRequest"
   ],
   "manifest_version": 3
 }
