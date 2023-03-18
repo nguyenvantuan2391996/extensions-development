@@ -25,6 +25,7 @@ const PREFIX_URL_DEV = "https://beta.tala.xyz"
 const PREFIX_URL_PROD = "https://tiki.vn"
 const PREFIX_API_DEV = "https://api.tala.xyz"
 const PREFIX_API_PROD = "https://api.tiki.vn"
+const PREFIX_API_PROD_STORE_FRONT = "https://tiki.vn/api"
 
 // user agent
 const ARRAY_USER_AGENT = [
