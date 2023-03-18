@@ -6,80 +6,137 @@
 <link rel="stylesheet" href="../css/popup.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha.6/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
-
 <body>
 
 <div class="container" style="width: 800px">
+    <div class="alert alert-success" role="alert" id="alert-copy" style="display: none; z-index: 999999; position: fixed;margin-left: 40%">
+        <strong>Copied successfully!</strong>
+    </div>
     <div class="input-group">
         <span class="input-group-addon hidden-xs">
           <strong>Customer token</strong>
         </span>
         <span id="button-token" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
-            <i class="fa fa-clipboard" aria-hidden="true"></i>
+          <i class="fa fa-clipboard" aria-hidden="true"></i>
         </span>
-        <label for="input-token"></label><input type="text" id="input-token" class="form-control" value="">
+        <label for="input-token"></label>
+        <input type="text" id="input-token" class="form-control" value="">
     </div>
-
     <div class="input-group">
         <span class="input-group-addon hidden-xs">
           <strong>Customer ID</strong>
         </span>
         <span id="button-customer-id" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
-            <i class="fa fa-clipboard" aria-hidden="true"></i>
+          <i class="fa fa-clipboard" aria-hidden="true"></i>
         </span>
-        <label for="input-customer-id"></label><input type="text" id="input-customer-id" class="form-control" value="">
+        <label for="input-customer-id"></label>
+        <input type="text" id="input-customer-id" class="form-control" value="">
+    </div>
+    <div id="ds-insurance-area">
+        <div class="input-group">
+          <span class="input-group-addon hidden-xs">
+            <strong>Order code</strong>
+          </span>
+            <span id="button-order-code" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+          </span>
+            <label for="input-order-code"></label>
+            <input type="text" id="input-order-code" class="form-control" value="">
+        </div>
+        <div class="input-group">
+          <span class="input-group-addon hidden-xs">
+            <strong>Policy ID</strong>
+          </span>
+            <span id="button-policy-id" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+          </span>
+            <label for="input-policy-id"></label>
+            <input type="text" id="input-policy-id" class="form-control" value="">
+        </div>
+        <div class="input-group">
+          <span class="input-group-addon hidden-xs">
+            <strong>Booking code</strong>
+          </span>
+            <span id="button-booking-code" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+          </span>
+            <label for="input-booking-code"></label>
+            <input type="text" id="input-booking-code" class="form-control" value="">
+        </div>
     </div>
 
-    <div class="input-group">
-        <span class="input-group-addon hidden-xs">
-          <strong>Order code</strong>
-        </span>
-        <span id="button-order-code" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+    <div id="store-front-area">
+        <div class="input-group">
+          <span class="input-group-addon hidden-xs">
+            <strong>Product ID</strong>
+          </span>
+            <span id="button-product-id" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
             <i class="fa fa-clipboard" aria-hidden="true"></i>
-        </span>
-        <label for="input-order-code"></label><input type="text" id="input-order-code" class="form-control" value="">
+          </span>
+            <label for="input-product-id"></label>
+            <input type="text" id="input-product-id" class="form-control" value="">
+        </div>
+        <div class="input-group">
+          <span class="input-group-addon hidden-xs">
+            <strong>Product SKU</strong>
+          </span>
+            <span id="button-product-sku" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+          </span>
+            <label for="input-product-sku"></label>
+            <input type="text" id="input-product-sku" class="form-control" value="">
+        </div>
+        <div class="input-group">
+          <span class="input-group-addon hidden-xs">
+            <strong>Product Name</strong>
+          </span>
+            <span id="button-product-name" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+          </span>
+            <label for="input-product-name"></label>
+            <input type="text" id="input-product-name" class="form-control" value="">
+        </div>
+        <div class="input-group">
+          <span class="input-group-addon hidden-xs">
+            <strong>Add-on ID</strong>
+          </span>
+            <span id="button-add-on-id" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+          </span>
+            <label for="input-add-on-id"></label>
+            <input type="text" id="input-add-on-id" class="form-control" value="">
+        </div>
+        <div class="input-group">
+          <span class="input-group-addon hidden-xs">
+            <strong>Add-on Name</strong>
+          </span>
+            <span id="button-add-on-name" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+            <i class="fa fa-clipboard" aria-hidden="true"></i>
+          </span>
+            <label for="input-add-on-name"></label>
+            <input type="text" id="input-add-on-name" class="form-control" value="">
+        </div>
     </div>
 
-    <div class="input-group">
-        <span class="input-group-addon hidden-xs">
-          <strong>Policy ID</strong>
-        </span>
-        <span id="button-policy-id" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
-            <i class="fa fa-clipboard" aria-hidden="true"></i>
-        </span>
-        <label for="input-policy-id"></label><input type="text" id="input-policy-id" class="form-control" value="">
-    </div>
-
-    <div class="input-group">
-        <span class="input-group-addon hidden-xs">
-          <strong>Booking code</strong>
-        </span>
-        <span id="button-booking-code" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
-            <i class="fa fa-clipboard" aria-hidden="true"></i>
-        </span>
-        <label for="input-booking-code"></label><input type="text" id="input-booking-code" class="form-control" value="">
-    </div>
-
-    <div class="input-group">
-        <div class="table-responsive">
-            <table class="table" id="table-result-detector-apis">
-                <thead>
-                <tr>
-                    <th>Curl</th>
-                    <th>URL</th>
-                    <th>Status</th>
-                    <th>Request-ID</th>
-                </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+    <div id="table-curl-area">
+        <div class="input-group">
+            <div class="table-responsive">
+                <table class="table" id="table-result-detector-apis">
+                    <thead>
+                    <tr>
+                        <th>Curl</th>
+                        <th>URL</th>
+                        <th>Status</th>
+                        <th>Request-ID</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
-
 </body>
 </html>
-
 <script src="../js/popup.js"></script>
 <script src="../js/constants.js"></script>

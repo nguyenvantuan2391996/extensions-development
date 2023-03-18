@@ -1,32 +1,23 @@
-document.getElementById('button-token').addEventListener('click', async function () {
-    copyText("input-token").then(r => {
-        console.log(r)
+function addCopyEventListener(buttonId, inputId) {
+    const button = document.getElementById(buttonId);
+    button.addEventListener("click", () => {
+        copyText(inputId).then(result => {
+            console.log(result);
+        })
     })
-})
+}
 
-document.getElementById('button-customer-id').addEventListener('click', function () {
-    copyText("input-customer-id").then(r => {
-        console.log(r)
-    })
-})
+addCopyEventListener("button-token", "input-token");
+addCopyEventListener("button-customer-id", "input-customer-id");
+addCopyEventListener("button-order-code", "input-order-code");
+addCopyEventListener("button-policy-id", "input-policy-id");
+addCopyEventListener("button-booking-code", "input-booking-code");
 
-document.getElementById('button-order-code').addEventListener('click', function () {
-    copyText("input-order-code").then(r => {
-        console.log(r)
-    })
-})
-
-document.getElementById('button-policy-id').addEventListener('click', function () {
-    copyText("input-policy-id").then(r => {
-        console.log(r)
-    })
-})
-
-document.getElementById('button-booking-code').addEventListener('click', function () {
-    copyText("input-booking-code").then(r => {
-        console.log(r)
-    })
-})
+addCopyEventListener("button-product-id", "input-product-id");
+addCopyEventListener("button-product-sku", "input-product-sku");
+addCopyEventListener("button-product-name", "input-product-name");
+addCopyEventListener("button-add-on-id", "input-add-on-id");
+addCopyEventListener("button-add-on-name", "input-add-on-name");
 
 window.addEventListener("load", async (event) => {
     console.log(event)
@@ -40,8 +31,30 @@ window.addEventListener("load", async (event) => {
 
     const prefixURL = currentURL.includes(PREFIX_URL_DEV) ? PREFIX_URL_DEV : PREFIX_URL_PROD
     const prefixAPI = currentURL.includes(PREFIX_URL_DEV) ? PREFIX_API_DEV : PREFIX_API_PROD
+    const prefixAPIProductInfo = currentURL.includes(PREFIX_URL_DEV) ? PREFIX_API_DEV : PREFIX_API_PROD_STORE_FRONT
 
-    // handle
+    // storefront area
+    const urlParams = new URLSearchParams(currentURL.split("?")[1])
+    let spID = urlParams.get("spid")
+
+    if (!!spID) {
+        document.getElementById("ds-insurance-area").style.display = "none"
+        document.getElementById("table-curl-area").style.display = "none"
+
+        let slugTileProduct = currentURL.split("/")[3].split(".html")[0].split("-")
+        let id = slugTileProduct[slugTileProduct.length - 1].split("p")[1]
+
+        const productInfo = await getProductInfo(prefixAPIProductInfo, id, spID)
+        document.getElementById("input-product-id").setAttribute("value", productInfo.product_id)
+        document.getElementById("input-product-sku").setAttribute("value", productInfo.product_sku)
+        document.getElementById("input-product-name").setAttribute("value", productInfo.product_name)
+        document.getElementById("input-add-on-id").setAttribute("value", productInfo.add_on_id)
+        document.getElementById("input-add-on-name").setAttribute("value", productInfo.add_on_name)
+    } else {
+        document.getElementById("store-front-area").style.display = "none"
+    }
+
+    /* global chrome */
     await chrome.tabs.query({
         active: true,
         currentWindow: true
@@ -104,14 +117,20 @@ window.addEventListener("load", async (event) => {
     })
 })
 
+function delay(time) {
+    return new Promise(resolve => setTimeout(resolve, time));
+}
+
 async function copyText(id) {
     const copyText = document.getElementById(id)
     copyText.select()
     copyText.setSelectionRange(0, 99999)
 
-    await navigator.clipboard.writeText(copyText.value).then(r => {
+    await navigator.clipboard.writeText(copyText.value).then(async r => {
         console.log(r)
-        alert("Copied !")
+        document.getElementById("alert-copy").style.display = "block"
+        await delay(1000)
+        document.getElementById("alert-copy").style.display = "none"
     })
 }
 
@@ -199,4 +218,42 @@ async function getOrderCode(bookingCode, accessTokenObject, prefixURL, prefixAPI
 
     // debugger
     return orderCode
+}
+
+async function getProductInfo(prefixAPIProductInfo, id, spID) {
+    const myHeaders = new Headers()
+    myHeaders.append("sec-ch-ua", "\"Google Chrome\";v=\"111\", \"Not(A:Brand\";v=\"8\", \"Chromium\";v=\"111\"")
+    myHeaders.append("Accept", "application/json, text/plain, */*")
+    myHeaders.append("sec-ch-ua-mobile", "?0")
+    myHeaders.append("user-agent", ARRAY_USER_AGENT[Math.floor(Math.random() * ARRAY_USER_AGENT.length)])
+    myHeaders.append("sec-ch-ua-platform", "\"macOS\"")
+    myHeaders.append("Sec-Fetch-Site", "same-origin")
+    myHeaders.append("Sec-Fetch-Mode", "cors")
+    myHeaders.append("Sec-Fetch-Dest", "empty")
+
+    const requestOptions = {
+        method: 'GET',
+        headers: myHeaders,
+        redirect: 'follow'
+    };
+
+    let productInfo = {
+        "product_sku": "",
+        "product_id": "",
+        "product_name": "",
+        "add_on_id": "",
+        "add_on_name": "",
+    }
+    await fetch(prefixAPIProductInfo + "/v2/products/" + id + "?platform=web&spid=" + spID, requestOptions)
+        .then(response => response.json())
+        .then(result => {
+            productInfo.product_id = !!result.current_seller ? result.current_seller.product_id : NOT_FOUND_MSG
+            productInfo.product_sku = !!result.current_seller ? result.current_seller.sku : NOT_FOUND_MSG
+            productInfo.product_name = !!result ? result.name : NOT_FOUND_MSG
+            productInfo.add_on_id = !!result.add_on ? result.add_on[0].id : NOT_FOUND_MSG
+            productInfo.add_on_name = !!result.add_on ? result.add_on[0].name : NOT_FOUND_MSG
+        })
+        .catch(error => console.log('error', error));
+
+    return productInfo
 }
