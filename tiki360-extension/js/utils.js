@@ -1,3 +1,3 @@
 function checkUndefined(item) {
-    return typeof item === "undefined"
+  return typeof item === "undefined";
 }
