@@ -63,6 +63,10 @@ document
       return;
     }
 
+    let numberOfInsurances = document.getElementById(
+      "input-number-of-insurances"
+    ).value;
+
     let userToken = document.getElementById("input-token").value;
     if (!userToken) {
       await displayAlert("alert-danger", "user is not sign-in", 2000);
@@ -101,7 +105,12 @@ document
 
     await deleteCart(userToken);
 
-    let isAddToCart = await addToCart(linkProduct, productInfo, userToken);
+    let isAddToCart = await addToCart(
+      linkProduct,
+      productInfo,
+      userToken,
+      numberOfInsurances
+    );
     if (isAddToCart) {
       document.getElementById("alert-success").innerHTML =
         "adding to cart is successfully";
@@ -584,7 +593,12 @@ async function deleteCart(userToken) {
     .catch((error) => console.log("error", error));
 }
 
-async function addToCart(linkProduct, productInfo, userToken) {
+async function addToCart(
+  linkProduct,
+  productInfo,
+  userToken,
+  numberOfInsurances
+) {
   const myHeaders = new Headers();
   myHeaders.append("authority", "api.tala.xyz");
   myHeaders.append("accept", "application/json, text/plain, */*");
@@ -606,9 +620,13 @@ async function addToCart(linkProduct, productInfo, userToken) {
   const raw =
     `{"products":[{"product_id":"` +
     productInfo.product_id +
-    `","qty":1,"add_on_products":[{"product_id":"` +
+    `","qty":` +
+    numberOfInsurances +
+    `,"add_on_products":[{"product_id":"` +
     productInfo.add_on_id +
-    `","quantity":1}]}]}`;
+    `","quantity":` +
+    numberOfInsurances +
+    `}]}]}`;
   const requestOptions = {
     method: "POST",
     headers: myHeaders,
