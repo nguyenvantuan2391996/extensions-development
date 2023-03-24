@@ -12,6 +12,10 @@
     <div class="alert alert-success" role="alert" id="alert-copy" style="display: none; z-index: 999999; position: fixed;margin-left: 40%">
         <strong>Copied successfully!</strong>
     </div>
+    <div class="alert alert-success" role="alert" id="alert-success" style="display: none; z-index: 999999; position: fixed;margin-left: 30%">
+    </div>
+    <div class="alert alert-danger" role="alert" id="alert-danger" style="display: none; z-index: 999999; position: fixed;margin-left: 30%">
+    </div>
     <div class="input-group">
         <span class="input-group-addon hidden-xs">
           <strong>Customer token</strong>
@@ -20,7 +24,7 @@
           <i class="fa fa-clipboard" aria-hidden="true"></i>
         </span>
         <label for="input-token"></label>
-        <input type="text" id="input-token" class="form-control" value="">
+        <input type="text" id="input-token" class="form-control" value="" disabled>
     </div>
     <div class="input-group">
         <span class="input-group-addon hidden-xs">
@@ -30,7 +34,7 @@
           <i class="fa fa-clipboard" aria-hidden="true"></i>
         </span>
         <label for="input-customer-id"></label>
-        <input type="text" id="input-customer-id" class="form-control" value="">
+        <input type="text" id="input-customer-id" class="form-control" value="" disabled>
     </div>
     <div id="ds-insurance-area">
         <div class="input-group">
@@ -116,6 +120,54 @@
             <label for="input-add-on-name"></label>
             <input type="text" id="input-add-on-name" class="form-control" value="">
         </div>
+    </div>
+
+    <div id="auto-buy-embedded">
+        <div class="input-group">
+            <span class="input-group-addon hidden-xs">
+                <strong>Link</strong>
+            </span>
+            <span id="button-copy-auto-buy-embedded" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+                <i class="fa fa-clipboard" aria-hidden="true"></i>
+            </span>
+            <label for="input-add-on-name"></label>
+            <input type="text" id="input-auto-buy-embedded" class="form-control" value="">
+        </div>
+        <div class="input-group">
+            <span class="input-group-addon hidden-xs">
+                <strong>Order Code</strong>
+            </span>
+            <span id="button-copy-order-code-auto-buy-embedded" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+                <i class="fa fa-clipboard" aria-hidden="true"></i>
+            </span>
+            <label for="input-order-code-auto-buy-embedded"></label>
+            <input type="text" id="input-order-code-auto-buy-embedded" class="form-control" value="" disabled>
+        </div>
+
+        <div class="input-group">
+            <span class="input-group-addon hidden-xs">
+                <strong>Choose shipping phone</strong>
+            </span>
+            <label for="shipping-info"></label>
+            <select class="custom-select" id="shipping-info">
+            </select>
+
+            <span class="input-group-addon hidden-xs" style="margin-left: 10%">
+                <strong>Number of insurances</strong>
+            </span>
+            <label for="shipping-info"></label>
+            <input type="number" min="1" id="input-number-of-insurances" class="form-control" value="1">
+        </div>
+
+        <div class="input-group" id="add-on-auto">
+        </div>
+    </div>
+
+    <div class="input-group">
+        <button type="button" class="btn btn-info" id="button-auto-buy-embedded" disabled>Auto-buy embedded</button>
+        <button type="button" class="btn btn-info" id="button-auto-buy-bike" style="margin-left: 2%" disabled>Auto-buy bike</button>
+        <button type="button" class="btn btn-info" id="button-auto-buy-car" style="margin-left: 2%" disabled>Auto-buy car</button>
+        <button type="button" class="btn btn-info" id="button-process-auto-buy">Process</button>
     </div>
 
     <div id="table-curl-area">
