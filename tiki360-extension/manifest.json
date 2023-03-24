@@ -1,7 +1,7 @@
 {
   "name": "Tiki360 extension",
   "description": "The extension supports getting Tiki360's information: token, customer id, order code,...and auto-buy insurance.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "action": {
     "default_popup": "src/popup.html",
     "default_icon": "images/logo.png"
@@ -17,7 +17,9 @@
       "js": [
         "js/content.js",
         "js/constants.js",
-        "js/utils.js"
+        "js/utils.js",
+        "js/auto_buy_embedded.js",
+        "js/auto_buy_bike.js"
       ],
       "run_at": "document_start"
     }

@@ -36,6 +36,16 @@
         <label for="input-customer-id"></label>
         <input type="text" id="input-customer-id" class="form-control" value="" disabled>
     </div>
+    <div class="input-group">
+        <span class="input-group-addon hidden-xs">
+          <strong>Customer Email</strong>
+        </span>
+        <span id="button-customer-email" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+          <i class="fa fa-clipboard" aria-hidden="true"></i>
+        </span>
+        <label for="input-customer-email"></label>
+        <input type="text" id="input-customer-email" class="form-control" value="" disabled>
+    </div>
     <div id="ds-insurance-area">
         <div class="input-group">
           <span class="input-group-addon hidden-xs">
@@ -131,7 +141,7 @@
                 <i class="fa fa-clipboard" aria-hidden="true"></i>
             </span>
             <label for="input-add-on-name"></label>
-            <input type="text" id="input-auto-buy-embedded" class="form-control" value="">
+            <label for="input-auto-buy-embedded"></label><input type="text" id="input-auto-buy-embedded" class="form-control" value="">
         </div>
         <div class="input-group">
             <span class="input-group-addon hidden-xs">
@@ -156,10 +166,42 @@
                 <strong>Number of insurances</strong>
             </span>
             <label for="shipping-info"></label>
-            <input type="number" min="1" id="input-number-of-insurances" class="form-control" value="1">
+            <label for="input-number-of-insurances"></label><input type="number" min="1" id="input-number-of-insurances" class="form-control" value="1">
         </div>
 
         <div class="input-group" id="add-on-auto">
+        </div>
+    </div>
+
+    <div id="auto-buy-bike-area">
+        <div class="input-group">
+            <span class="input-group-addon hidden-xs">
+                <strong>Order Code</strong>
+            </span>
+            <span id="button-copy-order-code-auto-buy-bike" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+                <i class="fa fa-clipboard" aria-hidden="true"></i>
+            </span>
+            <label for="input-order-code-auto-buy-bike"></label>
+            <input type="text" id="input-order-code-auto-buy-bike" class="form-control" value="" disabled>
+        </div>
+
+        <div class="input-group">
+            <div class="form-check form-check-inline" style="margin-left: 5%">
+                <input class="form-check-input" type="radio" name="bike" id="pvi-bike" value="product_id=76&selected_product_id=40&price=86000&period=1_YEAR&additional=ADD_10MIL&bike_type=UPPER_50CC">
+                <label class="form-check-label" for="pvi-bike">PVI</label>
+            </div>
+            <div class="form-check form-check-inline" style="margin-left: 20%">
+                <input class="form-check-input" type="radio" name="bike" id="gic-bike" value="product_id=145&selected_product_id=161&price=348000&period=1_YEAR&additional=CIVIL_LIABILITY_INSURANCE&bike_type=UPPER_50CC&main=MAIN_20MIL">
+                <label class="form-check-label" for="gic-bike">GIC</label>
+            </div>
+            <div class="form-check form-check-inline" style="margin-left: 20%">
+                <input class="form-check-input" type="radio" name="bike" id="pti-bike" value="pti" disabled>
+                <label class="form-check-label" for="pti-bike" style="text-decoration: line-through;">PTI</label>
+            </div>
+            <div class="form-check form-check-inline" style="margin-left: 20%">
+                <input class="form-check-input" type="radio" name="bike" id="mic-bike" value="mic" disabled>
+                <label class="form-check-label" for="mic-bike" style="text-decoration: line-through;">MIC</label>
+            </div>
         </div>
     </div>
 
@@ -167,7 +209,9 @@
         <button type="button" class="btn btn-info" id="button-auto-buy-embedded" disabled>Auto-buy embedded</button>
         <button type="button" class="btn btn-info" id="button-auto-buy-bike" style="margin-left: 2%" disabled>Auto-buy bike</button>
         <button type="button" class="btn btn-info" id="button-auto-buy-car" style="margin-left: 2%" disabled>Auto-buy car</button>
-        <button type="button" class="btn btn-info" id="button-process-auto-buy">Process</button>
+        <button type="button" class="btn btn-info" id="button-process-auto-buy-embedded">Process</button>
+        <button type="button" class="btn btn-info" id="button-process-auto-buy-bike">Process</button>
+        <button type="button" class="btn btn-info" id="button-process-auto-buy-car">Process</button>
     </div>
 
     <div id="table-curl-area">
@@ -192,3 +236,6 @@
 </html>
 <script src="../js/popup.js"></script>
 <script src="../js/constants.js"></script>
+<script src="../js/auto_buy_embedded.js"></script>
+<script src="../js/auto_buy_bike.js"></script>
+<script src="../js/utils.js"></script>
