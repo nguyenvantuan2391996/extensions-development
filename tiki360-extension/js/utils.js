@@ -46,3 +46,18 @@ function getStartDateAndEndDate() {
 
   return res;
 }
+
+function getDate(addYears, addMoths, addDays) {
+  const now = new Date();
+  const day = (now.getDate() + addDays).toString().padStart(2, "0");
+  const month = (now.getMonth() + addMoths + 1).toString().padStart(2, "0");
+  const year = (now.getFullYear() + addYears).toString();
+
+  return `${day}/${month}/${year}`;
+}
+
+function randomIdentification() {
+  return Math.floor(Math.random() * 100000000)
+    .toString()
+    .padStart(9, "0");
+}

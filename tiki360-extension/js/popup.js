@@ -28,6 +28,14 @@ addCopyEventListener(
   "button-copy-order-code-auto-buy-bike",
   "input-order-code-auto-buy-bike"
 );
+addCopyEventListener(
+  "button-copy-order-code-auto-buy-car",
+  "input-order-code-auto-buy-bike"
+);
+addCopyEventListener(
+  "button-copy-order-code-auto-buy-travel",
+  "input-order-code-auto-buy-bike"
+);
 
 document
   .getElementById("button-auto-buy-embedded")
@@ -41,9 +49,12 @@ document
     document.getElementById("button-auto-buy-embedded").style.display = "none";
     document.getElementById("button-auto-buy-bike").style.display = "none";
     document.getElementById("button-auto-buy-car").style.display = "none";
+    document.getElementById("button-auto-buy-travel").style.display = "none";
     document.getElementById("button-process-auto-buy-bike").style.display =
       "none";
     document.getElementById("button-process-auto-buy-car").style.display =
+      "none";
+    document.getElementById("button-process-auto-buy-travel").style.display =
       "none";
     document.getElementById("auto-buy-bike-area").style.display = "none";
     document.getElementById("auto-buy-car-area").style.display = "none";
@@ -81,10 +92,13 @@ document
     document.getElementById("button-auto-buy-embedded").style.display = "none";
     document.getElementById("button-auto-buy-bike").style.display = "none";
     document.getElementById("button-auto-buy-car").style.display = "none";
+    document.getElementById("button-auto-buy-travel").style.display = "none";
     document.getElementById("auto-buy-embedded").style.display = "none";
     document.getElementById("button-process-auto-buy-embedded").style.display =
       "none";
     document.getElementById("button-process-auto-buy-car").style.display =
+      "none";
+    document.getElementById("button-process-auto-buy-travel").style.display =
       "none";
     document.getElementById("auto-buy-car-area").style.display = "none";
 
@@ -110,16 +124,51 @@ document
     document.getElementById("button-auto-buy-embedded").style.display = "none";
     document.getElementById("button-auto-buy-bike").style.display = "none";
     document.getElementById("button-auto-buy-car").style.display = "none";
+    document.getElementById("button-auto-buy-travel").style.display = "none";
     document.getElementById("auto-buy-embedded").style.display = "none";
     document.getElementById("auto-buy-bike-area").style.display = "none";
     document.getElementById("button-process-auto-buy-embedded").style.display =
       "none";
     document.getElementById("button-process-auto-buy-bike").style.display =
       "none";
+    document.getElementById("button-process-auto-buy-travel").style.display =
+      "none";
 
     document.getElementById("button-process-auto-buy-car").style.display =
       "block";
     document.getElementById("auto-buy-car-area").style.display = "block";
+
+    let userToken = document.getElementById("input-token").value;
+    if (!userToken) {
+      await displayAlert("alert-danger", "user is not sign-in", 2000);
+    }
+  });
+
+document
+  .getElementById("button-auto-buy-travel")
+  .addEventListener("click", async function () {
+    if (!(await checkSupportDev())) {
+      return;
+    }
+    document.getElementById("ds-insurance-area").style.display = "none";
+    document.getElementById("table-curl-area").style.display = "none";
+    document.getElementById("store-front-area").style.display = "none";
+    document.getElementById("button-auto-buy-embedded").style.display = "none";
+    document.getElementById("button-auto-buy-bike").style.display = "none";
+    document.getElementById("button-auto-buy-car").style.display = "none";
+    document.getElementById("button-auto-buy-travel").style.display = "none";
+    document.getElementById("auto-buy-embedded").style.display = "none";
+    document.getElementById("auto-buy-bike-area").style.display = "none";
+    document.getElementById("button-process-auto-buy-embedded").style.display =
+      "none";
+    document.getElementById("button-process-auto-buy-bike").style.display =
+      "none";
+    document.getElementById("button-process-auto-buy-travel").style.display =
+      "none";
+
+    document.getElementById("button-process-auto-buy-travel").style.display =
+      "block";
+    document.getElementById("auto-buy-travel-area").style.display = "block";
 
     let userToken = document.getElementById("input-token").value;
     if (!userToken) {
@@ -278,6 +327,100 @@ document
     document.getElementById("alert-success").style.display = "none";
   });
 
+document
+  .getElementById("button-process-auto-buy-travel")
+  .addEventListener("click", async function () {
+    let orderCode = "0";
+    let userMail = document.getElementById("input-customer-email").value;
+    let userToken = document.getElementById("input-token").value;
+    if (!userToken || !userMail) {
+      await displayAlert("alert-danger", "user is not sign-in", 2000);
+      return;
+    }
+
+    let travelFormInfo = await saveFormTravel(userToken, userMail);
+    document.getElementById("alert-success").style.display = "block";
+    if (travelFormInfo.is_success) {
+      document.getElementById("alert-success").innerHTML =
+        "saving travel form is successfully";
+    } else {
+      await displayAlert("alert-danger", "saving travel form is failed", 2000);
+      return;
+    }
+
+    document.getElementById("alert-success").innerHTML =
+      "underwriting the travel policy is pretty slowly, please wait! hi hi";
+    let isSuccessUnderwriting = false;
+    for (let i = 0; i < 5; i++) {
+      let isSuccess = await underwriting(
+        travelFormInfo.booking_code,
+        userToken
+      );
+      if (isSuccess) {
+        isSuccessUnderwriting = isSuccess;
+        break;
+      } else {
+        document.getElementById("alert-success").innerHTML =
+          "We are retrying to underwriting the travel policy, please wait! hi hi";
+      }
+    }
+    if (isSuccessUnderwriting) {
+      document.getElementById("alert-success").innerHTML =
+        "underwriting the travel policy is successfully";
+    } else {
+      await displayAlert(
+        "alert-danger",
+        "underwriting the travel policy is failed",
+        2000
+      );
+      return;
+    }
+
+    let isRequestPayment = await requestQuickPayment(
+      travelFormInfo.booking_code,
+      userToken
+    );
+    if (isRequestPayment) {
+      document.getElementById("alert-success").innerHTML =
+        "calling quick-payment is successfully";
+    } else {
+      await displayAlert(
+        "alert-danger",
+        "calling quick-payment is failed",
+        2000
+      );
+      return;
+    }
+
+    let isSelectTikiXuPayment = await selectTikiXuPayment(userToken);
+    if (isSelectTikiXuPayment) {
+      document.getElementById("alert-success").innerHTML =
+        "selecting tiki-xu payment is successfully";
+    } else {
+      await displayAlert(
+        "alert-danger",
+        "selecting tiki-xu payment is failed",
+        2000
+      );
+      return;
+    }
+
+    orderCode = await checkoutInsurance(userToken);
+    if (orderCode !== "0" || typeof orderCode !== "undefined") {
+      document.getElementById("alert-success").innerHTML =
+        "auto-buying is successfully";
+    } else {
+      await displayAlert("alert-danger", "auto-buying is is failed", 2000);
+    }
+
+    document
+      .getElementById("input-order-code-auto-buy-travel")
+      .setAttribute("value", orderCode);
+
+    await delay(1000);
+    document.getElementById("alert-success").style.display = "none";
+  });
+
 window.addEventListener("load", async (event) => {
   console.log(event);
   document.getElementById("auto-buy-embedded").style.display = "none";
@@ -286,8 +429,11 @@ window.addEventListener("load", async (event) => {
   document.getElementById("button-process-auto-buy-bike").style.display =
     "none";
   document.getElementById("button-process-auto-buy-car").style.display = "none";
+  document.getElementById("button-process-auto-buy-travel").style.display =
+    "none";
   document.getElementById("auto-buy-bike-area").style.display = "none";
   document.getElementById("auto-buy-car-area").style.display = "none";
+  document.getElementById("auto-buy-travel-area").style.display = "none";
 
   // check URL
   const currentURL = await getCurrentTabUrl();
@@ -382,6 +528,7 @@ window.addEventListener("load", async (event) => {
             ).disabled = false;
             document.getElementById("button-auto-buy-bike").disabled = false;
             document.getElementById("button-auto-buy-car").disabled = false;
+            document.getElementById("button-auto-buy-travel").disabled = false;
 
             if (
               currentURL.includes(
@@ -678,6 +825,7 @@ async function getOrderCode(
   )
     .then((response) => response.json())
     .then((result) => {
+      debugger;
       transactionID = result.data.list[0].history[0].transaction_id;
     })
     .catch((error) => {
