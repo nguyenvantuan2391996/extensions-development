@@ -1,3 +1,5 @@
+let source = "ds-insurance-area";
+
 function addCopyEventListener(buttonId, inputId) {
   const button = document.getElementById(buttonId);
   button.addEventListener("click", () => {
@@ -62,6 +64,7 @@ document
     document.getElementById("auto-buy-embedded").style.display = "block";
     document.getElementById("button-process-auto-buy-embedded").style.display =
       "block";
+    document.getElementById("button-process-back").style.display = "block";
 
     let userToken = document.getElementById("input-token").value;
     if (!userToken) {
@@ -105,6 +108,7 @@ document
     document.getElementById("button-process-auto-buy-bike").style.display =
       "block";
     document.getElementById("auto-buy-bike-area").style.display = "block";
+    document.getElementById("button-process-back").style.display = "block";
 
     let userToken = document.getElementById("input-token").value;
     if (!userToken) {
@@ -137,6 +141,7 @@ document
     document.getElementById("button-process-auto-buy-car").style.display =
       "block";
     document.getElementById("auto-buy-car-area").style.display = "block";
+    document.getElementById("button-process-back").style.display = "block";
 
     let userToken = document.getElementById("input-token").value;
     if (!userToken) {
@@ -169,6 +174,7 @@ document
     document.getElementById("button-process-auto-buy-travel").style.display =
       "block";
     document.getElementById("auto-buy-travel-area").style.display = "block";
+    document.getElementById("button-process-back").style.display = "block";
 
     let userToken = document.getElementById("input-token").value;
     if (!userToken) {
@@ -423,6 +429,16 @@ document
 
 window.addEventListener("load", async (event) => {
   console.log(event);
+  await loadExtension();
+});
+
+document
+  .getElementById("button-process-back")
+  .addEventListener("click", async function () {
+    await loadExtension();
+  });
+
+async function loadExtension() {
   document.getElementById("auto-buy-embedded").style.display = "none";
   document.getElementById("button-process-auto-buy-embedded").style.display =
     "none";
@@ -431,9 +447,23 @@ window.addEventListener("load", async (event) => {
   document.getElementById("button-process-auto-buy-car").style.display = "none";
   document.getElementById("button-process-auto-buy-travel").style.display =
     "none";
+  document.getElementById("button-process-back").style.display = "none";
+
   document.getElementById("auto-buy-bike-area").style.display = "none";
   document.getElementById("auto-buy-car-area").style.display = "none";
   document.getElementById("auto-buy-travel-area").style.display = "none";
+
+  document.getElementById("button-auto-buy-embedded").style.display = "block";
+  document.getElementById("button-auto-buy-bike").style.display = "block";
+  document.getElementById("button-auto-buy-car").style.display = "block";
+  document.getElementById("button-auto-buy-travel").style.display = "block";
+
+  if (source === "ds-insurance-area") {
+    document.getElementById("table-curl-area").style.display = "block";
+    document.getElementById("ds-insurance-area").style.display = "block";
+  } else if (source === "store-front-area") {
+    document.getElementById("store-front-area").style.display = "block";
+  }
 
   // check URL
   const currentURL = await getCurrentTabUrl();
@@ -465,6 +495,7 @@ window.addEventListener("load", async (event) => {
   let id = slugTileProduct[slugTileProduct.length - 1].split("p")[1];
 
   if (!!spID || !!id) {
+    source = "store-front-area";
     document.getElementById("ds-insurance-area").style.display = "none";
     document.getElementById("table-curl-area").style.display = "none";
 
@@ -486,6 +517,7 @@ window.addEventListener("load", async (event) => {
       .setAttribute("value", productInfo.add_on_name);
   } else {
     document.getElementById("store-front-area").style.display = "none";
+    source = "ds-insurance-area";
   }
 
   /* global chrome */
@@ -603,7 +635,7 @@ window.addEventListener("load", async (event) => {
       });
     }
   });
-});
+}
 
 async function displayAlert(typeAlert, msg, delayTime) {
   document.getElementById(typeAlert).style.display = "block";
