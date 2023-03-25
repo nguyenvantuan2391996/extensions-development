@@ -19,7 +19,7 @@
         "js/constants.js",
         "js/utils.js",
         "js/auto_buy_embedded.js",
-        "js/auto_buy_bike.js"
+        "js/auto_buy_bike_car.js"
       ],
       "run_at": "document_start"
     }

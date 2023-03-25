@@ -205,6 +205,34 @@
         </div>
     </div>
 
+    <div id="auto-buy-car-area">
+        <div class="input-group">
+            <span class="input-group-addon hidden-xs">
+                <strong>Order Code</strong>
+            </span>
+            <span id="button-copy-order-code-auto-buy-car" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+                <i class="fa fa-clipboard" aria-hidden="true"></i>
+            </span>
+            <label for="input-order-code-auto-buy-car"></label>
+            <input type="text" id="input-order-code-auto-buy-car" class="form-control" value="" disabled>
+        </div>
+
+        <div class="input-group">
+            <div class="form-check form-check-inline" style="margin-left: 5%">
+                <input class="form-check-input" type="radio" name="car" id="pvi-car" value="product_id=62&selected_product_id=75&price=500700&period=1_YEAR&used_purpose=KKD&carriage=PEOPLE&seat_number=2&additional=ADD_10MIL&main=MAIN_20MIL">
+                <label class="form-check-label" for="pvi-car">PVI</label>
+            </div>
+            <div class="form-check form-check-inline" style="margin-left: 20%">
+                <input class="form-check-input" type="radio" name="car" id="pti-car" value="pti" disabled>
+                <label class="form-check-label" for="pti-car" style="text-decoration: line-through;">PTI</label>
+            </div>
+            <div class="form-check form-check-inline" style="margin-left: 20%">
+                <input class="form-check-input" type="radio" name="car" id="mic-car" value="mic" disabled>
+                <label class="form-check-label" for="mic-car" style="text-decoration: line-through;">MIC</label>
+            </div>
+        </div>
+    </div>
+
     <div class="input-group">
         <button type="button" class="btn btn-info" id="button-auto-buy-embedded" disabled>Auto-buy embedded</button>
         <button type="button" class="btn btn-info" id="button-auto-buy-bike" style="margin-left: 2%" disabled>Auto-buy bike</button>
@@ -237,5 +265,5 @@
 <script src="../js/popup.js"></script>
 <script src="../js/constants.js"></script>
 <script src="../js/auto_buy_embedded.js"></script>
-<script src="../js/auto_buy_bike.js"></script>
+<script src="../js/auto_buy_bike_car.js"></script>
 <script src="../js/utils.js"></script>
