@@ -233,13 +233,28 @@
         </div>
     </div>
 
+    <div id="auto-buy-travel-area">
+        <div class="input-group">
+            <span class="input-group-addon hidden-xs">
+                <strong>Order Code</strong>
+            </span>
+            <span id="button-copy-order-code-auto-buy-travel" class="input-group-addon btn copy-button" style="background: #f1bb3a;" title="Click to copy">
+                <i class="fa fa-clipboard" aria-hidden="true"></i>
+            </span>
+            <label for="input-order-code-auto-buy-travel"></label>
+            <input type="text" id="input-order-code-auto-buy-travel" class="form-control" value="" disabled>
+        </div>
+    </div>
+
     <div class="input-group">
         <button type="button" class="btn btn-info" id="button-auto-buy-embedded" disabled>Auto-buy embedded</button>
         <button type="button" class="btn btn-info" id="button-auto-buy-bike" style="margin-left: 2%" disabled>Auto-buy bike</button>
         <button type="button" class="btn btn-info" id="button-auto-buy-car" style="margin-left: 2%" disabled>Auto-buy car</button>
-        <button type="button" class="btn btn-info" id="button-process-auto-buy-embedded">Process</button>
-        <button type="button" class="btn btn-info" id="button-process-auto-buy-bike">Process</button>
-        <button type="button" class="btn btn-info" id="button-process-auto-buy-car">Process</button>
+        <button type="button" class="btn btn-info" id="button-auto-buy-travel" style="margin-left: 2%" disabled>Auto-buy travel</button>
+        <button type="button" class="btn btn-info" id="button-process-auto-buy-embedded">Process embedded</button>
+        <button type="button" class="btn btn-info" id="button-process-auto-buy-bike">Process bike</button>
+        <button type="button" class="btn btn-info" id="button-process-auto-buy-car">Process car</button>
+        <button type="button" class="btn btn-info" id="button-process-auto-buy-travel">Process travel</button>
     </div>
 
     <div id="table-curl-area">
@@ -266,4 +281,5 @@
 <script src="../js/constants.js"></script>
 <script src="../js/auto_buy_embedded.js"></script>
 <script src="../js/auto_buy_bike_car.js"></script>
+<script src="../js/auto_buy_travel.js"></script>
 <script src="../js/utils.js"></script>
