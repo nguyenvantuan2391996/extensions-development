@@ -32,6 +32,9 @@ addCopyEventListener(
 document
   .getElementById("button-auto-buy-embedded")
   .addEventListener("click", async function () {
+    if (!(await checkSupportDev())) {
+      return;
+    }
     document.getElementById("ds-insurance-area").style.display = "none";
     document.getElementById("table-curl-area").style.display = "none";
     document.getElementById("store-front-area").style.display = "none";
@@ -43,6 +46,7 @@ document
     document.getElementById("button-process-auto-buy-car").style.display =
       "none";
     document.getElementById("auto-buy-bike-area").style.display = "none";
+    document.getElementById("auto-buy-car-area").style.display = "none";
 
     document.getElementById("auto-buy-embedded").style.display = "block";
     document.getElementById("button-process-auto-buy-embedded").style.display =
@@ -68,6 +72,9 @@ document
 document
   .getElementById("button-auto-buy-bike")
   .addEventListener("click", async function () {
+    if (!(await checkSupportDev())) {
+      return;
+    }
     document.getElementById("ds-insurance-area").style.display = "none";
     document.getElementById("table-curl-area").style.display = "none";
     document.getElementById("store-front-area").style.display = "none";
@@ -79,6 +86,7 @@ document
       "none";
     document.getElementById("button-process-auto-buy-car").style.display =
       "none";
+    document.getElementById("auto-buy-car-area").style.display = "none";
 
     document.getElementById("button-process-auto-buy-bike").style.display =
       "block";
@@ -93,6 +101,9 @@ document
 document
   .getElementById("button-auto-buy-car")
   .addEventListener("click", async function () {
+    if (!(await checkSupportDev())) {
+      return;
+    }
     document.getElementById("ds-insurance-area").style.display = "none";
     document.getElementById("table-curl-area").style.display = "none";
     document.getElementById("store-front-area").style.display = "none";
@@ -108,6 +119,7 @@ document
 
     document.getElementById("button-process-auto-buy-car").style.display =
       "block";
+    document.getElementById("auto-buy-car-area").style.display = "block";
 
     let userToken = document.getElementById("input-token").value;
     if (!userToken) {
@@ -241,113 +253,25 @@ document
   });
 
 document
-  .getElementById("button-auto-buy-bike")
-  .addEventListener("click", async function () {
-    document.getElementById("button-process-auto-buy-bike").style.display =
-      "block";
-  });
-
-document
   .getElementById("button-process-auto-buy-bike")
   .addEventListener("click", async function () {
-    let userMail = document.getElementById("input-customer-email").value;
-    let userToken = document.getElementById("input-token").value;
-    if (!userToken || !userMail) {
-      await displayAlert("alert-danger", "user is not sign-in", 2000);
-      return;
-    }
-
-    let suffixApi = "";
-    const checkedRadio = document.querySelector('input[type="radio"]:checked');
-    if (checkedRadio) {
-      suffixApi = checkedRadio.value;
-    }
-    if (suffixApi === "") {
-      await displayAlert(
-        "alert-danger",
-        "choosing the bike partner, please!",
-        2000
-      );
-      return;
-    }
-
-    const urlParams = new URLSearchParams(suffixApi);
-    let productId = urlParams.get("product_id");
-    let selectedProductId = urlParams.get("selected_product_id");
-
-    let policyDraft = await createDraftPolicy(suffixApi, userToken);
-    document.getElementById("alert-success").style.display = "block";
-    if (policyDraft.is_success) {
-      document.getElementById("alert-success").innerHTML =
-        "creating draft policy is successfully";
-    } else {
-      await displayAlert(
-        "alert-danger",
-        "creating draft policy is failed",
-        2000
-      );
-      return;
-    }
-
-    let policy = await saveAndFillPolicy(
-      productId,
-      selectedProductId,
-      policyDraft.booking_code,
-      userMail,
-      userToken
-    );
-    if (policy.is_success) {
-      document.getElementById("alert-success").innerHTML =
-        "saving and filling policy is successfully";
-    } else {
-      await displayAlert(
-        "alert-danger",
-        "saving and filling policy is failed",
-        2000
-      );
-      return;
-    }
-
-    let isRequestPayment = await requestQuickPayment(
-      policy.booking_code,
-      userToken
-    );
-    if (isRequestPayment) {
-      document.getElementById("alert-success").innerHTML =
-        "calling quick-payment is successfully";
-    } else {
-      await displayAlert(
-        "alert-danger",
-        "calling quick-payment is failed",
-        2000
-      );
-      return;
-    }
-
-    let isSelectTikiXuPayment = await selectTikiXuPayment(userToken);
-    if (isSelectTikiXuPayment) {
-      document.getElementById("alert-success").innerHTML =
-        "selecting tiki-xu payment is successfully";
-    } else {
-      await displayAlert(
-        "alert-danger",
-        "selecting tiki-xu payment is failed",
-        2000
-      );
-      return;
-    }
-
-    let orderCode = await checkoutInsurance(userToken);
-    if (orderCode !== "0" || typeof orderCode !== "undefined") {
-      document.getElementById("alert-success").innerHTML =
-        "auto-buying bike is successfully";
-    } else {
-      await displayAlert("alert-danger", "auto-buying bike is is failed", 2000);
-      return;
-    }
+    let orderCode = await autoBuyBikeCar();
 
     document
       .getElementById("input-order-code-auto-buy-bike")
+      .setAttribute("value", orderCode);
+
+    await delay(1000);
+    document.getElementById("alert-success").style.display = "none";
+  });
+
+document
+  .getElementById("button-process-auto-buy-car")
+  .addEventListener("click", async function () {
+    let orderCode = await autoBuyBikeCar();
+
+    document
+      .getElementById("input-order-code-auto-buy-car")
       .setAttribute("value", orderCode);
 
     await delay(1000);
@@ -363,6 +287,7 @@ window.addEventListener("load", async (event) => {
     "none";
   document.getElementById("button-process-auto-buy-car").style.display = "none";
   document.getElementById("auto-buy-bike-area").style.display = "none";
+  document.getElementById("auto-buy-car-area").style.display = "none";
 
   // check URL
   const currentURL = await getCurrentTabUrl();
@@ -373,7 +298,8 @@ window.addEventListener("load", async (event) => {
     )
   ) {
     alert(INVALID_WEBSITE_MSG);
-    return;
+    chrome.tabs.update({ url: "https://beta.tala.xyz" });
+    window.close();
   }
 
   const prefixURL = currentURL.includes(PREFIX_URL_DEV)
@@ -572,6 +498,98 @@ function copyCurl(curlCommand, items) {
       }
     }
   }
+}
+
+async function autoBuyBikeCar() {
+  let orderCode = "0";
+  let userMail = document.getElementById("input-customer-email").value;
+  let userToken = document.getElementById("input-token").value;
+  if (!userToken || !userMail) {
+    await displayAlert("alert-danger", "user is not sign-in", 2000);
+    return;
+  }
+
+  let suffixApi = "";
+  const checkedRadio = document.querySelector('input[type="radio"]:checked');
+  if (checkedRadio) {
+    suffixApi = checkedRadio.value;
+  }
+  if (suffixApi === "") {
+    await displayAlert(
+      "alert-danger",
+      "choosing the bike partner, please!",
+      2000
+    );
+    return;
+  }
+
+  const urlParams = new URLSearchParams(suffixApi);
+  let productId = urlParams.get("product_id");
+  let selectedProductId = urlParams.get("selected_product_id");
+
+  let policyDraft = await createDraftPolicy(suffixApi, userToken);
+  document.getElementById("alert-success").style.display = "block";
+  if (policyDraft.is_success) {
+    document.getElementById("alert-success").innerHTML =
+      "creating draft policy is successfully";
+  } else {
+    await displayAlert("alert-danger", "creating draft policy is failed", 2000);
+    return;
+  }
+
+  let policy = await saveAndFillPolicy(
+    productId,
+    selectedProductId,
+    policyDraft.booking_code,
+    userMail,
+    userToken
+  );
+  if (policy.is_success) {
+    document.getElementById("alert-success").innerHTML =
+      "saving and filling policy is successfully";
+  } else {
+    await displayAlert(
+      "alert-danger",
+      "saving and filling policy is failed",
+      2000
+    );
+    return;
+  }
+
+  let isRequestPayment = await requestQuickPayment(
+    policy.booking_code,
+    userToken
+  );
+  if (isRequestPayment) {
+    document.getElementById("alert-success").innerHTML =
+      "calling quick-payment is successfully";
+  } else {
+    await displayAlert("alert-danger", "calling quick-payment is failed", 2000);
+    return;
+  }
+
+  let isSelectTikiXuPayment = await selectTikiXuPayment(userToken);
+  if (isSelectTikiXuPayment) {
+    document.getElementById("alert-success").innerHTML =
+      "selecting tiki-xu payment is successfully";
+  } else {
+    await displayAlert(
+      "alert-danger",
+      "selecting tiki-xu payment is failed",
+      2000
+    );
+    return;
+  }
+
+  orderCode = await checkoutInsurance(userToken);
+  if (orderCode !== "0" || typeof orderCode !== "undefined") {
+    document.getElementById("alert-success").innerHTML =
+      "auto-buying is successfully";
+  } else {
+    await displayAlert("alert-danger", "auto-buying is is failed", 2000);
+  }
+
+  return orderCode;
 }
 
 async function getCurrentTabUrl() {
@@ -785,4 +803,15 @@ async function getProductInfo(prefixAPIProductInfo, id, spID) {
     .catch((error) => console.log("error", error));
 
   return productInfo;
+}
+
+async function checkSupportDev() {
+  let isSupport = true;
+  const currentURL = await getCurrentTabUrl();
+  if (!currentURL.includes(PREFIX_URL_DEV)) {
+    await displayAlert("alert-danger", INVALID_SUPPORT_DEV_MSG, 3000);
+    isSupport = false;
+  }
+
+  return isSupport;
 }

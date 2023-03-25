@@ -9,7 +9,8 @@ const HANDLE_LOAD_EXTENSION = "handleLoadExtension";
 const NOT_FOUND_MSG = "not found";
 const DATA_EMPTY_MSG = "The data is empty";
 const INVALID_WEBSITE_MSG =
-  "The website is not https://beta.tala.xyz or https://tiki.vn";
+  "The website is not https://beta.tala.xyz or https://tiki.vn. So, we will redirect to https://beta.tala.xyz";
+const INVALID_SUPPORT_DEV_MSG = "The website is not https://beta.tala.xyz";
 
 // pattern API name
 const PATTERN_API_NAME = "tiki360-extension-";
