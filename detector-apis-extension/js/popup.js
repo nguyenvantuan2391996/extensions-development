@@ -43,12 +43,25 @@ async function copyCurl(curlCommand, items) {
         items[element] === element2 &&
         element2 + "-curl-detector-apis" === curlCommand
       ) {
-        await navigator.clipboard.writeText(items[curlCommand]).then((r) => {
-          console.log(r);
-          alert("Copied !");
-        });
+        await navigator.clipboard
+          .writeText(items[curlCommand])
+          .then(async (r) => {
+            console.log(r);
+            await displayAlert("alert-success", "Copied successfully!", 2000);
+          });
         break;
       }
     }
   }
+}
+
+function delay(time) {
+  return new Promise((resolve) => setTimeout(resolve, time));
+}
+
+async function displayAlert(typeAlert, msg, delayTime) {
+  document.getElementById(typeAlert).style.display = "block";
+  document.getElementById(typeAlert).innerHTML = msg;
+  await delay(delayTime);
+  document.getElementById(typeAlert).style.display = "none";
 }
