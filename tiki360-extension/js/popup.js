@@ -72,6 +72,8 @@ document
       return;
     }
 
+    document.getElementById("shipping-info").innerHTML = "";
+
     let listShipping = await getInfoShipping(userToken);
     for (const element of listShipping) {
       let selectShippingInfo = document.getElementById("shipping-info");
