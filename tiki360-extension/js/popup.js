@@ -60,6 +60,8 @@ document
       "none";
     document.getElementById("auto-buy-bike-area").style.display = "none";
     document.getElementById("auto-buy-car-area").style.display = "none";
+    document.getElementById("spin-process-auto-buy-embedded").style.display =
+      "none";
 
     document.getElementById("auto-buy-embedded").style.display = "block";
     document.getElementById("button-process-auto-buy-embedded").style.display =
@@ -106,6 +108,8 @@ document
     document.getElementById("button-process-auto-buy-travel").style.display =
       "none";
     document.getElementById("auto-buy-car-area").style.display = "none";
+    document.getElementById("spin-process-auto-buy-bike").style.display =
+      "none";
 
     document.getElementById("button-process-auto-buy-bike").style.display =
       "block";
@@ -139,6 +143,7 @@ document
       "none";
     document.getElementById("button-process-auto-buy-travel").style.display =
       "none";
+    document.getElementById("spin-process-auto-buy-car").style.display = "none";
 
     document.getElementById("button-process-auto-buy-car").style.display =
       "block";
@@ -172,6 +177,8 @@ document
       "none";
     document.getElementById("button-process-auto-buy-travel").style.display =
       "none";
+    document.getElementById("spin-process-auto-buy-travel").style.display =
+      "none";
 
     document.getElementById("button-process-auto-buy-travel").style.display =
       "block";
@@ -187,6 +194,10 @@ document
 document
   .getElementById("button-process-auto-buy-embedded")
   .addEventListener("click", async function () {
+    document.getElementById("spin-process-auto-buy-embedded").style.display =
+      "inline-grid";
+    document.getElementById("button-process-auto-buy-embedded").disabled = true;
+
     let linkProduct = document.getElementById("input-auto-buy-embedded").value;
 
     if (linkProduct === "" || !linkProduct.includes(PREFIX_URL_DEV)) {
@@ -293,11 +304,15 @@ document
     }
 
     let orderCode = await checkoutProduct(userToken);
-    if (orderCode !== "0" || typeof orderCode !== "undefined") {
+    if (orderCode !== "0" && typeof orderCode !== "undefined") {
       document.getElementById("alert-success").innerHTML =
         "auto-buying is successfully";
     } else {
-      await displayAlert("alert-danger", "auto-buying is is failed", 2000);
+      await displayAlert(
+        "alert-danger",
+        "auto-buying is is failed, because check-out is failed",
+        2000
+      );
       return;
     }
 
@@ -307,11 +322,20 @@ document
 
     await delay(1000);
     document.getElementById("alert-success").style.display = "none";
+    document.getElementById("spin-process-auto-buy-embedded").style.display =
+      "none";
+    document.getElementById(
+      "button-process-auto-buy-embedded"
+    ).disabled = false;
   });
 
 document
   .getElementById("button-process-auto-buy-bike")
   .addEventListener("click", async function () {
+    document.getElementById("spin-process-auto-buy-bike").style.display =
+      "inline-grid";
+    document.getElementById("button-process-auto-buy-bike").disabled = true;
+
     let orderCode = await autoBuyBikeCar();
 
     document
@@ -320,11 +344,17 @@ document
 
     await delay(1000);
     document.getElementById("alert-success").style.display = "none";
+    document.getElementById("spin-process-auto-buy-bike").style.display =
+      "none";
+    document.getElementById("button-process-auto-buy-bike").disabled = false;
   });
 
 document
   .getElementById("button-process-auto-buy-car")
   .addEventListener("click", async function () {
+    document.getElementById("spin-process-auto-buy-car").style.display =
+      "inline-grid";
+    document.getElementById("button-process-auto-buy-car").disabled = true;
     let orderCode = await autoBuyBikeCar();
 
     document
@@ -333,11 +363,17 @@ document
 
     await delay(1000);
     document.getElementById("alert-success").style.display = "none";
+    document.getElementById("spin-process-auto-buy-car").style.display = "none";
+    document.getElementById("button-process-auto-buy-car").disabled = false;
   });
 
 document
   .getElementById("button-process-auto-buy-travel")
   .addEventListener("click", async function () {
+    document.getElementById("spin-process-auto-buy-travel").style.display =
+      "inline-grid";
+    document.getElementById("button-process-auto-buy-travel").disabled = true;
+
     let orderCode = "0";
     let userMail = document.getElementById("input-customer-email").value;
     let userToken = document.getElementById("input-token").value;
@@ -414,7 +450,7 @@ document
     }
 
     orderCode = await checkoutInsurance(userToken);
-    if (orderCode !== "0" || typeof orderCode !== "undefined") {
+    if (orderCode !== "0" && typeof orderCode !== "undefined") {
       document.getElementById("alert-success").innerHTML =
         "auto-buying is successfully";
     } else {
@@ -427,6 +463,9 @@ document
 
     await delay(1000);
     document.getElementById("alert-success").style.display = "none";
+    document.getElementById("spin-process-auto-buy-travel").style.display =
+      "none";
+    document.getElementById("button-process-auto-buy-travel").disabled = false;
   });
 
 window.addEventListener("load", async (event) => {
@@ -437,6 +476,18 @@ window.addEventListener("load", async (event) => {
 document
   .getElementById("button-process-back")
   .addEventListener("click", async function () {
+    document.getElementById("button-auto-buy-embedded").disabled = true;
+    document.getElementById("button-auto-buy-bike").disabled = true;
+    document.getElementById("button-auto-buy-car").disabled = true;
+    document.getElementById("button-auto-buy-travel").disabled = true;
+
+    document.getElementById("spin-auto-buy-embedded").style.display =
+      "inline-grid";
+    document.getElementById("spin-auto-buy-bike").style.display = "inline-grid";
+    document.getElementById("spin-auto-buy-car").style.display = "inline-grid";
+    document.getElementById("spin-auto-buy-travel").style.display =
+      "inline-grid";
+
     await loadExtension();
   });
 
@@ -564,6 +615,14 @@ async function loadExtension() {
             document.getElementById("button-auto-buy-car").disabled = false;
             document.getElementById("button-auto-buy-travel").disabled = false;
 
+            document.getElementById("spin-auto-buy-embedded").style.display =
+              "none";
+            document.getElementById("spin-auto-buy-bike").style.display =
+              "none";
+            document.getElementById("spin-auto-buy-car").style.display = "none";
+            document.getElementById("spin-auto-buy-travel").style.display =
+              "none";
+
             if (
               currentURL.includes(
                 PREFIX_URL_DEV + "/bao-hiem-so/thong-tin-hop-dong"
@@ -646,6 +705,21 @@ async function displayAlert(typeAlert, msg, delayTime) {
   document.getElementById(typeAlert).style.display = "none";
   if (typeAlert === "alert-danger") {
     document.getElementById("alert-success").style.display = "none";
+
+    document.getElementById("spin-process-auto-buy-embedded").style.display =
+      "none";
+    document.getElementById("spin-process-auto-buy-bike").style.display =
+      "none";
+    document.getElementById("spin-process-auto-buy-car").style.display = "none";
+    document.getElementById("spin-process-auto-buy-travel").style.display =
+      "none";
+
+    document.getElementById(
+      "button-process-auto-buy-embedded"
+    ).disabled = false;
+    document.getElementById("button-process-auto-buy-bike").disabled = false;
+    document.getElementById("button-process-auto-buy-car").disabled = false;
+    document.getElementById("button-process-auto-buy-travel").disabled = false;
   }
 }
 
@@ -763,11 +837,15 @@ async function autoBuyBikeCar() {
   }
 
   orderCode = await checkoutInsurance(userToken);
-  if (orderCode !== "0" || typeof orderCode !== "undefined") {
+  if (orderCode !== "0" && typeof orderCode !== "undefined") {
     document.getElementById("alert-success").innerHTML =
       "auto-buying is successfully";
   } else {
-    await displayAlert("alert-danger", "auto-buying is is failed", 2000);
+    await displayAlert(
+      "alert-danger",
+      "auto-buying is is failed, because check-out is failed",
+      2000
+    );
   }
 
   return orderCode;
