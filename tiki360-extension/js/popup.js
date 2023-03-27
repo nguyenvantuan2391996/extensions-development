@@ -294,6 +294,7 @@ document
     document.getElementById("alert-success").innerHTML =
       "getting product's information is successfully";
 
+    // clear all old items in cart
     await deleteCart(userToken);
 
     let isAddToCart = await addToCart(
@@ -549,6 +550,8 @@ document
         "binding add-on is successfully",
         2000
       );
+
+      /* global chrome */
       await chrome.tabs.query(
         { active: true, currentWindow: true },
         function (tabs) {
@@ -808,6 +811,8 @@ async function displayAlert(typeAlert, msg, delayTime) {
     document.getElementById("spin-process-auto-buy-car").style.display = "none";
     document.getElementById("spin-process-auto-buy-travel").style.display =
       "none";
+    document.getElementById("spin-process-binding-add-on").style.display =
+      "none";
 
     document.getElementById(
       "button-process-auto-buy-embedded"
@@ -815,6 +820,7 @@ async function displayAlert(typeAlert, msg, delayTime) {
     document.getElementById("button-process-auto-buy-bike").disabled = false;
     document.getElementById("button-process-auto-buy-car").disabled = false;
     document.getElementById("button-process-auto-buy-travel").disabled = false;
+    document.getElementById("button-process-binding-add-on").disabled = false;
   }
 }
 

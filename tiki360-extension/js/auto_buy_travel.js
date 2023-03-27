@@ -22,126 +22,107 @@ async function saveFormTravel(userToken, userMail) {
 
   let name = randomName();
   let identification = randomIdentification();
-  const raw =
-    `
-  {
-    "product_id": 164,
-    "selected_product_id": 164,
-    "data": {
-        "price": 105000,
-        "items": [
-            {
-                "field": "policy_language",
-                "value": "vn"
-            },
-            {
-                "field": "fullname",
-                "value": "` +
-    name +
-    `"
-            },
-            {
-                "field": "certi_number",
-                "value": "` +
-    identification +
-    `"
-            },
-            {
-                "field": "nationality",
-                "value": "V00001"
-            },
-            {
-                "field": "city",
-                "value": "004"
-            },
-            {
-                "field": "district",
-                "value": "00404"
-            },
-            {
-                "field": "address",
-                "value": "174 Thái Hà"
-            },
-            {
-                "field": "phone_number",
-                "value": "` +
-    randomPhoneNumber() +
-    `"
-            },
-            {
-                "field": "email",
-                "value": "` +
-    userMail +
-    `"
-            },
-            {
-                "field": "insured_people_1_fullname",
-                "value": "` +
-    name +
-    `"
-            },
-            {
-                "field": "insured_people_1_certi_number",
-                "value": "` +
-    identification +
-    `"
-            },
-            {
-                "field": "insured_people_1_nationality",
-                "value": "V00001"
-            },
-            {
-                "field": "insured_people_1_birthday",
-                "value": "01/01/2004"
-            },
-            {
-                "field": "insured_people_1_gender",
-                "value": "1"
-            },
-            {
-                "field": "insured_people_1_is_adult",
-                "value": true
-            },
-            {
-                "value": "classic",
-                "field": "package_type"
-            },
-            {
-                "value": "asean",
-                "field": "trip_to"
-            },
-            {
-                "value": "` +
-    getDate(0, 0, 0) +
-    `",
-                "field": "date_start"
-            },
-            {
-                "value": "` +
-    getDate(0, 0, 1) +
-    `",
-                "field": "date_end"
-            },
-            {
-                "value": 2,
-                "field": "count_days"
-            },
-            {
-                "value": 1,
-                "field": "adults"
-            },
-            {
-                "value": 0,
-                "field": "childs"
-            },
-            {
-                "value": "individual",
-                "field": "policy_type"
-            }
-        ]
-    }
-}
-  `;
+  const raw = JSON.stringify({
+    product_id: 164,
+    selected_product_id: 164,
+    data: {
+      price: 105000,
+      items: [
+        {
+          field: "policy_language",
+          value: "vn",
+        },
+        {
+          field: "fullname",
+          value: name,
+        },
+        {
+          field: "certi_number",
+          value: identification,
+        },
+        {
+          field: "nationality",
+          value: "V00001",
+        },
+        {
+          field: "city",
+          value: "004",
+        },
+        {
+          field: "district",
+          value: "00404",
+        },
+        {
+          field: "address",
+          value: "174 Thái Hà",
+        },
+        {
+          field: "phone_number",
+          value: randomPhoneNumber(),
+        },
+        {
+          field: "email",
+          value: userMail,
+        },
+        {
+          field: "insured_people_1_fullname",
+          value: name,
+        },
+        {
+          field: "insured_people_1_certi_number",
+          value: identification,
+        },
+        {
+          field: "insured_people_1_nationality",
+          value: "V00001",
+        },
+        {
+          field: "insured_people_1_birthday",
+          value: "01/01/2004",
+        },
+        {
+          field: "insured_people_1_gender",
+          value: "1",
+        },
+        {
+          field: "insured_people_1_is_adult",
+          value: true,
+        },
+        {
+          value: "classic",
+          field: "package_type",
+        },
+        {
+          value: "asean",
+          field: "trip_to",
+        },
+        {
+          value: getDate(0, 0, 0),
+          field: "date_start",
+        },
+        {
+          value: getDate(0, 0, 1),
+          field: "date_end",
+        },
+        {
+          value: 2,
+          field: "count_days",
+        },
+        {
+          value: 1,
+          field: "adults",
+        },
+        {
+          value: 0,
+          field: "childs",
+        },
+        {
+          value: "individual",
+          field: "policy_type",
+        },
+      ],
+    },
+  });
 
   let travelFormInfo = {
     booking_code: "",
@@ -190,12 +171,9 @@ async function underwriting(bookingCode, userToken) {
   );
   myHeaders.append("x-access-token", userToken);
 
-  const raw =
-    `{
-    "code": "` +
-    bookingCode +
-    `"
-}`;
+  const raw = JSON.stringify({
+    code: bookingCode,
+  });
 
   let isSuccess;
   const requestOptions = {
