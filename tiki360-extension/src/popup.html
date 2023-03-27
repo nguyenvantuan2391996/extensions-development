@@ -165,11 +165,7 @@
             <span class="input-group-addon hidden-xs" style="margin-left: 10%">
                 <strong>Number of insurances</strong>
             </span>
-            <label for="shipping-info"></label>
             <label for="input-number-of-insurances"></label><input type="number" min="1" id="input-number-of-insurances" class="form-control" value="1">
-        </div>
-
-        <div class="input-group" id="add-on-auto">
         </div>
     </div>
 
@@ -246,6 +242,16 @@
         </div>
     </div>
 
+    <div id="binding-add-on-area">
+        <div class="input-group">
+            <span class="input-group-addon hidden-xs">
+                <strong>Choose add-on</strong>
+            </span>
+            <label for="list-add-on"></label><select class="custom-select" id="list-add-on">
+            </select>
+        </div>
+    </div>
+
     <div class="input-group">
         <button type="button" class="btn btn-primary" id="button-auto-buy-embedded" disabled>
             <i class="fa fa-spinner fa-spin mr-2" id="spin-auto-buy-embedded"></i>
@@ -263,6 +269,10 @@
             <i class="fa fa-spinner fa-spin mr-2" id="spin-auto-buy-travel"></i>
             Auto-buy travel
         </button>
+        <button type="button" class="btn btn-primary" id="button-binding-add-on" style="margin-left: 2%; display: none" disabled>
+            <i class="fa fa-spinner fa-spin mr-2" id="spin-binding-add-on"></i>
+            Binding add-on
+        </button>
 
         <button type="button" class="btn btn-primary" id="button-process-auto-buy-embedded">
             <i class="fa fa-spinner fa-spin mr-2" id="spin-process-auto-buy-embedded"></i>
@@ -279,6 +289,10 @@
         <button type="button" class="btn btn-primary" id="button-process-auto-buy-travel">
             <i class="fa fa-spinner fa-spin mr-2" id="spin-process-auto-buy-travel"></i>
             Process travel
+        </button>
+        <button type="button" class="btn btn-primary" id="button-process-binding-add-on">
+            <i class="fa fa-spinner fa-spin mr-2" id="spin-process-binding-add-on"></i>
+            Process binding add-on
         </button>
         <button type="button" class="btn btn-primary" id="button-process-back" style="margin-left: 2%">Back</button>
     </div>
@@ -308,4 +322,5 @@
 <script src="../js/auto_buy_embedded.js"></script>
 <script src="../js/auto_buy_bike_car.js"></script>
 <script src="../js/auto_buy_travel.js"></script>
+<script src="../js/binding_add_on.js"></script>
 <script src="../js/utils.js"></script>
