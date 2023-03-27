@@ -149,3 +149,6 @@ const ARRAY_FIST_NAME = [
   "Huy",
   "Linh",
 ];
+
+const EXTRAS_ADD_ON =
+  '{"data":[{"name":"Bảo hiểm thời trang - 1,000 VND","mid":"2471075"},{"name":"Bảo hiểm thời trang - 2,000 VND","mid":"2471073"},{"name":"Bảo hiểm thời trang - 2,500 VND","mid":"2471074"},{"name":"Bảo hiểm thiết bị điện tử - 1,000 VND","mid":"2465060"},{"name":"Bảo hiểm thiết bị điện tử - 1,500 VND","mid":"2467504"},{"name":"Bảo hiểm thiết bị điện tử - 5,000 VND","mid":"2467505"},{"name":"Bảo hiểm rơi vỡ màn hình điện thoại - 13,000 VND","mid":"2460042"},{"name":"Bảo hiểm rơi vỡ màn hình điện thoại - 35,000 VND","mid":"2460753"},{"name":"Bảo hiểm rơi vỡ màn hình điện thoại - 52,000 VND","mid":"2460762"},{"name":"Bảo hiểm rơi vỡ màn hình điện thoại - 84,000 VND","mid":"2460763"},{"name":"Bảo hiểm trách nhiệm sản phẩm - 1,000 VND","mid":"2463212"},{"name":"Bảo hiểm trách nhiệm sản phẩm - 2,000 VND","mid":"2462653"},{"name":"Bảo hiểm trách nhiệm sản phẩm - 3,000 VND","mid":"2463321"},{"name":"Bảo hiểm trách nhiệm sản phẩm - 4,000 VND","mid":"2463322"}]}';

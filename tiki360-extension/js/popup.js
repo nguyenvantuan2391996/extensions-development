@@ -58,6 +58,7 @@ document
       "none";
     document.getElementById("button-process-auto-buy-travel").style.display =
       "none";
+    document.getElementById("button-binding-add-on").style.display = "none";
     document.getElementById("auto-buy-bike-area").style.display = "none";
     document.getElementById("auto-buy-car-area").style.display = "none";
     document.getElementById("spin-process-auto-buy-embedded").style.display =
@@ -107,6 +108,7 @@ document
       "none";
     document.getElementById("button-process-auto-buy-travel").style.display =
       "none";
+    document.getElementById("button-binding-add-on").style.display = "none";
     document.getElementById("auto-buy-car-area").style.display = "none";
     document.getElementById("spin-process-auto-buy-bike").style.display =
       "none";
@@ -143,6 +145,7 @@ document
       "none";
     document.getElementById("button-process-auto-buy-travel").style.display =
       "none";
+    document.getElementById("button-binding-add-on").style.display = "none";
     document.getElementById("spin-process-auto-buy-car").style.display = "none";
 
     document.getElementById("button-process-auto-buy-car").style.display =
@@ -177,6 +180,7 @@ document
       "none";
     document.getElementById("button-process-auto-buy-travel").style.display =
       "none";
+    document.getElementById("button-binding-add-on").style.display = "none";
     document.getElementById("spin-process-auto-buy-travel").style.display =
       "none";
 
@@ -188,6 +192,51 @@ document
     let userToken = document.getElementById("input-token").value;
     if (!userToken) {
       await displayAlert("alert-danger", "user is not sign-in", 2000);
+    }
+  });
+
+document
+  .getElementById("button-binding-add-on")
+  .addEventListener("click", async function () {
+    if (!(await checkSupportDev())) {
+      return;
+    }
+    document.getElementById("ds-insurance-area").style.display = "none";
+    document.getElementById("table-curl-area").style.display = "none";
+    document.getElementById("store-front-area").style.display = "none";
+    document.getElementById("button-auto-buy-embedded").style.display = "none";
+    document.getElementById("button-auto-buy-bike").style.display = "none";
+    document.getElementById("button-auto-buy-car").style.display = "none";
+    document.getElementById("button-auto-buy-travel").style.display = "none";
+    document.getElementById("button-process-auto-buy-embedded").style.display =
+      "none";
+    document.getElementById("button-process-auto-buy-bike").style.display =
+      "none";
+    document.getElementById("button-process-auto-buy-car").style.display =
+      "none";
+    document.getElementById("button-process-auto-buy-travel").style.display =
+      "none";
+    document.getElementById("button-binding-add-on").style.display = "none";
+    document.getElementById("auto-buy-bike-area").style.display = "none";
+    document.getElementById("auto-buy-car-area").style.display = "none";
+    document.getElementById("spin-process-binding-add-on").style.display =
+      "none";
+
+    document.getElementById("binding-add-on-area").style.display = "block";
+    document.getElementById("button-process-binding-add-on").style.display =
+      "block";
+    document.getElementById("button-process-back").style.display = "block";
+
+    document.getElementById("list-add-on").innerHTML = "";
+
+    let listAddOn = JSON.parse(await getListAddOn()).data;
+    for (const element of listAddOn) {
+      let selectAddOn = document.getElementById("list-add-on");
+      let optionAddOn = document.createElement("option");
+      optionAddOn.text = element.name;
+      optionAddOn.value = element.mid;
+
+      selectAddOn.add(optionAddOn);
     }
   });
 
@@ -468,6 +517,55 @@ document
     document.getElementById("button-process-auto-buy-travel").disabled = false;
   });
 
+document
+  .getElementById("button-process-binding-add-on")
+  .addEventListener("click", async function () {
+    document.getElementById("spin-process-binding-add-on").style.display =
+      "inline-grid";
+    document.getElementById("button-process-binding-add-on").disabled = true;
+
+    let productID = localStorage.getItem("product_id");
+    let userEmail = document.getElementById("input-customer-email").value;
+    if (
+      productID === null ||
+      userEmail === null ||
+      typeof productID === "undefined" ||
+      typeof userEmail === "undefined"
+    ) {
+      await displayAlert(
+        "alert-danger",
+        "missing product id or user email",
+        2000
+      );
+      return;
+    }
+
+    let addOnId = document.getElementById("list-add-on").value;
+
+    let isSuccessBinding = await bindingAddOn(userEmail, productID, addOnId);
+    if (isSuccessBinding) {
+      await displayAlert(
+        "alert-success",
+        "binding add-on is successfully",
+        2000
+      );
+      await chrome.tabs.query(
+        { active: true, currentWindow: true },
+        function (tabs) {
+          chrome.tabs.reload(tabs[0].id);
+        }
+      );
+    } else {
+      await displayAlert("alert-danger", "binding add-on is failed", 2000);
+      return;
+    }
+
+    document.getElementById("alert-success").style.display = "none";
+    document.getElementById("spin-process-binding-add-on").style.display =
+      "none";
+    document.getElementById("button-process-binding-add-on").disabled = false;
+  });
+
 window.addEventListener("load", async (event) => {
   console.log(event);
   await loadExtension();
@@ -476,19 +574,7 @@ window.addEventListener("load", async (event) => {
 document
   .getElementById("button-process-back")
   .addEventListener("click", async function () {
-    document.getElementById("button-auto-buy-embedded").disabled = true;
-    document.getElementById("button-auto-buy-bike").disabled = true;
-    document.getElementById("button-auto-buy-car").disabled = true;
-    document.getElementById("button-auto-buy-travel").disabled = true;
-
-    document.getElementById("spin-auto-buy-embedded").style.display =
-      "inline-grid";
-    document.getElementById("spin-auto-buy-bike").style.display = "inline-grid";
-    document.getElementById("spin-auto-buy-car").style.display = "inline-grid";
-    document.getElementById("spin-auto-buy-travel").style.display =
-      "inline-grid";
-
-    await loadExtension();
+    location.reload();
   });
 
 async function loadExtension() {
@@ -500,11 +586,14 @@ async function loadExtension() {
   document.getElementById("button-process-auto-buy-car").style.display = "none";
   document.getElementById("button-process-auto-buy-travel").style.display =
     "none";
+  document.getElementById("button-process-binding-add-on").style.display =
+    "none";
   document.getElementById("button-process-back").style.display = "none";
 
   document.getElementById("auto-buy-bike-area").style.display = "none";
   document.getElementById("auto-buy-car-area").style.display = "none";
   document.getElementById("auto-buy-travel-area").style.display = "none";
+  document.getElementById("binding-add-on-area").style.display = "none";
 
   document.getElementById("button-auto-buy-embedded").style.display = "block";
   document.getElementById("button-auto-buy-bike").style.display = "block";
@@ -553,6 +642,7 @@ async function loadExtension() {
     document.getElementById("table-curl-area").style.display = "none";
 
     const productInfo = await getProductInfo(prefixAPIProductInfo, id, spID);
+    localStorage.setItem("product_id", productInfo.product_id);
     document
       .getElementById("input-product-id")
       .setAttribute("value", productInfo.product_id);
@@ -568,6 +658,8 @@ async function loadExtension() {
     document
       .getElementById("input-add-on-name")
       .setAttribute("value", productInfo.add_on_name);
+
+    document.getElementById("button-binding-add-on").style.display = "block";
   } else {
     document.getElementById("store-front-area").style.display = "none";
     source = "ds-insurance-area";
@@ -614,6 +706,7 @@ async function loadExtension() {
             document.getElementById("button-auto-buy-bike").disabled = false;
             document.getElementById("button-auto-buy-car").disabled = false;
             document.getElementById("button-auto-buy-travel").disabled = false;
+            document.getElementById("button-binding-add-on").disabled = false;
 
             document.getElementById("spin-auto-buy-embedded").style.display =
               "none";
@@ -621,6 +714,8 @@ async function loadExtension() {
               "none";
             document.getElementById("spin-auto-buy-car").style.display = "none";
             document.getElementById("spin-auto-buy-travel").style.display =
+              "none";
+            document.getElementById("spin-binding-add-on").style.display =
               "none";
 
             if (
