@@ -75,68 +75,47 @@ async function saveAndFillPolicy(
   myHeaders.append("x-access-token", userToken);
 
   let startAndEndDate = getStartDateAndEndDate();
-  const raw =
-    `
-  {
-    "product_id": ` +
-    productId +
-    `,
-    "selected_product_id": ` +
-    selectedProductId +
-    `,
-    "code": "` +
-    bookingCode +
-    `",
-    "data": {
-        "items": [
-            {
-                "field": "owner_name",
-                "value": "` +
-    randomName() +
-    `"
-            },
-            {
-                "field": "license_number",
-                "value": "` +
-    randomLicensePlate() +
-    `"
-            },
-            {
-                "field": "effective_date",
-                "value": "` +
-    startAndEndDate.start_date +
-    `"
-            },
-            {
-                "field": "expired_date",
-                "value": "` +
-    startAndEndDate.end_date +
-    `"
-            },
-            {
-                "field": "email",
-                "value": "` +
-    userMail +
-    `"
-            },
-            {
-                "field": "phone_number",
-                "value": "` +
-    randomPhoneNumber() +
-    `"
-            },
-            {
-                "field": "machine_number",
-                "value": ""
-            },
-            {
-                "field": "chassis_number",
-                "value": ""
-            }
-        ]
-    }
-}
-  `;
+  const raw = JSON.stringify({
+    product_id: Number(productId),
+    selected_product_id: Number(selectedProductId),
+    code: bookingCode,
+    data: {
+      items: [
+        {
+          field: "owner_name",
+          value: randomName(),
+        },
+        {
+          field: "license_number",
+          value: randomLicensePlate(),
+        },
+        {
+          field: "effective_date",
+          value: startAndEndDate.start_date,
+        },
+        {
+          field: "expired_date",
+          value: startAndEndDate.end_date,
+        },
+        {
+          field: "email",
+          value: userMail,
+        },
+        {
+          field: "phone_number",
+          value: randomPhoneNumber(),
+        },
+        {
+          field: "machine_number",
+          value: "",
+        },
+        {
+          field: "chassis_number",
+          value: "",
+        },
+      ],
+    },
+  });
 
   const requestOptions = {
     method: "POST",
@@ -186,15 +165,10 @@ async function requestQuickPayment(bookingCode, userToken) {
   );
   myHeaders.append("x-access-token", userToken);
 
-  const raw =
-    `
-  {
-    "booking_code": "` +
-    bookingCode +
-    `",
-    "source": "desktop-web"
-}
-  `;
+  const raw = JSON.stringify({
+    booking_code: bookingCode,
+    source: "desktop-web",
+  });
 
   const requestOptions = {
     method: "POST",
@@ -297,8 +271,13 @@ async function checkoutInsurance(userToken) {
   );
   myHeaders.append("x-access-token", userToken);
 
-  const raw =
-    '{\n    "ref_id": "insurance",\n    "payment": {\n        "method": "cod"\n    },\n    "tax_info": null\n}';
+  const raw = JSON.stringify({
+    ref_id: "insurance",
+    payment: {
+      method: "cod",
+    },
+    tax_info: null,
+  });
 
   const requestOptions = {
     method: "POST",
