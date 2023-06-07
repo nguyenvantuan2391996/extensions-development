@@ -1,0 +1,48 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>The extension supports for displaying the gif image when the website was loaded</title>
+</head>
+<link rel="stylesheet" href="../css/popup.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha.6/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<body>
+
+<div class="container">
+    <div class="input-group center-item">
+        <h3>Config Gif Image</h3>
+    </div>
+    <div class="alert alert-success" role="alert" id="alert-success" style="display: none; z-index: 999999; position: fixed;margin-left: 30%">
+    </div>
+    <div class="input-group">
+        <label for="select-type"></label><select class="custom-select mr-2" id="select-type">
+            <option id="type-random" value="type-random" selected>Random Gif</option>
+            <option id="type-search-key" value="type-search-key">Search Gif By Key</option>
+        </select>
+        <label for="select-position"></label>
+            <select class="custom-select" id="select-position">
+            <option id="type-bottom-right" value="type-bottom-right" selected>Bottom Right</option>
+            <option id="type-top-right" value="type-top-right">Top Right</option>
+            <option id="type-bottom-left" value="type-bottom-left">Bottom Left</option>
+            <option id="type-top-left" value="type-top-left">Top Left</option>
+        </select>
+    </div>
+    <div class="input-group">
+        <label for="input-key-search"></label><input type="text" id="input-key-search" class="form-control" value="" placeholder="Enter key search" hidden>
+    </div>
+    <div class="input-group center-item">
+        <button type="button" class="btn btn-primary mr-2" id="btn-save-config">
+            Save
+        </button>
+        <button type="button" class="btn btn-danger" id="btn-clear-config">
+            Clear
+        </button>
+    </div>
+</div>
+
+</body>
+</html>
+
+<script src="../js/popup.js"></script>
+<script src="../js/constants.js"></script>
