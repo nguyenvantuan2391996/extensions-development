@@ -320,6 +320,24 @@ document
       return;
     }
 
+    let ids = await getIdsGiftItem(userToken);
+    if (ids.length > 0) {
+      for (const id of ids) {
+        let isDeleteGiftItem = await deleteGiftItem(userToken, id);
+        if (isDeleteGiftItem) {
+          document.getElementById("alert-success").innerHTML =
+            "delete gift item is successfully";
+        } else {
+          await displayAlert(
+            "alert-danger",
+            "delete gift item is failed",
+            2000
+          );
+          return;
+        }
+      }
+    }
+
     let isAbleCheckout = await checkAbleToCheckout(userToken);
     if (!isAbleCheckout) {
       await displayAlert(
@@ -350,6 +368,15 @@ document
         "selecting payment code is failed",
         2000
       );
+      return;
+    }
+
+    let isConfirmPrice = await confirmPrice(userToken);
+    if (isConfirmPrice) {
+      document.getElementById("alert-success").innerHTML =
+        "confirming price is successfully";
+    } else {
+      await displayAlert("alert-danger", "confirming price is failed", 2000);
       return;
     }
 
@@ -1038,7 +1065,6 @@ async function getOrderCode(
   )
     .then((response) => response.json())
     .then((result) => {
-      debugger;
       transactionID = result.data.list[0].history[0].transaction_id;
     })
     .catch((error) => {

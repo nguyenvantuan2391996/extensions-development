@@ -150,6 +150,100 @@ async function selectedItems(userToken) {
   return isSuccess;
 }
 
+async function getIdsGiftItem(userToken) {
+  const myHeaders = new Headers();
+  myHeaders.append("authority", "api.tala.xyz");
+  myHeaders.append("accept", "application/json, text/plain, */*");
+  myHeaders.append("accept-language", "en-US,en;q=0.9,vi;q=0.8,es;q=0.7");
+  myHeaders.append("origin", "https://beta.tala.xyz");
+  myHeaders.append(
+    "referer",
+    "https://beta.tala.xyz/checkout/cart?src=header_cart"
+  );
+  myHeaders.append(
+    "sec-ch-ua",
+    '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"'
+  );
+  myHeaders.append("sec-ch-ua-mobile", "?0");
+  myHeaders.append("sec-ch-ua-platform", '"macOS"');
+  myHeaders.append("sec-fetch-dest", "empty");
+  myHeaders.append("sec-fetch-mode", "cors");
+  myHeaders.append("sec-fetch-site", "same-site");
+  myHeaders.append(
+    "user-agent",
+    ARRAY_USER_AGENT[Math.floor(Math.random() * ARRAY_USER_AGENT.length)]
+  );
+  myHeaders.append("x-access-token", userToken);
+
+  const requestOptions = {
+    method: "GET",
+    headers: myHeaders,
+    redirect: "follow",
+  };
+
+  let ids = [];
+  await fetch(
+    "https://api.tala.xyz/v2/carts/mine/gifts?include=items",
+    requestOptions
+  )
+    .then((response) => response.json())
+    .then((result) => {
+      console.log(result);
+      for (const element of result.data) {
+        ids.push(element.id);
+      }
+    })
+    .catch((error) => console.log("error", error));
+
+  return ids;
+}
+
+async function deleteGiftItem(userToken, id) {
+  const myHeaders = new Headers();
+  myHeaders.append("authority", "api.tala.xyz");
+  myHeaders.append("accept", "application/json, text/plain, */*");
+  myHeaders.append("accept-language", "en-US,en;q=0.9,vi;q=0.8,es;q=0.7");
+  myHeaders.append("origin", "https://beta.tala.xyz");
+  myHeaders.append(
+    "referer",
+    "https://beta.tala.xyz/checkout/cart?src=header_cart"
+  );
+  myHeaders.append(
+    "sec-ch-ua",
+    '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"'
+  );
+  myHeaders.append("sec-ch-ua-mobile", "?0");
+  myHeaders.append("sec-ch-ua-platform", '"macOS"');
+  myHeaders.append("sec-fetch-dest", "empty");
+  myHeaders.append("sec-fetch-mode", "cors");
+  myHeaders.append("sec-fetch-site", "same-site");
+  myHeaders.append(
+    "user-agent",
+    ARRAY_USER_AGENT[Math.floor(Math.random() * ARRAY_USER_AGENT.length)]
+  );
+  myHeaders.append("x-access-token", userToken);
+
+  const requestOptions = {
+    method: "DELETE",
+    headers: myHeaders,
+    redirect: "follow",
+  };
+
+  let isSuccess;
+  await fetch("https://api.tala.xyz/v2/carts/mine/items/" + id, requestOptions)
+    .then((response) => response.json())
+    .then((result) => {
+      console.log(result);
+      isSuccess = true;
+    })
+    .catch((error) => {
+      console.log("error", error);
+      isSuccess = false;
+    });
+
+  return isSuccess;
+}
+
 async function checkAbleToCheckout(userToken) {
   const myHeaders = new Headers();
   myHeaders.append("authority", "api.tala.xyz");
@@ -280,6 +374,52 @@ async function selectPaymentCod(userToken) {
     requestOptions
   )
     .then((response) => response.json())
+    .then((result) => {
+      console.log(result);
+      isSuccess = true;
+    })
+    .catch((error) => {
+      console.log("error", error);
+      isSuccess = false;
+    });
+
+  return isSuccess;
+}
+
+async function confirmPrice(userToken) {
+  const myHeaders = new Headers();
+  myHeaders.append("authority", "api.tala.xyz");
+  myHeaders.append("accept", "application/json, text/plain, */*");
+  myHeaders.append("accept-language", "en-US,en;q=0.9,vi;q=0.8,es;q=0.7");
+  myHeaders.append("origin", "https://beta.tala.xyz");
+  myHeaders.append("referer", "https://beta.tala.xyz/checkout/payment");
+  myHeaders.append(
+    "sec-ch-ua",
+    '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"'
+  );
+  myHeaders.append("sec-ch-ua-mobile", "?0");
+  myHeaders.append("sec-ch-ua-platform", '"macOS"');
+  myHeaders.append("sec-fetch-dest", "empty");
+  myHeaders.append("sec-fetch-mode", "cors");
+  myHeaders.append("sec-fetch-site", "same-site");
+  myHeaders.append(
+    "user-agent",
+    ARRAY_USER_AGENT[Math.floor(Math.random() * ARRAY_USER_AGENT.length)]
+  );
+  myHeaders.append("x-access-token", userToken);
+
+  const requestOptions = {
+    method: "GET",
+    headers: myHeaders,
+    redirect: "follow",
+  };
+
+  let isSuccess;
+  await fetch(
+    "https://api.tala.xyz/v2/carts/mine?include=items,shipping_address,messages,price_summary,last_payment_method,shipping_methods,customer_tikixu_reward,customer_asa_reward&step=4&step_name=checkout%2Forder_view",
+    requestOptions
+  )
+    .then((response) => response.text())
     .then((result) => {
       console.log(result);
       isSuccess = true;
