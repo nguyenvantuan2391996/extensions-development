@@ -49,6 +49,56 @@ document
   });
 
 document
+  .getElementById("btn-turn-on-off")
+  .addEventListener("click", async function () {
+    /* global chrome */
+    await chrome.storage.local.get(["turn_on_off"], async function (result) {
+      let onOff = result.turn_on_off ? result.turn_on_off : "On";
+      if (onOff === "Off") {
+        document.getElementById("btn-turn-on-off").textContent = "On";
+        document.getElementById("btn-turn-on-off").className =
+          "btn btn-primary mr-2";
+        onOff = "On";
+      } else {
+        document.getElementById("btn-turn-on-off").textContent = "Off";
+        document.getElementById("btn-turn-on-off").className =
+          "btn btn-danger mr-2";
+        onOff = "Off";
+      }
+
+      await chrome.tabs.query(
+        {
+          active: true,
+          currentWindow: true,
+        },
+        function (tabs) {
+          try {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              from: POPUP_SCREEN,
+              subject: HANDLE_ON_OFF,
+              onOff: onOff,
+            });
+          } catch (e) {
+            console.error(e);
+          }
+
+          if (chrome.runtime.lastError) {
+            console.error(chrome.runtime.lastError.message);
+          }
+        }
+      );
+
+      /* global chrome */
+      await chrome.tabs.query(
+        { active: true, currentWindow: true },
+        function (tabs) {
+          chrome.tabs.reload(tabs[0].id);
+        }
+      );
+    });
+  });
+
+document
   .getElementById("btn-clear-config")
   .addEventListener("click", async function () {
     /* global chrome */
@@ -89,6 +139,7 @@ window.addEventListener("load", async (event) => {
       "gif_extension_select_type",
       "gif_extension_key_search",
       "gif_extension_select_position",
+      "turn_on_off",
     ],
     async function (result) {
       let selectType = result.gif_extension_select_type;
@@ -102,6 +153,17 @@ window.addEventListener("load", async (event) => {
       }
       if (selectPosition) {
         document.getElementById("select-position").value = selectPosition;
+      }
+
+      let onOff = result.turn_on_off ? result.turn_on_off : "On";
+      if (onOff === "Off") {
+        document.getElementById("btn-turn-on-off").textContent = "On";
+        document.getElementById("btn-turn-on-off").className =
+          "btn btn-primary mr-2";
+      } else {
+        document.getElementById("btn-turn-on-off").textContent = "Off";
+        document.getElementById("btn-turn-on-off").className =
+          "btn btn-danger mr-2";
       }
     }
   );
