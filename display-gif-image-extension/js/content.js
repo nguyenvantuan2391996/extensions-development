@@ -37,8 +37,9 @@ chrome.runtime.onMessage.addListener(async function (
         // create element
         const img = document.createElement("img");
         img.src = gifImageUrl;
-        img.width = 300;
-        img.height = 300;
+        img.width = 200;
+        img.height = 200;
+        img.style.zIndex = "999";
 
         switch (selectPosition) {
           case "type-bottom-right":
