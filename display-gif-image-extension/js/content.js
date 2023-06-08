@@ -27,7 +27,6 @@ chrome.runtime.onMessage.addListener(async function (
           : "type-bottom-right";
         let onOff = result.turn_on_off ? result.turn_on_off : "On";
 
-        debugger;
         if (onOff === "Off") {
           return;
         }
