@@ -1129,7 +1129,6 @@ async function getOrderCode(
       alert(error);
     });
 
-  // debugger
   return orderCode;
 }
 
