@@ -13,6 +13,7 @@ chrome.runtime.onMessage.addListener(async function (
         "gif_extension_select_type",
         "gif_extension_key_search",
         "gif_extension_select_position",
+        "turn_on_off",
       ],
       async function (result) {
         let selectType = result.gif_extension_select_type
@@ -24,6 +25,12 @@ chrome.runtime.onMessage.addListener(async function (
         let selectPosition = result.gif_extension_select_position
           ? result.gif_extension_select_position
           : "type-bottom-right";
+        let onOff = result.turn_on_off ? result.turn_on_off : "On";
+
+        debugger;
+        if (onOff === "Off") {
+          return;
+        }
 
         if (selectType === "type-search-key" && !keySearch) {
           keySearch = "cat cute";
@@ -95,6 +102,12 @@ chrome.runtime.onMessage.addListener(async function (
     alert("Data saved successfully");
   }
 
+  if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_ON_OFF) {
+    chrome.storage.local.set({ turn_on_off: msg.onOff }, function () {
+      console.log("Data turn on/off saved successfully");
+    });
+  }
+
   if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_CLEAR_CONFIG) {
     // Remove the data
     chrome.storage.local.remove(
@@ -102,6 +115,7 @@ chrome.runtime.onMessage.addListener(async function (
         "gif_extension_select_type",
         "gif_extension_key_search",
         "gif_extension_select_position",
+        "turn_on_off",
       ],
       function () {
         console.log("Data removed successfully");
