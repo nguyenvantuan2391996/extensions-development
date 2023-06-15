@@ -327,13 +327,6 @@ document
         if (isDeleteGiftItem) {
           document.getElementById("alert-success").innerHTML =
             "delete gift item is successfully";
-        } else {
-          await displayAlert(
-            "alert-danger",
-            "delete gift item is failed",
-            2000
-          );
-          return;
         }
       }
     }
