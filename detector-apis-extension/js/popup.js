@@ -2,6 +2,7 @@ window.addEventListener("load", async (event) => {
   console.log(event);
 
   // set value list apis request
+  let arrAPIs = [];
   await chrome.storage.local.get(null, async function (items) {
     let trContent = "";
     for (let element of Object.keys(items)) {
@@ -9,7 +10,11 @@ window.addEventListener("load", async (event) => {
         if (items[element] === element2) {
           let curlCommand = items[element] + "-curl-detector-apis";
           let statusAndRequestID = items[element2].split("|");
-          if (statusAndRequestID[2].includes(CONTENT_TYPE_JSON)) {
+          if (
+            statusAndRequestID[2].includes(CONTENT_TYPE_JSON) &&
+            !isExistedInArray(arrAPIs, element2)
+          ) {
+            arrAPIs.push(element2);
             trContent += `<tr><td><button type="button" class="btn btn-info" id=${curlCommand}>Copy</button></td><td>${items[element]}</td><td>${statusAndRequestID[0]}</td><td>${statusAndRequestID[1]}</td></tr>`;
           }
           break;
