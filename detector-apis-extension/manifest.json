@@ -1,7 +1,7 @@
 {
   "name": "Detector APIs Extension",
   "description": "The extension supports getting all APIs and CURL command when load a website.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "action": {
     "default_popup": "src/popup.html",
     "default_icon": "images/detector-apis-extension.png"
