@@ -37,7 +37,11 @@ window.addEventListener("load", async (event) => {
       document
         .getElementById(buttonID)
         .addEventListener("click", async function () {
-          await copyCurl(buttonID, items);
+          try {
+            await copyCurl(buttonID, items);
+          } catch (e) {
+            console.log(e);
+          }
         });
     }
   });
@@ -53,8 +57,12 @@ async function copyCurl(curlCommand, items) {
         await navigator.clipboard
           .writeText(items[curlCommand])
           .then(async (r) => {
-            console.log(r);
-            await displayAlert("alert-success", "Copied successfully!", 2000);
+            try {
+              console.log(r);
+              await displayAlert("alert-success", "Copied successfully!", 2000);
+            } catch (e) {
+              console.log(e);
+            }
           });
         break;
       }
