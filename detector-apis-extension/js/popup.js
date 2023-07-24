@@ -34,9 +34,11 @@ window.addEventListener("load", async (event) => {
         .getElementsByTagName("td")[0]
         .getElementsByTagName("button")[0].id;
 
-      document.getElementById(buttonID).addEventListener("click", function () {
-        copyCurl(buttonID, items);
-      });
+      document
+        .getElementById(buttonID)
+        .addEventListener("click", async function () {
+          await copyCurl(buttonID, items);
+        });
     }
   });
 });
