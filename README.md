@@ -11,4 +11,5 @@ I will be super happy if you could help me endorse some skills or knowledge on m
 
 # Extensions Development
 - [TIKI360 extension](https://github.com/nguyenvantuan2391996/extensions-development/tree/master/tiki360-extension): The extension supports getting Tiki360's information: token, customer id, order code,...and auto-buy insurance.
-- [Detector APIs extension](https://github.com/nguyenvantuan2391996/extensions-development/tree/master/detector-apis-extension): The extension supports getting all APIs and CURL command when load a website
+- [Detector APIs extension](https://github.com/nguyenvantuan2391996/extensions-development/tree/master/detector-apis-extension): The extension supports getting all APIs and CURL command when load a website.
+- [Display gif image extension](https://github.com/nguyenvantuan2391996/extensions-development/tree/master/display-gif-image-extension): The extension supports displaying the gif image when load a website.
