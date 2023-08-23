@@ -974,7 +974,7 @@ async function autoBuyBikeCar() {
 
 async function getCurrentTabUrl() {
   const tabs = await chrome.tabs.query({ active: true });
-  return tabs[0].url;
+  return tabs[tabs.length - 1].url;
 }
 
 async function getUserInfo(userToken, prefixURL, prefixAPI) {
