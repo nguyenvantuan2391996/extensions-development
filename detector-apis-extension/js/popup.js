@@ -47,23 +47,25 @@ window.addEventListener("load", async (event) => {
   });
 });
 
-async function copyCurl(curlCommand, items) {
+async function copyCurl(id, items) {
   for (let element of Object.keys(items)) {
     for (const element2 of Object.keys(items)) {
       if (
         items[element] === element2 &&
-        element2 + "-curl-detector-apis" === curlCommand
+        element2 + "-curl-detector-apis" === id
       ) {
-        await navigator.clipboard
-          .writeText(items[curlCommand])
-          .then(async (r) => {
-            try {
-              console.log(r);
-              await displayAlert("alert-success", "Copied successfully!", 2000);
-            } catch (e) {
-              console.log(e);
-            }
-          });
+        let curlCommand = items[id];
+        if (items[element2 + "-raw-data"]) {
+          curlCommand += " " + items[element2 + "-raw-data"];
+        }
+        await navigator.clipboard.writeText(curlCommand).then(async (r) => {
+          try {
+            console.log(r);
+            await displayAlert("alert-success", "Copied successfully!", 2000);
+          } catch (e) {
+            console.log(e);
+          }
+        });
         break;
       }
     }
