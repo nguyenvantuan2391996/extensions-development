@@ -107,11 +107,11 @@ async function saveAndFillPolicy(
         },
         {
           field: "machine_number",
-          value: "",
+          value: randomNumber(10000, 99999999999999999).toString(),
         },
         {
           field: "chassis_number",
-          value: "",
+          value: randomNumber(10000, 99999999999999999).toString(),
         },
       ],
     },
