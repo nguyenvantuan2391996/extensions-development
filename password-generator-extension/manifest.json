@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "action": {
     "default_popup": "src/popup.html",
-    "default_icon": "images/detector-apis-extension.png"
+    "default_icon": "images/password-generator-extension.png"
   },
   "icons": {
-    "128": "images/detector-apis-extension.png"
+    "128": "images/password-generator-extension.png"
   },
   "content_scripts": [
     {
@@ -15,23 +15,17 @@
         "<all_urls>"
       ],
       "js": [
-        "js/constants.js",
-        "js/utils.js"
+        "js/constants.js"
       ],
       "run_at": "document_start"
     }
   ],
-  "background": {
-    "service_worker": "js/background.js"
-  },
   "host_permissions": [
     "*://*/*"
   ],
   "permissions": [
-    "storage",
     "activeTab",
-    "tabs",
-    "webRequest"
+    "tabs"
   ],
   "manifest_version": 3
 }
