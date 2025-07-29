@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Password Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4 min-w-[300px]">
+<div class="bg-white p-4 rounded-xl shadow-md">
+  <h1 class="text-lg font-bold mb-4">Password Generator</h1>
+
+  <div class="mb-4">
+    <label class="block text-sm font-medium mb-1">Generated Password</label>
+    <input id="password" type="text" readonly class="w-full p-2 border rounded-lg bg-gray-100" />
+  </div>
+
+  <button id="generate" class="w-full bg-blue-600 text-white py-2 rounded-lg mb-4 hover:bg-blue-700">
+    Generate Password
+  </button>
+
+  <div class="space-y-2">
+    <div>
+      <label class="block text-sm font-medium">Length</label>
+      <input id="length" type="number" min="4" max="50" value="16" class="w-full p-2 border rounded-lg" />
+    </div>
+
+    <label class="flex items-center">
+      <input id="include-lower" type="checkbox" checked class="mr-2" /> a-z
+    </label>
+    <label class="flex items-center">
+      <input id="include-upper" type="checkbox" checked class="mr-2" /> A-Z
+    </label>
+    <label class="flex items-center">
+      <input id="include-number" type="checkbox" checked class="mr-2" /> 0-9
+    </label>
+    <label class="flex items-center">
+      <input id="include-symbol" type="checkbox" checked class="mr-2" /> !@#$%^&*
+    </label>
+    <label class="flex items-center">
+      <input id="include-other" type="checkbox" class="mr-2" /> ~`[];?,
+    </label>
+    <label class="flex items-center">
+      <input id="exclude-duplicates" type="checkbox" class="mr-2" /> Exclude duplicate characters
+    </label>
+  </div>
+</div>
+
+<script>
+  const passwordField = document.getElementById("password");
+  const generateBtn = document.getElementById("generate");
+
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const number = "0123456789";
+  const symbol = "!@#$%^&*";
+  const other = "~`[];?,";
+
+  generateBtn.addEventListener("click", () => {
+    const length = parseInt(document.getElementById("length").value);
+    const chars = [
+      document.getElementById("include-lower").checked ? lower : "",
+      document.getElementById("include-upper").checked ? upper : "",
+      document.getElementById("include-number").checked ? number : "",
+      document.getElementById("include-symbol").checked ? symbol : "",
+      document.getElementById("include-other").checked ? other : ""
+    ].join("");
+
+    const excludeDuplicates = document.getElementById("exclude-duplicates").checked;
+
+    let result = "";
+    let available = chars;
+
+    if (!chars) {
+      passwordField.value = "Select at least 1 option!";
+      return;
+    }
+
+    for (let i = 0; i < length; i++) {
+      let char = available[Math.floor(Math.random() * available.length)];
+      if (excludeDuplicates) {
+        if (!result.includes(char)) {
+          result += char;
+        } else {
+          i--;
+        }
+      } else {
+        result += char;
+      }
+    }
+
+    passwordField.value = result;
+  });
+</script>
+</body>
+</html>
