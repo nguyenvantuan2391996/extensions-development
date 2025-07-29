@@ -20,9 +20,7 @@
       "run_at": "document_start"
     }
   ],
-  "host_permissions": [
-    "*://*/*"
-  ],
+  "host_permissions": [],
   "permissions": [
     "activeTab",
     "tabs"
