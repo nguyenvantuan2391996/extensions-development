@@ -21,9 +21,6 @@
     }
   ],
   "host_permissions": [],
-  "permissions": [
-    "activeTab",
-    "tabs"
-  ],
+  "permissions": [],
   "manifest_version": 3
 }
