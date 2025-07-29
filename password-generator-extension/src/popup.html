@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Password Generator</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-white text-gray-800" style="min-width: 500px; height: auto">
+<div class="bg-white p-2 rounded-xl shadow-md">
+  <div class="mb-4">
+    <label class="block text-xl font-medium mb-1 text-center">Generate a Strong Password!</label>
+    <div class="relative">
+      <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Generated Password</label>
+      <input id="password" type="text" readonly class="w-full p-2 pr-10 border rounded-lg bg-gray-100 text-sm text-gray-800 font-mono"/>
+      <button id="copy" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800" title="Copy to clipboard">
+        📋
+      </button>
+    </div>
+  </div>
+
+  <form id="generator-form">
+  <button type="submit" id="generate" class="w-full bg-blue-600 text-white py-2 rounded-lg mb-4 hover:bg-blue-700">
+    Generate Password
+  </button>
+
+  <div class="space-y-2">
+    <div>
+      <label class="block text-sm font-medium">Password Length</label>
+      <label for="length"></label><input id="length" type="number" min="6" max="64" value="16" class="w-full p-2 border rounded-lg" />
+    </div>
+
+    <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+      <label class="flex items-center">
+        <input id="include-lower" type="checkbox" checked class="mr-2" />
+        Allow Lowercase (a-z)
+      </label>
+      <label class="flex items-center">
+        <input id="include-upper" type="checkbox" checked class="mr-2" />
+        Allow Uppercase (A-Z)
+      </label>
+      <label class="flex items-center">
+        <input id="include-number" type="checkbox" checked class="mr-2" />
+        Allow Numbers (0-9)
+      </label>
+      <label class="flex items-center">
+        <input id="include-symbol" type="checkbox" checked class="mr-2" />
+        Allow Symbols (!@#$%^&*()+)
+      </label>
+      <label class="flex items-center">
+        <input id="include-other" type="checkbox" class="mr-2" />
+        Allow Other Symbols (~`[];?,)
+      </label>
+      <label class="flex items-center">
+        <input id="exclude-duplicates" type="checkbox" class="mr-2" />
+        Exclude duplicate characters
+      </label>
+    </div>
+
+  </div>
+  </form>
+  <p class="text-center text-sm text-gray-500 mt-6">
+    Buy me a coffee ☕ or donate here 👉 <a href="https://paypal.me/Newslette247" target="_blank" class="text-blue-600 hover:underline">https://paypal.me/Newslette247</a>
+  </p>
+</div>
+
+<script src="../js/constants.js"></script>
+<script src="../js/popup.js"></script>
+</body>
+</html>
