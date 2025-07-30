@@ -15,7 +15,9 @@ window.addEventListener("load", async (event) => {
             !isExistedInArray(arrAPIs, element2)
           ) {
             arrAPIs.push(element2);
-            trContent += `<tr><td><button type="button" class="btn btn-info" id=${curlCommand}>Copy</button></td><td>${items[element]}</td><td>${statusAndRequestID[0]}</td><td>${statusAndRequestID[1]}</td></tr>`;
+            let apiStatus = Number(statusAndRequestID[0].split(" ")[0])
+            let badgeClass = apiStatus >= 200 && apiStatus < 300 ? 'badge badge-success' : 'badge badge-danger';
+            trContent += `<tr><td class="text-center align-middle"><button type="button" class="btn btn-info" id=${curlCommand}>Copy</button></td><td class="text-break td-wrap">${items[element]}</td><td class="text-center align-middle"><span class="${badgeClass}">${statusAndRequestID[0]}</span></td></tr>`;
           }
           break;
         }
