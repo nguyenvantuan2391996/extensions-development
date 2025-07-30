@@ -41,36 +41,77 @@ chrome.runtime.onMessage.addListener(async function (
             : await getGifImageByKey(keySearch);
 
         // create element
-        const img = document.createElement("img");
-        img.src = gifImageUrl;
-        img.width = 200;
-        img.height = 200;
-        img.style.zIndex = "999";
+        // const img = document.createElement("img");
+        // img.src = gifImageUrl;
+        // img.width = 200;
+        // img.height = 200;
+        // img.style.zIndex = "999";
+        //
+        // document.body.appendChild(img);
 
-        switch (selectPosition) {
-          case "type-bottom-right":
-            img.style.position = "fixed";
-            img.style.bottom = "0";
-            img.style.right = "0";
-            break;
-          case "type-top-right":
-            img.style.position = "absolute";
-            img.style.top = "0";
-            img.style.right = "0";
-            break;
-          case "type-bottom-left":
-            img.style.position = "absolute";
-            img.style.bottom = "0";
-            img.style.left = "0";
-            break;
-          case "type-top-left":
-            img.style.position = "absolute";
-            img.style.top = "0";
-            img.style.left = "0";
-            break;
-        }
+        const style = document.createElement("style");
+        style.textContent = `
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
 
-        document.body.appendChild(img);
+      #battlefield {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        background: black;
+      }
+
+      .character {
+        position: absolute;
+        bottom: 0;
+        width: 180px;
+        height: auto;
+        animation-duration: 30s;
+        animation-iteration-count: infinite;
+        animation-timing-function: linear;
+        pointer-events: none;
+      }
+
+      @keyframes moveGoku {
+        0% { left: -200px; transform: scaleX(1); }
+        50% { left: 45vw; transform: scaleX(1); }
+        100% { left: 110vw; transform: scaleX(1); }
+      }
+      
+      @keyframes moveRightToLeft {
+        0% { right: -200px; transform: scaleX(1); }
+        50% { right: 45vw; transform: scaleX(1); }
+        100% { right: 110vw; transform: scaleX(1); }
+      }
+    `;
+        document.head.appendChild(style);
+
+        const container = document.createElement("div");
+
+        const goku = document.createElement("img");
+        goku.src = "https://iili.io/FSWmTTg.gif";
+        goku.alt = "Goku";
+        goku.className = "character";
+        goku.style.animationName = "moveGoku";
+        goku.style.left = "-200px";
+        goku.style.zIndex = "999";
+
+        container.appendChild(goku);
+
+        // const dog = document.createElement("img");
+        // dog.src = "https://i.pinimg.com/originals/18/f5/66/18f566fa5cf046c1e81fc6c61ce5dc53.gif";
+        // dog.alt = "Dog";
+        // dog.className = "character";
+        // dog.style.animationName = "moveRightToLeft";
+        // dog.style.right = "-200px";
+        // dog.style.zIndex = "999";
+        //
+        //
+        // container.appendChild(dog);
+
+        document.body.appendChild(container);
       }
     );
   }
