@@ -53,14 +53,6 @@ chrome.runtime.onMessage.addListener(async function (
         style.textContent = `
       body {
         margin: 0;
-        overflow: hidden;
-      }
-
-      #battlefield {
-        position: relative;
-        width: 100vw;
-        height: 100vh;
-        background: black;
       }
 
       .character {
@@ -97,6 +89,8 @@ chrome.runtime.onMessage.addListener(async function (
         goku.style.animationName = "moveGoku";
         goku.style.left = "-200px";
         goku.style.zIndex = "999";
+        goku.style.position = "fixed";
+        goku.style.bottom = "0px";
 
         container.appendChild(goku);
 
