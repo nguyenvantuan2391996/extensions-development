@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Bubu Dudu GIF Picker</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        html, body {
+            width: 600px;
+            height: 900px;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .gif-item {
+            position: relative;
+            cursor: pointer;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .gif-item:hover {
+            border-color: #3b82f6;
+        }
+
+        .gif-item.selected {
+            border-color: #22c55e;
+        }
+
+        .checkmark {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background-color: #22c55e;
+            border-radius: 9999px;
+            width: 20px;
+            height: 20px;
+            color: white;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .delete-icon {
+            position: absolute;
+            bottom: 6px;
+            right: 6px;
+            background-color: #ef4444;
+            border-radius: 9999px;
+            width: 20px;
+            height: 20px;
+            color: white;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-sm text-gray-800">
+<div class="h-full overflow-y-auto p-4 space-y-4">
+
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-700 mb-1">Bubu Dudu GIF Picker</h1>
+        Buy me a coffee ☕ or donate here 👉 <a href="https://paypal.me/Newslette247" target="_blank" class="text-blue-600 hover:underline">paypal.me/Newslette247</a>
+    </div>
+
+    <!-- Config section -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white p-4 rounded shadow">
+            <h2 class="text-base font-semibold mb-3">Display Settings</h2>
+            <div class="grid grid-cols-2 gap-2">
+                <label class="self-center">GIF Size (px):</label>
+                <label for="gifSize"></label><input id="gifSize" type="number" value="100" class="w-full border rounded px-2 py-1">
+                <label class="self-center">Position:</label>
+                <label for="position"></label><select id="position" class="w-full border rounded px-2 py-1">
+                    <option value="top">Top</option>
+                    <option value="bottom">Bottom</option>
+                </select>
+                <label class="self-center">Duration (s):</label>
+                <label for="duration"></label><input id="duration" type="number" value="5" class="w-full border rounded px-2 py-1">
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow">
+            <h2 class="text-base font-semibold mb-3">Add GIF</h2>
+            <div class="flex flex-col gap-3">
+                <div>
+                    <label class="block mb-1">Import by URL:</label>
+                    <div class="flex gap-2">
+                        <label for="gifUrl"></label><input type="text" placeholder="https://..." id="gifUrl" class="flex-1 border rounded px-2 py-1">
+                        <button onclick="addGifByUrl()" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">Add</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block mb-1">Upload from device:</label>
+                    <input type="file" accept="image/gif" id="gifFile" onchange="handleFileUpload()" class="w-full text-sm file:px-3 file:py-1 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GIF List -->
+    <div id="gifContainer" class="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[240px] overflow-y-auto border rounded p-2 bg-white"></div>
+</div>
+
+<script>
+    let gifs = [
+        "https://media.giphy.com/media/l4pTfx2qLszoacZRS/giphy.gif",
+        "https://media.giphy.com/media/3o7qE1YN7aBOFPRw8E/giphy.gif",
+        "https://media.giphy.com/media/xT9IgIc0lryrxvqVGM/giphy.gif",
+        "https://media.giphy.com/media/3oz8xKaR836UJOYeOc/giphy.gif",
+        "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",
+        "https://media.giphy.com/media/xT9IgDEI1iZyb2wqo8/giphy.gif",
+        "https://media.giphy.com/media/3orieVVSGG93uJw9YI/giphy.gif",
+        "https://media.giphy.com/media/3orieXtR8hxX6g2ZbC/giphy.gif",
+        "https://media.giphy.com/media/1hAXJjUtx2U3a/giphy.gif",
+        "https://media.giphy.com/media/3o7aD2saalBwwftBIY/giphy.gif"
+    ];
+
+    const gifContainer = document.getElementById("gifContainer");
+    let selectedGif = null;
+    let gifsLoaded = 0;
+    const LOAD_BATCH = 3;
+
+    function renderGifsLazy() {
+        const toLoad = gifs.slice(gifsLoaded, gifsLoaded + LOAD_BATCH);
+        toLoad.forEach(src => addGifToDOM(src));
+        gifsLoaded += toLoad.length;
+    }
+
+    function addGifToDOM(src, prepend = false) {
+        const div = document.createElement("div");
+        div.className = "gif-item";
+        div.innerHTML = `
+  <div class="relative group">
+    <img src="${src}" class="w-full h-auto rounded-lg shadow-sm"  alt="${src}"/>
+    <div class="absolute top-1 left-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+         onclick="deleteGif(event, '${src}')">✕</div>
+  </div>
+`;
+
+
+        div.onclick = (e) => {
+            if (e.target.classList.contains("delete-icon")) return;
+            document.querySelectorAll(".gif-item").forEach(item => item.classList.remove("selected"));
+            div.classList.add("selected");
+            selectedGif = src;
+            updateCheckmark(div);
+        };
+        if (prepend) {
+            gifContainer.insertBefore(div, gifContainer.firstChild);
+        } else {
+            gifContainer.appendChild(div);
+        }
+    }
+
+    function updateCheckmark(selectedDiv) {
+        document.querySelectorAll(".checkmark").forEach(c => c.remove());
+        const check = document.createElement("div");
+        check.className = "checkmark";
+        check.innerHTML = "✔";
+        selectedDiv.appendChild(check);
+    }
+
+    function addGifByUrl() {
+        const input = document.getElementById("gifUrl");
+        const url = input.value.trim();
+        if (url) {
+            gifs.unshift(url);
+            input.value = "";
+            gifsLoaded++; // count as loaded
+            addGifToDOM(url, true);
+        }
+    }
+
+    function handleFileUpload() {
+        const fileInput = document.getElementById("gifFile");
+        const file = fileInput.files[0];
+        if (file && file.type === "image/gif") {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                gifs.unshift(e.target.result);
+                gifsLoaded++;
+                addGifToDOM(e.target.result, true);
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function deleteGif(event, src) {
+        event.stopPropagation();
+        gifs = gifs.filter(g => g !== src);
+        gifsLoaded--;
+        if (selectedGif === src) selectedGif = null;
+        renderGifList();
+    }
+
+    function renderGifList() {
+        gifContainer.innerHTML = "";
+        gifsLoaded = 0;
+        renderGifsLazy();
+        renderGifsLazy(); // load 6 again
+    }
+
+    gifContainer.addEventListener("scroll", () => {
+        if (gifContainer.scrollTop + gifContainer.clientHeight >= gifContainer.scrollHeight - 20) {
+            renderGifsLazy();
+        }
+    });
+
+    // Initial render
+    renderGifsLazy();
+    renderGifsLazy(); // render initial 6
+</script>
+</body>
+</html>
