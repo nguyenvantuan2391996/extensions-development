@@ -4,7 +4,7 @@ function updateCheckmark(selectedDiv, src) {
     check.className = "checkmark";
     check.innerHTML = "✔";
     selectedDiv.appendChild(check);
-    localStorage.setItem(GIF_SELECTED, src)
+    localStorage.setItem(GIF_SELECTED, JSON.stringify([src]))
 }
 
 function deleteGif(event, src) {

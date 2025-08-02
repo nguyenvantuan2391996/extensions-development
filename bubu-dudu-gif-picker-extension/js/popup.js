@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded",  async function () {
   let gifs_storage = JSON.parse(localStorage.getItem(LIST_GIFS))
   let gifs = LIST_GIFS_DEFAULT;
   if (!!gifs_storage && gifs_storage.length > 0) {
@@ -10,8 +10,16 @@ document.addEventListener("DOMContentLoaded", function () {
   const gifContainer = document.getElementById("gifContainer");
   let selectedGif = null;
 
-  function renderGifsLazy() {
+  function renderGifs() {
     gifs.forEach(src => addGifToDOM(src));
+    chrome.storage.sync.get(["gif_duration"], (result) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error getting value from storage:", chrome.runtime.lastError.message);
+        return;
+      }
+
+      console.log(result.gif_duration)
+    });
   }
 
   function addGifToDOM(src, prepend = false) {
@@ -52,8 +60,84 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  renderGifsLazy();
+  renderGifs();
 });
+
+document.getElementById("gif_size").onchange = async function (event) {
+  /* global chrome */
+  await chrome.tabs.query(
+      {
+        active: true,
+        currentWindow: true,
+      },
+      function (tabs) {
+        try {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            from: POPUP_SCREEN,
+            subject: HANDLE_SET_GIF_SIZE,
+            gif_size: event.target.value
+          });
+        } catch (e) {
+          console.error(e);
+        }
+
+        if (chrome.runtime.lastError) {
+          console.error(chrome.runtime.lastError.message);
+        }
+      }
+  );
+};
+
+document.getElementById("position").onchange = async function (event) {
+  /* global chrome */
+  await chrome.tabs.query(
+      {
+        active: true,
+        currentWindow: true,
+      },
+      function (tabs) {
+        try {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            from: POPUP_SCREEN,
+            subject: HANDLE_SET_GIF_POSITION,
+            gif_position: event.target.value
+          });
+        } catch (e) {
+          console.error(e);
+        }
+
+        if (chrome.runtime.lastError) {
+          console.error(chrome.runtime.lastError.message);
+        }
+      }
+  );
+};
+
+document.getElementById("duration").onchange = async function (event) {
+  /* global chrome */
+  await chrome.tabs.query(
+      {
+        active: true,
+        currentWindow: true,
+      },
+      function (tabs) {
+        try {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            from: POPUP_SCREEN,
+            subject: HANDLE_SET_GIF_DURATION,
+            gif_duration: event.target.value
+          });
+        } catch (e) {
+          console.error(e);
+        }
+
+        if (chrome.runtime.lastError) {
+          console.error(chrome.runtime.lastError.message);
+        }
+      }
+  );
+};
+
 //
 // document
 //   .getElementById("btn-save-config")
