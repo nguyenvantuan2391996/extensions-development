@@ -15,10 +15,37 @@ LIST_GIFS_DEFAULT = [
     "https://iili.io/FSWmTTg.gif"
 ]
 
-const BACKGROUND_SCREEN = "background";
-const POPUP_SCREEN = "popup";
+const BACKGROUND_SCREEN = "background"
+const POPUP_SCREEN = "popup"
 
-const HANDLE_MAIN_WEBSITE_LOADED = "main-website-loaded";
+const HANDLE_MAIN_WEBSITE_LOADED = "main-website-loaded"
 const HANDLE_SET_GIF_SIZE = "handle-set-gif-size";
-const HANDLE_SET_GIF_POSITION = "handle-set-gif-position";
-const HANDLE_SET_GIF_DURATION = "handle-set-gif-duration";
+const HANDLE_SET_GIF_POSITION = "handle-set-gif-position"
+const HANDLE_SET_GIF_DURATION = "handle-set-gif-duration"
+
+const CSS_MOVE = `body {
+              margin: 0;
+            }
+
+            .character {
+              position: absolute;
+              bottom: 0;
+              width: 180px;
+              height: auto;
+              animation-duration: 30s;
+              animation-iteration-count: infinite;
+              animation-timing-function: linear;
+              pointer-events: none;
+            }
+
+            @keyframes moveLeftToRight {
+              0% { left: -200px; transform: scaleX(1); }
+              50% { left: 45vw; transform: scaleX(1); }
+              100% { left: 110vw; transform: scaleX(1); }
+            }
+
+            @keyframes moveRightToLeft {
+              0% { right: -200px; transform: scaleX(1); }
+              50% { right: 45vw; transform: scaleX(1); }
+              100% { right: 110vw; transform: scaleX(1); }
+            }`

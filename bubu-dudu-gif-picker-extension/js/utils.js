@@ -5,6 +5,33 @@ function updateCheckmark(selectedDiv, src) {
     check.innerHTML = "✔";
     selectedDiv.appendChild(check);
     localStorage.setItem(GIF_SELECTED, JSON.stringify([src]))
+    chrome.storage.local.set({
+            gif_selected: JSON.stringify([src])
+        },
+        function() {
+            console.log("gif selected saved successfully");
+        });
+}
+
+function displayCheckmark() {
+    const selected = JSON.parse(localStorage.getItem(GIF_SELECTED))
+    if (!!!selected) {
+        return
+    }
+
+    const container = document.getElementById("gifContainer");
+    const list_gifs = container.querySelectorAll(".gif-item img");
+    const list_div = container.querySelectorAll(".gif-item");
+
+    for (let i = 0; i < list_gifs.length; i++) {
+        if (list_gifs[i].src === selected[0]) {
+            const check = document.createElement("div");
+            check.className = "checkmark";
+            check.innerHTML = "✔";
+            list_div[i].appendChild(check);
+            break
+        }
+    }
 }
 
 function deleteGif(event, src) {

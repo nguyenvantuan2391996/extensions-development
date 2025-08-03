@@ -93,14 +93,16 @@
             <div class="flex flex-col gap-3">
                 <div>
                     <label class="block mb-1">Import by URL:</label>
-                    <div class="flex gap-2">
-                        <input type="text" placeholder="https://..." id="gifUrl" class="flex-1 border rounded px-1 py-1">
-                        <button id="add" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">Add</button>
+                    <div class="flex items-center gap-2">
+                        <input type="text" placeholder="https://..." id="gif_url" class="flex-grow border rounded px-2 py-1"/>
+                        <button id="btn-add-gif" class="flex-shrink-0 bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                            Add
+                        </button>
                     </div>
                 </div>
                 <div>
                     <label class="block mb-1">Upload from device:</label>
-                    <input type="file" accept="image/gif" id="gifFile" onchange="handleFileUpload()" class="w-full text-sm file:px-3 file:py-1 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    <input type="file" accept="image/gif" id="gifFile" class="w-full text-sm file:px-3 file:py-1 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
                 </div>
             </div>
         </div>
