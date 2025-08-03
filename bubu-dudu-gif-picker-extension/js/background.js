@@ -1,4 +1,5 @@
 importScripts("constants.js");
+importScripts("utils.js");
 
 chrome.webNavigation.onDOMContentLoaded.addListener(async function (details) {
   const currentURL = await getCurrentTabUrl();
@@ -16,11 +17,12 @@ chrome.webNavigation.onDOMContentLoaded.addListener(async function (details) {
             subject: HANDLE_MAIN_WEBSITE_LOADED,
           });
         } catch (e) {
-          console.error(e);
+          alert(ERROR_ALERT)
+          return
         }
 
         if (chrome.runtime.lastError) {
-          console.error(chrome.runtime.lastError.message);
+          alert(ERROR_ALERT)
         }
       }
     );

@@ -9,9 +9,9 @@ document.addEventListener("DOMContentLoaded",  async function () {
 
   function renderGifs() {
     gifs.forEach(src => addGifToDOM(src))
-    chrome.storage.local.get(["gif_size", "gif_position", "gif_duration"], (result) => {
+    chrome.storage.local.get(["gif_size", "gif_position", "gif_animation", "gif_duration"], (result) => {
       if (chrome.runtime.lastError) {
-        console.error("Error getting value from storage:", chrome.runtime.lastError.message)
+        alert(ERROR_ALERT)
         return
       }
 
@@ -20,11 +20,15 @@ document.addEventListener("DOMContentLoaded",  async function () {
       }
 
       if (!!result.gif_position) {
-        document.getElementById("position").value = result.gif_position
+        document.getElementById("gif_position").value = result.gif_position
+      }
+
+      if (!!result.gif_animation) {
+        document.getElementById("gif_animation").value = result.gif_animation
       }
 
       if (!!result.gif_duration) {
-        document.getElementById("duration").value = result.gif_duration
+        document.getElementById("gif_duration").value = result.gif_duration
       }
     })
 
@@ -61,12 +65,12 @@ function addGifToDOM(src, prepend = false) {
   inner.appendChild(deleteBtn)
   div.appendChild(inner)
 
-  div.onclick = (e) => {
+  div.onclick = async (e) => {
     if (e.target.classList.contains("delete-icon")) return
     document.querySelectorAll(".gif-item").forEach(item => item.classList.remove("selected"))
     div.classList.add("selected")
     selectedGif = src
-    updateCheckmark(div, src)
+    await updateCheckmark(div, src)
   }
   if (prepend) {
     gifContainer.insertBefore(div, gifContainer.firstChild)
@@ -90,17 +94,20 @@ document.getElementById("gif_size").onchange = async function (event) {
             gif_size: event.target.value
           })
         } catch (e) {
-          console.error(e)
+          alert(ERROR_ALERT)
+          return
         }
 
         if (chrome.runtime.lastError) {
-          console.error(chrome.runtime.lastError.message)
+          alert(ERROR_ALERT)
         }
       }
   )
+
+  alert(SUCCESS_ALERT)
 }
 
-document.getElementById("position").onchange = async function (event) {
+document.getElementById("gif_position").onchange = async function (event) {
   /* global chrome */
   await chrome.tabs.query(
       {
@@ -115,17 +122,48 @@ document.getElementById("position").onchange = async function (event) {
             gif_position: event.target.value
           })
         } catch (e) {
-          console.error(e)
+          alert(ERROR_ALERT)
+          return
         }
 
         if (chrome.runtime.lastError) {
-          console.error(chrome.runtime.lastError.message)
+          alert(ERROR_ALERT)
         }
       }
   )
+
+  alert(SUCCESS_ALERT)
 }
 
-document.getElementById("duration").onchange = async function (event) {
+document.getElementById("gif_animation").onchange = async function (event) {
+  /* global chrome */
+  await chrome.tabs.query(
+      {
+        active: true,
+        currentWindow: true,
+      },
+      function (tabs) {
+        try {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            from: POPUP_SCREEN,
+            subject: HANDLE_SET_GIF_ANIMATION,
+            gif_animation: event.target.value
+          })
+        } catch (e) {
+          alert(ERROR_ALERT)
+          return
+        }
+
+        if (chrome.runtime.lastError) {
+          alert(ERROR_ALERT)
+        }
+      }
+  )
+
+  alert(SUCCESS_ALERT)
+}
+
+document.getElementById("gif_duration").onchange = async function (event) {
   /* global chrome */
   await chrome.tabs.query(
       {
@@ -140,18 +178,22 @@ document.getElementById("duration").onchange = async function (event) {
             gif_duration: event.target.value
           })
         } catch (e) {
-          console.error(e)
+          alert(ERROR_ALERT)
+          return
         }
 
         if (chrome.runtime.lastError) {
-          console.error(chrome.runtime.lastError.message)
+          alert(ERROR_ALERT)
         }
       }
   )
+
+  alert(SUCCESS_ALERT)
 }
 
 document.getElementById("btn-add-gif").addEventListener("click", async function () {
   if (!document.getElementById("gif_url").value.includes(".gif")) {
+    alert(ERROR_ALERT)
     return
   }
 
@@ -159,4 +201,26 @@ document.getElementById("btn-add-gif").addEventListener("click", async function 
   gifs_storage.push(document.getElementById("gif_url").value)
   addGifToDOM(document.getElementById("gif_url").value)
   localStorage.setItem(LIST_GIFS, JSON.stringify(gifs_storage))
+
+  alert(SUCCESS_ALERT)
 })
+
+const fileInput = document.getElementById('gif_file');
+fileInput.addEventListener('change', function () {
+  const file = fileInput.files[0];
+  if (file && file.type === "image/gif") {
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+      const dataUrl = e.target.result; // base64 string
+      let gifs_storage = JSON.parse(localStorage.getItem(LIST_GIFS)) || [];
+      gifs_storage.push(dataUrl);
+      localStorage.setItem(LIST_GIFS, JSON.stringify(gifs_storage));
+
+      addGifToDOM(dataUrl);
+      alert(SUCCESS_ALERT);
+    };
+
+    reader.readAsDataURL(file);
+  }
+});

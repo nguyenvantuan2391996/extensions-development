@@ -1,16 +1,37 @@
-function updateCheckmark(selectedDiv, src) {
+function delay(time) {
+    return new Promise((resolve) => setTimeout(resolve, time));
+}
+
+async function updateCheckmark(selectedDiv, src) {
     document.querySelectorAll(".checkmark").forEach(c => c.remove());
     const check = document.createElement("div");
     check.className = "checkmark";
     check.innerHTML = "✔";
     selectedDiv.appendChild(check);
     localStorage.setItem(GIF_SELECTED, JSON.stringify([src]))
-    chrome.storage.local.set({
-            gif_selected: JSON.stringify([src])
+    /* global chrome */
+    await chrome.tabs.query(
+        {
+            active: true,
+            currentWindow: true,
         },
-        function() {
-            console.log("gif selected saved successfully");
-        });
+        function (tabs) {
+            try {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    from: POPUP_SCREEN,
+                    subject: HANDLE_SET_GIF_SELECTED,
+                    gif_src: src
+                })
+            } catch (e) {
+                console.error(e)
+            }
+
+            if (chrome.runtime.lastError) {
+                console.error(chrome.runtime.lastError.message)
+            }
+        }
+    )
+    await alert(SUCCESS_ALERT)
 }
 
 function displayCheckmark() {
@@ -50,27 +71,12 @@ function deleteGif(event, src) {
     localStorage.setItem(LIST_GIFS, JSON.stringify(current_gifs.filter(item => item !== src)))
 }
 
-// function addGifByUrl() {
-//     const input = document.getElementById("gifUrl");
-//     const url = input.value.trim();
-//     if (url) {
-//         gifs.unshift(url);
-//         input.value = "";
-//         gifsLoaded++; // count as loaded
-//         addGifToDOM(url, true);
-//     }
-// }
-//
-// function handleFileUpload() {
-//     const fileInput = document.getElementById("gifFile");
-//     const file = fileInput.files[0];
-//     if (file && file.type === "image/gif") {
-//         const reader = new FileReader();
-//         reader.onload = function (e) {
-//             gifs.unshift(e.target.result);
-//             gifsLoaded++;
-//             addGifToDOM(e.target.result, true);
-//         };
-//         reader.readAsDataURL(file);
-//     }
-// }
+async function alert(alert_type) {
+    let element = document.getElementById(alert_type)
+    if (element.hasAttribute('hidden')) {
+        element.removeAttribute('hidden')
+    }
+    await delay(3000)
+
+    element.setAttribute('hidden', 'hidden')
+}
