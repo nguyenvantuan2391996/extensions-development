@@ -4,6 +4,7 @@ GIF_ANIMATION = "gif_animation"
 GIF_DURATION = "gif_duration"
 LIST_GIFS = "list_gifs"
 GIF_SELECTED = "gif_selected"
+IS_INIT = "is_init"
 
 TOP = "top"
 BOTTOM = "bottom"

@@ -80,3 +80,115 @@ async function alert(alert_type) {
 
     element.setAttribute('hidden', 'hidden')
 }
+
+async function setGifSize(size) {
+    /* global chrome */
+    await chrome.tabs.query(
+        {
+            active: true,
+            currentWindow: true,
+        },
+        function (tabs) {
+            try {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    from: POPUP_SCREEN,
+                    subject: HANDLE_SET_GIF_SIZE,
+                    gif_size: size
+                })
+            } catch (e) {
+                alert(ERROR_ALERT)
+                return
+            }
+
+            if (chrome.runtime.lastError) {
+                alert(ERROR_ALERT)
+            }
+        }
+    )
+
+    await alert(SUCCESS_ALERT)
+}
+
+async function setGifPosition(position) {
+    /* global chrome */
+    await chrome.tabs.query(
+        {
+            active: true,
+            currentWindow: true,
+        },
+        function (tabs) {
+            try {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    from: POPUP_SCREEN,
+                    subject: HANDLE_SET_GIF_POSITION,
+                    gif_position: position
+                })
+            } catch (e) {
+                alert(ERROR_ALERT)
+                return
+            }
+
+            if (chrome.runtime.lastError) {
+                alert(ERROR_ALERT)
+            }
+        }
+    )
+
+    await alert(SUCCESS_ALERT)
+}
+
+async function setGifAnimation(animation) {
+    /* global chrome */
+    await chrome.tabs.query(
+        {
+            active: true,
+            currentWindow: true,
+        },
+        function (tabs) {
+            try {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    from: POPUP_SCREEN,
+                    subject: HANDLE_SET_GIF_ANIMATION,
+                    gif_animation: animation
+                })
+            } catch (e) {
+                alert(ERROR_ALERT)
+                return
+            }
+
+            if (chrome.runtime.lastError) {
+                alert(ERROR_ALERT)
+            }
+        }
+    )
+
+    await alert(SUCCESS_ALERT)
+}
+
+async function setGifDuration(duration) {
+    /* global chrome */
+    await chrome.tabs.query(
+        {
+            active: true,
+            currentWindow: true,
+        },
+        function (tabs) {
+            try {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    from: POPUP_SCREEN,
+                    subject: HANDLE_SET_GIF_DURATION,
+                    gif_duration: duration
+                })
+            } catch (e) {
+                alert(ERROR_ALERT)
+                return
+            }
+
+            if (chrome.runtime.lastError) {
+                alert(ERROR_ALERT)
+            }
+        }
+    )
+
+    await alert(SUCCESS_ALERT)
+}
