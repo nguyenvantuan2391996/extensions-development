@@ -1,4 +1,12 @@
 document.addEventListener("DOMContentLoaded",  async function () {
+  if (!localStorage.getItem(IS_INIT)) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (tab?.id) {
+      chrome.tabs.reload(tab.id)
+    }
+  }
+
   let gifs_storage = JSON.parse(localStorage.getItem(LIST_GIFS))
   let gifs = LIST_GIFS_DEFAULT
   if (!!gifs_storage && gifs_storage.length > 0) {
@@ -9,6 +17,11 @@ document.addEventListener("DOMContentLoaded",  async function () {
 
   function renderGifs() {
     gifs.forEach(src => addGifToDOM(src))
+    if (!localStorage.getItem(IS_INIT)) {
+      localStorage.setItem(IS_INIT, "true")
+      return
+    }
+
     chrome.storage.local.get(["gif_size", "gif_position", "gif_animation", "gif_duration"], (result) => {
       if (chrome.runtime.lastError) {
         alert(ERROR_ALERT)
@@ -17,18 +30,26 @@ document.addEventListener("DOMContentLoaded",  async function () {
 
       if (!!result.gif_size) {
         document.getElementById("gif_size").value = result.gif_size
+      } else {
+        setGifSize(document.getElementById("gif_size").value)
       }
 
       if (!!result.gif_position) {
         document.getElementById("gif_position").value = result.gif_position
+      } else {
+        setGifPosition(document.getElementById("gif_position").value)
       }
 
       if (!!result.gif_animation) {
         document.getElementById("gif_animation").value = result.gif_animation
+      } else {
+        setGifAnimation(document.getElementById("gif_animation").value)
       }
 
       if (!!result.gif_duration) {
         document.getElementById("gif_duration").value = result.gif_duration
+      } else {
+        setGifDuration(document.getElementById("gif_duration").value)
       }
     })
 
@@ -80,115 +101,19 @@ function addGifToDOM(src, prepend = false) {
 }
 
 document.getElementById("gif_size").onchange = async function (event) {
-  /* global chrome */
-  await chrome.tabs.query(
-      {
-        active: true,
-        currentWindow: true,
-      },
-      function (tabs) {
-        try {
-          chrome.tabs.sendMessage(tabs[0].id, {
-            from: POPUP_SCREEN,
-            subject: HANDLE_SET_GIF_SIZE,
-            gif_size: event.target.value
-          })
-        } catch (e) {
-          alert(ERROR_ALERT)
-          return
-        }
-
-        if (chrome.runtime.lastError) {
-          alert(ERROR_ALERT)
-        }
-      }
-  )
-
-  alert(SUCCESS_ALERT)
+  await setGifSize(event.target.value)
 }
 
 document.getElementById("gif_position").onchange = async function (event) {
-  /* global chrome */
-  await chrome.tabs.query(
-      {
-        active: true,
-        currentWindow: true,
-      },
-      function (tabs) {
-        try {
-          chrome.tabs.sendMessage(tabs[0].id, {
-            from: POPUP_SCREEN,
-            subject: HANDLE_SET_GIF_POSITION,
-            gif_position: event.target.value
-          })
-        } catch (e) {
-          alert(ERROR_ALERT)
-          return
-        }
-
-        if (chrome.runtime.lastError) {
-          alert(ERROR_ALERT)
-        }
-      }
-  )
-
-  alert(SUCCESS_ALERT)
+  await setGifPosition(event.target.value)
 }
 
 document.getElementById("gif_animation").onchange = async function (event) {
-  /* global chrome */
-  await chrome.tabs.query(
-      {
-        active: true,
-        currentWindow: true,
-      },
-      function (tabs) {
-        try {
-          chrome.tabs.sendMessage(tabs[0].id, {
-            from: POPUP_SCREEN,
-            subject: HANDLE_SET_GIF_ANIMATION,
-            gif_animation: event.target.value
-          })
-        } catch (e) {
-          alert(ERROR_ALERT)
-          return
-        }
-
-        if (chrome.runtime.lastError) {
-          alert(ERROR_ALERT)
-        }
-      }
-  )
-
-  alert(SUCCESS_ALERT)
+  await setGifAnimation(event.target.value)
 }
 
 document.getElementById("gif_duration").onchange = async function (event) {
-  /* global chrome */
-  await chrome.tabs.query(
-      {
-        active: true,
-        currentWindow: true,
-      },
-      function (tabs) {
-        try {
-          chrome.tabs.sendMessage(tabs[0].id, {
-            from: POPUP_SCREEN,
-            subject: HANDLE_SET_GIF_DURATION,
-            gif_duration: event.target.value
-          })
-        } catch (e) {
-          alert(ERROR_ALERT)
-          return
-        }
-
-        if (chrome.runtime.lastError) {
-          alert(ERROR_ALERT)
-        }
-      }
-  )
-
-  alert(SUCCESS_ALERT)
+  await setGifDuration(event.target.value)
 }
 
 document.getElementById("btn-add-gif").addEventListener("click", async function () {
