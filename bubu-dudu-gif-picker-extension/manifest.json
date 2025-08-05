@@ -1,6 +1,6 @@
 {
   "name": "Bubu Dudu GIF Picker Extension",
-  "description": "Bubu Dudu GIF Picker Extension is a simple and cute Chrome extension that lets you browse, add, and select your favorite GIFs with just one click.",
+  "description": "Bubu Dudu GIF Picker Extension is a simple and cute extension that lets you select your favorite GIFs with just one click.",
   "version": "1.0.0",
   "action": {
     "default_popup": "src/popup.html",
