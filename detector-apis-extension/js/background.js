@@ -126,15 +126,21 @@ chrome.tabs.onUpdated.addListener(async function (tabId, changeInfo, tab) {
       active: true,
       lastFocusedWindow: true,
     },
-    function (tabs) {
-      if (
-        changeInfo.status === LOADING &&
-        !checkUndefined(tabs[0]) &&
-        !checkUndefined(tab) &&
-        tabs[0].url === tab.url
-      ) {
-        chrome.storage.local.clear();
-      }
+    async function (tabs) {
+        if (
+            changeInfo.status === LOADING &&
+            !checkUndefined(tabs[0]) &&
+            !checkUndefined(tab) &&
+            tabs[0].url === tab.url
+        ) {
+            await chrome.storage.local.get([
+                "preserve_log_key"
+            ], async function (items) {
+               if (!!!items.preserve_log_key) {
+                   chrome.storage.local.clear();
+               }
+            });
+        }
     }
   );
 });
