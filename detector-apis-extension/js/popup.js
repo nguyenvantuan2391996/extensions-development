@@ -1,6 +1,8 @@
 window.addEventListener("load", async (event) => {
   console.log(event);
 
+  await updateSwitchValue()
+
   // set value list apis request
   let arrAPIs = [];
   await chrome.storage.local.get(null, async function (items) {
@@ -74,6 +76,18 @@ async function copyCurl(id, items) {
   }
 }
 
+document.getElementById("preserve-log").addEventListener("change", async function (e) {
+  if (e.target.checked) {
+    await chrome.storage.local.set({
+      [PRESERVE_LOG_KEY]: true,
+    });
+  } else {
+    await chrome.storage.local.set({
+      [PRESERVE_LOG_KEY]: false,
+    });
+  }
+});
+
 function delay(time) {
   return new Promise((resolve) => setTimeout(resolve, time));
 }
@@ -83,4 +97,13 @@ async function displayAlert(typeAlert, msg, delayTime) {
   document.getElementById(typeAlert).innerHTML = msg;
   await delay(delayTime);
   document.getElementById(typeAlert).style.display = "none";
+}
+
+async function updateSwitchValue() {
+  let switchPreserve = document.getElementById("preserve-log");
+  await chrome.storage.local.get([
+    "preserve_log_key"
+  ], async function (items) {
+    switchPreserve.checked = !!items.preserve_log_key;
+  });
 }
