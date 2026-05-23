@@ -4,6 +4,10 @@ const popupState = {
   searchTerm: "",
   selectedCurlId: null,
   activeTab: "overview",
+  activeTabId: null,
+  debugState: null,
+  connectionStatus: "Waiting for background worker",
+  hydrateTimer: null,
 };
 
 const popupElements = {};
@@ -15,6 +19,7 @@ window.addEventListener("load", async (event) => {
   registerUIEvents();
 
   await updateSwitchValue();
+  await refreshActiveTab();
   await hydrateRequests();
 });
 
@@ -32,6 +37,12 @@ function cacheElements() {
   popupElements.payloadPreview = document.getElementById("payload-preview");
   popupElements.tabs = Array.from(document.querySelectorAll(".tab"));
   popupElements.tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
+  popupElements.debugInterceptedCount = document.getElementById("debug-intercepted-count");
+  popupElements.debugStoredCount = document.getElementById("debug-stored-count");
+  popupElements.debugListenerStatus = document.getElementById("debug-listener-status");
+  popupElements.debugActiveTab = document.getElementById("debug-active-tab");
+  popupElements.debugLastEvent = document.getElementById("debug-last-event");
+  popupElements.debugConnectionStatus = document.getElementById("debug-connection-status");
 }
 
 function registerUIEvents() {
@@ -80,6 +91,9 @@ function registerUIEvents() {
     });
   }
 
+  chrome.storage.onChanged.addListener(handleStorageChange);
+  chrome.runtime.onMessage.addListener(handleRuntimeMessage);
+
   window.addEventListener("keydown", function (event) {
     const tagName = document.activeElement?.tagName;
     const isTyping = tagName === "INPUT" || tagName === "TEXTAREA";
@@ -104,13 +118,73 @@ function registerUIEvents() {
       renderPopup();
     }
   });
+
+  document.getElementById("preserve-log").addEventListener("change", async function (event) {
+    await chrome.storage.local.set({
+      [PRESERVE_LOG_KEY]: !!event.target.checked,
+    });
+  });
 }
 
 async function hydrateRequests() {
   popupState.items = await getStorageItems();
-  popupState.apiEntries = buildApiEntries(popupState.items);
+  popupState.debugState = popupState.items[DEBUG_STATE_KEY] || null;
+  popupState.apiEntries = buildApiEntries(popupState.items, popupState.activeTabId);
   syncSelectedRequest();
   renderPopup();
+}
+
+function handleStorageChange(changes, areaName) {
+  if (areaName !== "local") {
+    return;
+  }
+
+  const shouldRefresh = Object.keys(changes).some((key) => {
+    return key === DEBUG_STATE_KEY || key === PRESERVE_LOG_KEY || isRequestRecordStorageKey(key);
+  });
+
+  if (shouldRefresh) {
+    scheduleHydrate("storage");
+  }
+}
+
+function handleRuntimeMessage(message) {
+  if (!message || message.type !== "detector-apis-record-updated") {
+    return;
+  }
+
+  popupState.connectionStatus = "Live sync connected";
+  console.log("[Detector APIs][popup] background-update", message);
+  scheduleHydrate("runtime-message");
+}
+
+function scheduleHydrate(reason) {
+  if (popupState.hydrateTimer) {
+    clearTimeout(popupState.hydrateTimer);
+  }
+
+  popupState.hydrateTimer = setTimeout(async function () {
+    popupState.hydrateTimer = null;
+    console.log("[Detector APIs][popup] hydrate", { reason });
+    await refreshActiveTab();
+    await hydrateRequests();
+  }, 60);
+}
+
+async function refreshActiveTab() {
+  return new Promise((resolve) => {
+    chrome.tabs.query(
+      {
+        active: true,
+        lastFocusedWindow: true,
+      },
+      function (tabs) {
+        popupState.activeTabId = tabs && tabs[0] ? tabs[0].id : null;
+        renderDebugPanel();
+        resolve(popupState.activeTabId);
+      }
+    );
+  });
 }
 
 function getStorageItems() {
@@ -121,23 +195,46 @@ function getStorageItems() {
   });
 }
 
-function buildApiEntries(items) {
-  let arrAPIs = [];
+function buildApiEntries(items, activeTabId) {
+  const requestRecordKeys = Object.keys(items).filter((key) => isRequestRecordStorageKey(key));
+  if (requestRecordKeys.length) {
+    return requestRecordKeys
+      .map((key) => items[key])
+      .filter((record) => isRenderableRecord(record, activeTabId))
+      .sort((left, right) => (right.updatedAt || 0) - (left.updatedAt || 0))
+      .map((record) => {
+        const statusText = record.statusText || buildStatusText(record.statusCode, record.method);
+        return {
+          url: record.url,
+          curlId: getCopyIdentifier(record.id),
+          statusText,
+          statusCode: Number(record.statusCode) || 0,
+          method: record.method || "GET",
+          requestId: record.requestHeaderId || record.requestId || "",
+          contentType: record.contentType || record.type || "Network request",
+          rawData: record.rawData || "",
+          curlCommand: joinCurlCommand(record.curlCommandBase, record.rawData),
+          startedAt: record.startedAt || 0,
+        };
+      });
+  }
+
+  return buildLegacyApiEntries(items);
+}
+
+function buildLegacyApiEntries(items) {
+  let seenUrls = [];
   let apiEntries = [];
 
   for (const element of Object.keys(items)) {
     const url = items[element];
-    if (typeof url !== "string" || !items[url] || isExistedInArray(arrAPIs, url)) {
+    if (typeof url !== "string" || !items[url] || isExistedInArray(seenUrls, url)) {
       continue;
     }
 
+    seenUrls.push(url);
     const statusAndRequestID = String(items[url]).split("|");
     const contentType = statusAndRequestID[2] || "";
-    if (!contentType.includes(CONTENT_TYPE_JSON)) {
-      continue;
-    }
-
-    arrAPIs.push(url);
     const statusText = statusAndRequestID[0] || "Unknown";
     const method = statusText.split(" ")[1] || "GET";
     const statusCode = Number(statusText.split(" ")[0]) || 0;
@@ -152,13 +249,14 @@ function buildApiEntries(items) {
       statusCode,
       method,
       requestId: statusAndRequestID[1] || "",
-      contentType,
+      contentType: contentType || "Network request",
       rawData,
-      curlCommand: rawData ? `${baseCurlCommand} ${rawData}` : baseCurlCommand,
+      curlCommand: joinCurlCommand(baseCurlCommand, rawData),
+      startedAt: 0,
     });
   }
 
-  return apiEntries;
+  return apiEntries.sort((left, right) => right.startedAt - left.startedAt);
 }
 
 function getFilteredEntries() {
@@ -201,8 +299,8 @@ function renderPopup() {
         description: "Try another keyword, method, status code, or clear the command-bar filter.",
       }
     : {
-        title: "Waiting for JSON traffic",
-        description: "Open a page that makes JSON requests, then reopen the popup to inspect and copy CURL commands.",
+        title: "Waiting for network traffic",
+        description: "Open a page that makes requests in the active tab and they will stream here automatically.",
       };
 
   popupElements.tbody.innerHTML = PopupUI.renderRequestRows(filteredEntries, popupState.selectedCurlId, emptyState);
@@ -213,7 +311,14 @@ function renderPopup() {
     : emptyState.title;
 
   renderDetails(selectedEntry);
+  renderDebugPanel();
   syncTabs();
+
+  console.log("[Detector APIs][popup] request-rendered", {
+    activeTabId: popupState.activeTabId,
+    total: popupState.apiEntries.length,
+    visible: filteredEntries.length,
+  });
 }
 
 function getSelectedEntry(filteredEntries) {
@@ -261,10 +366,17 @@ function pulseCopyButton(button) {
 }
 
 async function copyCurl(id, items) {
-  let curlCommand = items[id] || "";
-  const requestUrl = id.replace(/-curl-detector-apis$/, "");
-  if (items[requestUrl + "-raw-data"]) {
-    curlCommand += " " + items[requestUrl + "-raw-data"];
+  let curlCommand = "";
+
+  if (isRequestRecordStorageKey(id)) {
+    const record = items[id] || {};
+    curlCommand = joinCurlCommand(record.curlCommandBase, record.rawData);
+  } else {
+    curlCommand = items[id] || "";
+    const requestUrl = id.replace(/-curl-detector-apis$/, "");
+    if (items[requestUrl + "-raw-data"]) {
+      curlCommand += " " + items[requestUrl + "-raw-data"];
+    }
   }
 
   await navigator.clipboard.writeText(curlCommand).then(async (r) => {
@@ -276,18 +388,6 @@ async function copyCurl(id, items) {
     }
   });
 }
-
-document.getElementById("preserve-log").addEventListener("change", async function (e) {
-  if (e.target.checked) {
-    await chrome.storage.local.set({
-      [PRESERVE_LOG_KEY]: true,
-    });
-  } else {
-    await chrome.storage.local.set({
-      [PRESERVE_LOG_KEY]: false,
-    });
-  }
-});
 
 function delay(time) {
   return new Promise((resolve) => setTimeout(resolve, time));
@@ -303,8 +403,60 @@ async function displayAlert(typeAlert, msg, delayTime) {
 async function updateSwitchValue() {
   let switchPreserve = document.getElementById("preserve-log");
   await chrome.storage.local.get([
-    "preserve_log_key"
+    PRESERVE_LOG_KEY
   ], async function (items) {
-    switchPreserve.checked = !!items.preserve_log_key;
+    switchPreserve.checked = !!items[PRESERVE_LOG_KEY];
   });
+}
+
+function renderDebugPanel() {
+  const debugState = popupState.debugState || {};
+  popupElements.debugInterceptedCount.textContent = String(debugState.interceptedCount || 0);
+  popupElements.debugStoredCount.textContent = String(debugState.storedCount || 0);
+  popupElements.debugListenerStatus.textContent = debugState.listenerStatus || "Unknown";
+  popupElements.debugActiveTab.textContent = popupState.activeTabId === null ? "Unavailable" : String(popupState.activeTabId);
+  popupElements.debugConnectionStatus.textContent = popupState.connectionStatus || "Waiting for background worker";
+
+  if (debugState.lastRequestUrl) {
+    popupElements.debugLastEvent.textContent = `${debugState.lastPhase || "event"} · ${debugState.lastRequestMethod || "GET"} · ${debugState.lastRequestUrl}`;
+  } else {
+    popupElements.debugLastEvent.textContent = "Waiting for requests";
+  }
+}
+
+function isRequestRecordStorageKey(key) {
+  return typeof key === "string" && key.startsWith(REQUEST_RECORD_PREFIX);
+}
+
+function isRenderableRecord(record, activeTabId) {
+  if (!record || !record.url) {
+    return false;
+  }
+
+  if (activeTabId !== null && !checkUndefined(activeTabId) && record.tabId !== activeTabId) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildStatusText(statusCode, method) {
+  if (!statusCode) {
+    return `Pending ${method || "GET"}`;
+  }
+
+  return `${statusCode} ${method || "GET"}`;
+}
+
+function joinCurlCommand(baseCurlCommand, rawData) {
+  let curlCommand = baseCurlCommand || "";
+  if (rawData) {
+    curlCommand += curlCommand ? ` ${rawData}` : rawData;
+  }
+
+  return curlCommand;
+}
+
+function getCopyIdentifier(requestId) {
+  return REQUEST_RECORD_PREFIX + requestId;
 }

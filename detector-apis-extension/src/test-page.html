@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector APIs Test Page</title>
+    <link rel="stylesheet" href="../css/test-page.css">
+</head>
+<body>
+<main class="test-shell">
+    <header class="test-header">
+        <span class="eyebrow">Detector APIs</span>
+        <h1>Pipeline test page</h1>
+        <p>Use these actions to generate network traffic and confirm requests appear instantly in the popup.</p>
+    </header>
+
+    <section class="test-grid">
+        <button type="button" data-action="fetch-get">Run fetch GET</button>
+        <button type="button" data-action="fetch-post">Run fetch POST</button>
+        <button type="button" data-action="graphql">Run GraphQL POST</button>
+        <button type="button" data-action="xhr">Run XHR GET</button>
+        <button type="button" data-action="batch">Run all requests</button>
+    </section>
+
+    <section class="log-card">
+        <div class="log-card__header">
+            <h2>Request log</h2>
+            <span id="request-count">0 actions</span>
+        </div>
+        <pre id="log-output">Ready.</pre>
+    </section>
+</main>
+
+<script src="../js/test-page.js"></script>
+</body>
+</html>
+

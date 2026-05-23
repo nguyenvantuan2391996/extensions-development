@@ -93,7 +93,7 @@ const PopupUI = (() => {
         <div class="detail-empty">
           <div class="detail-empty__icon">◎</div>
           <h3 class="detail-empty__title">Select a request</h3>
-          <p class="detail-empty__copy">Choose any JSON request from the left to inspect its URL, status, request id, and generated CURL command.</p>
+          <p class="detail-empty__copy">Choose any captured request from the left to inspect its URL, status, request id, and generated CURL command.</p>
         </div>
       `;
     }

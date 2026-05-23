@@ -1,8 +1,10 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detector APIs Extension</title>
+    <script src="../js/theme-bootstrap.js"></script>
     <link rel="stylesheet" href="../css/popup.css">
 </head>
 <body>
@@ -49,6 +51,23 @@
                     </div>
                 </div>
 
+                <section class="theme-card" aria-labelledby="theme-heading">
+                    <div class="theme-card__copy">
+                        <span class="theme-card__eyebrow">Appearance</span>
+                        <div class="theme-card__row">
+                            <strong id="theme-heading">Theme</strong>
+                            <span class="theme-card__status" id="theme-status">Light mode</span>
+                        </div>
+                        <p class="theme-card__caption">Default light mode with optional dark and system-aware appearance.</p>
+                    </div>
+
+                    <div class="theme-toggle" role="group" aria-label="Theme switcher">
+                        <button type="button" class="theme-toggle__option" data-theme-choice="light" aria-pressed="true">Light</button>
+                        <button type="button" class="theme-toggle__option" data-theme-choice="dark" aria-pressed="false">Dark</button>
+                        <button type="button" class="theme-toggle__option" data-theme-choice="system" aria-pressed="false">System</button>
+                    </div>
+                </section>
+
                 <label class="toggle-card" for="preserve-log">
                     <span>
                         <span class="toggle-card__title">Preserve log</span>
@@ -59,6 +78,40 @@
                         <span class="slider"></span>
                     </span>
                 </label>
+
+                <section class="debug-card" aria-labelledby="debug-heading">
+                    <div class="theme-card__copy">
+                        <span class="theme-card__eyebrow">Pipeline</span>
+                        <div class="theme-card__row">
+                            <strong id="debug-heading">Debug status</strong>
+                            <span class="theme-card__status" id="debug-connection-status">Syncing…</span>
+                        </div>
+                        <p class="theme-card__caption">Live capture diagnostics for the active tab and background worker.</p>
+                    </div>
+
+                    <dl class="debug-grid">
+                        <div class="debug-item">
+                            <dt>Intercepted</dt>
+                            <dd id="debug-intercepted-count">0</dd>
+                        </div>
+                        <div class="debug-item">
+                            <dt>Stored</dt>
+                            <dd id="debug-stored-count">0</dd>
+                        </div>
+                        <div class="debug-item">
+                            <dt>Listeners</dt>
+                            <dd id="debug-listener-status">Booting</dd>
+                        </div>
+                        <div class="debug-item">
+                            <dt>Active tab</dt>
+                            <dd id="debug-active-tab">—</dd>
+                        </div>
+                        <div class="debug-item debug-item--wide">
+                            <dt>Last event</dt>
+                            <dd id="debug-last-event">Waiting for requests</dd>
+                        </div>
+                    </dl>
+                </section>
             </div>
         </header>
 
@@ -69,7 +122,7 @@
                         <span class="eyebrow">Request list</span>
                         <h2>Captured endpoints</h2>
                     </div>
-                    <p class="panel__caption">Search URLs, inspect response metadata, and copy CURL commands instantly.</p>
+                    <p class="panel__caption">Search captured network requests, inspect metadata, and copy CURL commands instantly.</p>
                 </div>
 
                 <label class="searchbar" for="request-search">
@@ -85,7 +138,7 @@
                 </label>
 
                 <div class="panel__subheader">
-                    <span class="pill pill--muted" id="request-summary">Ready to inspect JSON traffic</span>
+                    <span class="pill pill--muted" id="request-summary">Ready to inspect network traffic</span>
                     <span class="pill pill--subtle">Chrome extension compatible</span>
                 </div>
 
@@ -152,6 +205,7 @@
 <script src="../js/constants.js"></script>
 <script src="../js/utils.js"></script>
 <script src="../js/popup-ui.js"></script>
+<script src="../js/theme.js"></script>
 <script src="../js/popup.js"></script>
 </body>
 </html>
