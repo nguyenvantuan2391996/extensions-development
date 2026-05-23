@@ -1,55 +1,157 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The extension supports for detector APIs of the website</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector APIs Extension</title>
+    <link rel="stylesheet" href="../css/popup.css">
 </head>
-<link rel="stylesheet" href="../css/popup.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha.6/css/bootstrap.min.css">
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
-
 <body>
-<div class="container-fluid">
-    <div class="input-group center-item">
-        <h3>Detector APIs Extension</h3>
-    </div>
-    <p class="text-center small text-muted">
-        Buy me a coffee ☕ or donate here 👉 <a href="https://paypal.me/Newslette247" target="_blank" class="text-blue-600 hover:underline">paypal.me/Newslette247</a>
-    </p>
-    <div class="alert alert-success" role="alert" id="alert-success" style="display: none; z-index: 999999; position: fixed;margin-left: 30%">
-    </div>
-    <div class="d-flex mb-2">
-        <div class="d-flex align-items-center">
-            <label class="switch mb-0">
-                <input type="checkbox" id="preserve-log">
-                <span class="slider"></span>
-            </label>
-            <span class="switch-label">Preserve log</span>
-        </div>
-    </div>
+<div class="app-shell">
+    <div class="toast" role="status" aria-live="polite" id="alert-success"></div>
 
-    <div class="w-100 mb-2">
-        <div class="table-responsive" style="width: 100%;">
-            <table class="table table-bordered table-sm w-100 mb-0" id="table-result-detector-apis">
-                <thead class="thead-light">
-                <tr>
-                    <th>Curl</th>
-                    <th>URL</th>
-                    <th>Status</th>
-                </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
+    <aside class="sidebar" aria-label="Sections">
+        <div class="brand-mark" aria-hidden="true">
+            <span class="brand-mark__halo"></span>
+            <span class="brand-mark__glyph">⌘</span>
         </div>
-    </div>
-    <footer class="copyright text-center small text-muted">
-        © Copy right nguyenvantuan2391996@gmail.com
-    </footer>
+
+        <nav class="sidebar__nav">
+            <a href="#requests-panel" class="sidebar__item is-active" aria-label="Requests panel">
+                <span class="sidebar__icon">◫</span>
+                <span class="sidebar__tooltip">Requests</span>
+            </a>
+            <a href="#details-panel" class="sidebar__item" aria-label="Details panel">
+                <span class="sidebar__icon">⌥</span>
+                <span class="sidebar__tooltip">Details</span>
+            </a>
+        </nav>
+
+        <div class="sidebar__meta">JSON</div>
+    </aside>
+
+    <main class="workspace">
+        <header class="hero panel">
+            <div class="hero__copy">
+                <span class="eyebrow">Network inspector</span>
+                <h1>Detector APIs</h1>
+                <p class="hero__description">Apple-inspired request capture for JSON APIs with instant CURL workflows.</p>
+            </div>
+
+            <div class="hero__controls">
+                <div class="metric-strip" aria-label="Request metrics">
+                    <div class="metric-card">
+                        <span class="metric-card__label">Captured</span>
+                        <strong class="metric-card__value" id="request-count">0</strong>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-card__label">Visible</span>
+                        <strong class="metric-card__value" id="visible-count">0</strong>
+                    </div>
+                </div>
+
+                <label class="toggle-card" for="preserve-log">
+                    <span>
+                        <span class="toggle-card__title">Preserve log</span>
+                        <span class="toggle-card__caption">Keep captured requests across reloads</span>
+                    </span>
+                    <span class="switch">
+                        <input type="checkbox" id="preserve-log">
+                        <span class="slider"></span>
+                    </span>
+                </label>
+            </div>
+        </header>
+
+        <section class="dashboard-grid">
+            <section class="panel request-panel" id="requests-panel">
+                <div class="panel__header panel__header--stacked">
+                    <div>
+                        <span class="eyebrow">Request list</span>
+                        <h2>Captured endpoints</h2>
+                    </div>
+                    <p class="panel__caption">Search URLs, inspect response metadata, and copy CURL commands instantly.</p>
+                </div>
+
+                <label class="searchbar" for="request-search">
+                    <span class="searchbar__icon">⌕</span>
+                    <input
+                        type="search"
+                        id="request-search"
+                        placeholder="Search URL, method, status, or request id"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                    <span class="searchbar__shortcut">⌘K</span>
+                </label>
+
+                <div class="panel__subheader">
+                    <span class="pill pill--muted" id="request-summary">Ready to inspect JSON traffic</span>
+                    <span class="pill pill--subtle">Chrome extension compatible</span>
+                </div>
+
+                <div class="table-shell">
+                    <table id="table-result-detector-apis" class="requests-table">
+                        <thead>
+                        <tr>
+                            <th>Curl</th>
+                            <th>URL</th>
+                            <th>Status</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <aside class="panel details-panel" id="details-panel">
+                <div class="panel__header">
+                    <div>
+                        <span class="eyebrow">Request details</span>
+                        <h2 id="details-title">No request selected</h2>
+                    </div>
+                    <button type="button" class="ghost-button" id="copy-selected" disabled>Copy CURL</button>
+                </div>
+
+                <p class="panel__caption" id="details-subtitle">Choose a captured request to preview metadata and its generated terminal command.</p>
+
+                <div class="tab-list" role="tablist" aria-label="Request detail views">
+                    <button type="button" class="tab is-active" data-tab="overview" role="tab" aria-selected="true">Overview</button>
+                    <button type="button" class="tab" data-tab="curl" role="tab" aria-selected="false">CURL</button>
+                </div>
+
+                <div class="details-stack">
+                    <section class="tab-panel is-active" data-panel="overview" role="tabpanel">
+                        <div id="details-overview"></div>
+                    </section>
+
+                    <section class="tab-panel" data-panel="curl" role="tabpanel" aria-hidden="true">
+                        <div class="code-card">
+                            <div class="code-card__header">
+                                <span class="code-card__label">Terminal preview</span>
+                                <span class="code-card__hint">Copy uses the original stored command</span>
+                            </div>
+                            <pre class="code-block" id="curl-preview"></pre>
+                        </div>
+
+                        <div class="payload-card">
+                            <div class="payload-card__header">Request payload</div>
+                            <pre class="payload-block" id="payload-preview"></pre>
+                        </div>
+                    </section>
+                </div>
+            </aside>
+        </section>
+
+        <footer class="app-footer">
+            <a href="https://paypal.me/Newslette247" target="_blank" rel="noreferrer">Support the project</a>
+            <span>© nguyenvantuan2391996@gmail.com</span>
+        </footer>
+    </main>
 </div>
 
-</body>
-</html>
-
-<script src="../js/popup.js"></script>
 <script src="../js/constants.js"></script>
 <script src="../js/utils.js"></script>
+<script src="../js/popup-ui.js"></script>
+<script src="../js/popup.js"></script>
+</body>
+</html>
