@@ -25,6 +25,11 @@
         <span class="request-count" id="request-count">0 requests</span>
     </div>
 
+    <div class="search-bar">
+        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Search by URL..." aria-label="Search by URL">
+    </div>
+
     <div class="table-wrap" id="table-wrap">
         <table class="result-table" id="table-result-detector-apis">
             <thead>
@@ -39,7 +44,7 @@
         </table>
         <div class="empty-state" id="empty-state">
             <span class="empty-state-icon">📡</span>
-            <span>No API requests detected yet.</span>
+            <span class="empty-state-text">No API requests detected yet.</span>
         </div>
     </div>
 

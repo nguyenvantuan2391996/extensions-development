@@ -1,3 +1,5 @@
+let totalRequestCount = 0;
+
 window.addEventListener("load", async (event) => {
   console.log(event);
 
@@ -33,6 +35,8 @@ window.addEventListener("load", async (event) => {
       .classList.toggle("is-empty", trContent === "");
     document.getElementById("request-count").textContent =
       `${arrAPIs.length} ${arrAPIs.length === 1 ? "request" : "requests"}`;
+    totalRequestCount = arrAPIs.length;
+    applySearchFilter();
 
     // handle list button
     let listTR = document
@@ -80,6 +84,44 @@ async function copyCurl(id, items) {
     }
   }
 }
+
+function applySearchFilter() {
+  let searchTerm = document.getElementById("search-input").value.trim();
+  let searchTermLower = searchTerm.toLowerCase();
+  let rows = document
+    .querySelector("#table-result-detector-apis>tbody")
+    .getElementsByTagName("tr");
+
+  let matchCount = 0;
+  for (const row of rows) {
+    let isMatch = row
+      .querySelector(".url-cell")
+      .textContent.toLowerCase()
+      .includes(searchTermLower);
+    row.style.display = isMatch ? "" : "none";
+    if (isMatch) {
+      matchCount++;
+    }
+  }
+
+  let tableWrap = document.getElementById("table-wrap");
+  let emptyStateIcon = document.querySelector(".empty-state-icon");
+  let emptyStateText = document.querySelector(".empty-state-text");
+
+  if (totalRequestCount === 0) {
+    tableWrap.classList.add("is-empty");
+    emptyStateIcon.textContent = "📡";
+    emptyStateText.textContent = "No API requests detected yet.";
+  } else if (matchCount === 0) {
+    tableWrap.classList.add("is-empty");
+    emptyStateIcon.textContent = "🔍";
+    emptyStateText.textContent = `No requests match "${searchTerm}".`;
+  } else {
+    tableWrap.classList.remove("is-empty");
+  }
+}
+
+document.getElementById("search-input").addEventListener("input", applySearchFilter);
 
 document.getElementById("preserve-log").addEventListener("change", async function (e) {
   if (e.target.checked) {
