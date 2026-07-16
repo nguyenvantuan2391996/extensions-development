@@ -1,0 +1,20 @@
+# JetBrains IDEs
+.idea/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build output
+dist/
+*.zip

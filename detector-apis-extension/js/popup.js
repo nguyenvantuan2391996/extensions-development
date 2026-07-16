@@ -18,8 +18,8 @@ window.addEventListener("load", async (event) => {
           ) {
             arrAPIs.push(element2);
             let apiStatus = Number(statusAndRequestID[0].split(" ")[0])
-            let badgeClass = apiStatus >= 200 && apiStatus < 300 ? 'badge badge-success' : 'badge badge-danger';
-            trContent += `<tr><td class="text-center align-middle"><button type="button" class="btn btn-info" id=${curlCommand}>Copy</button></td><td class="text-break td-wrap">${items[element]}</td><td class="text-center align-middle"><span class="${badgeClass}">${statusAndRequestID[0]}</span></td></tr>`;
+            let badgeClass = apiStatus >= 200 && apiStatus < 300 ? 'status-badge status-success' : 'status-badge status-danger';
+            trContent += `<tr><td><button type="button" class="copy-btn" id=${curlCommand}>Copy</button></td><td class="url-cell">${items[element]}</td><td class="status-cell"><span class="${badgeClass}">${statusAndRequestID[0]}</span></td></tr>`;
           }
           break;
         }
@@ -28,6 +28,11 @@ window.addEventListener("load", async (event) => {
     document.querySelector(
       "#table-result-detector-apis>tbody"
     ).innerHTML = `<tbody>${trContent}</tbody>`;
+    document
+      .getElementById("table-wrap")
+      .classList.toggle("is-empty", trContent === "");
+    document.getElementById("request-count").textContent =
+      `${arrAPIs.length} ${arrAPIs.length === 1 ? "request" : "requests"}`;
 
     // handle list button
     let listTR = document
@@ -93,10 +98,11 @@ function delay(time) {
 }
 
 async function displayAlert(typeAlert, msg, delayTime) {
-  document.getElementById(typeAlert).style.display = "block";
-  document.getElementById(typeAlert).innerHTML = msg;
+  let alertEl = document.getElementById(typeAlert);
+  alertEl.innerHTML = msg;
+  alertEl.classList.add("show");
   await delay(delayTime);
-  document.getElementById(typeAlert).style.display = "none";
+  alertEl.classList.remove("show");
 }
 
 async function updateSwitchValue() {
