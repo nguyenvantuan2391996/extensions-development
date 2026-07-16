@@ -1,56 +1,26 @@
-chrome.runtime.onMessage.addListener(async function(
-    msg,
-    sender,
-    sendResponse
-) {
-    console.log(sender, sendResponse);
+chrome.runtime.onMessage.addListener(async function(msg) {
     if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SET_GIF_SIZE) {
-        await chrome.storage.local.set({
-                gif_size: msg.gif_size
-            },
-            function() {
-                console.log("gif size saved successfully");
-            });
+        await chrome.storage.local.set({ gif_size: msg.gif_size })
         await handleWebsiteLoaded()
     }
 
     if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SET_GIF_POSITION) {
-        await chrome.storage.local.set({
-                gif_position: msg.gif_position
-            },
-            function() {
-                console.log("gif position saved successfully");
-            });
+        await chrome.storage.local.set({ gif_position: msg.gif_position })
         await handleWebsiteLoaded()
     }
 
     if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SET_GIF_ANIMATION) {
-        await chrome.storage.local.set({
-                gif_animation: msg.gif_animation
-            },
-            function() {
-                console.log("gif animation saved successfully");
-            });
+        await chrome.storage.local.set({ gif_animation: msg.gif_animation })
         await handleWebsiteLoaded()
     }
 
     if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SET_GIF_DURATION) {
-        await chrome.storage.local.set({
-                gif_duration: msg.gif_duration
-            },
-            function() {
-                console.log("gif duration saved successfully");
-            });
+        await chrome.storage.local.set({ gif_duration: msg.gif_duration })
         await handleWebsiteLoaded()
     }
 
     if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SET_GIF_SELECTED) {
-        await chrome.storage.local.set({
-                gif_selected: JSON.stringify([msg.gif_src])
-            },
-            function() {
-                console.log("gif selected saved successfully");
-            });
+        await chrome.storage.local.set({ gif_selected: JSON.stringify([msg.gif_src]) })
         await handleWebsiteLoaded()
     }
 
@@ -108,6 +78,18 @@ function render(result) {
               0% { right: -100px; transform: scaleX(1); }
               50% { right: 45vw; transform: scaleX(1); }
               100% { right: 110vw; transform: scaleX(1); }
+            }
+
+            @keyframes moveTopToBottom {
+              0% { top: -100px; }
+              50% { top: 45vh; }
+              100% { top: 110vh; }
+            }
+
+            @keyframes moveBottomToTop {
+              0% { bottom: -100px; }
+              50% { bottom: 45vh; }
+              100% { bottom: 110vh; }
             }`
     document.head.appendChild(style)
 
@@ -125,28 +107,39 @@ function render(result) {
     bubu_dudu.style.zIndex = "9999"
     bubu_dudu.style.position = "fixed"
     switch (result.gif_animation) {
-        case LEFT:
-            bubu_dudu.style.animationName = "moveLeftToRight"
-            bubu_dudu.style.left = "-200px"
-            break
         case RIGHT:
             bubu_dudu.style.animationName = "moveRightToLeft"
             bubu_dudu.style.right = "-200px"
             break
+        case TOP:
+            bubu_dudu.style.animationName = "moveTopToBottom"
+            bubu_dudu.style.top = "-200px"
+            bubu_dudu.style.left = `calc(50% - ${Number(result.gif_size) / 2}px)`
+            break
+        case BOTTOM:
+            bubu_dudu.style.animationName = "moveBottomToTop"
+            bubu_dudu.style.bottom = "-200px"
+            bubu_dudu.style.left = `calc(50% - ${Number(result.gif_size) / 2}px)`
+            break
+        case LEFT:
         default:
             bubu_dudu.style.animationName = "moveLeftToRight"
             bubu_dudu.style.left = "-200px"
     }
 
-    switch (result.gif_position) {
-        case TOP:
-            bubu_dudu.style.top = "0px"
-            break
-        case BOTTOM:
-            bubu_dudu.style.bottom = "0px"
-            break
-        default:
-            bubu_dudu.style.bottom = "0px"
+    // Position only applies to the horizontal (left/right) animations, since
+    // top/bottom animations already travel the full vertical axis themselves.
+    if (result.gif_animation === LEFT || result.gif_animation === RIGHT || !result.gif_animation) {
+        switch (result.gif_position) {
+            case TOP:
+                bubu_dudu.style.top = "0px"
+                break
+            case BOTTOM:
+                bubu_dudu.style.bottom = "0px"
+                break
+            default:
+                bubu_dudu.style.bottom = "0px"
+        }
     }
 
     container.appendChild(bubu_dudu)

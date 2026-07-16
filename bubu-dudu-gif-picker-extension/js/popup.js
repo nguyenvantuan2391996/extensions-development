@@ -117,17 +117,27 @@ document.getElementById("gif_duration").onchange = async function (event) {
 }
 
 document.getElementById("btn-add-gif").addEventListener("click", async function () {
-  if (!document.getElementById("gif_url").value.includes(".gif")) {
+  const urlInput = document.getElementById("gif_url")
+  const url = urlInput.value.trim()
+
+  if (!/\.gif(\?.*)?$/i.test(url)) {
     alert(ERROR_ALERT)
     return
   }
 
-  let gifs_storage = JSON.parse(localStorage.getItem(LIST_GIFS))
-  gifs_storage.push(document.getElementById("gif_url").value)
-  addGifToDOM(document.getElementById("gif_url").value)
-  localStorage.setItem(LIST_GIFS, JSON.stringify(gifs_storage))
-
-  alert(SUCCESS_ALERT)
+  const testImg = new Image()
+  testImg.onload = () => {
+    let gifs_storage = JSON.parse(localStorage.getItem(LIST_GIFS)) || []
+    gifs_storage.push(url)
+    addGifToDOM(url)
+    localStorage.setItem(LIST_GIFS, JSON.stringify(gifs_storage))
+    urlInput.value = ""
+    alert(SUCCESS_ALERT)
+  }
+  testImg.onerror = () => {
+    alert(ERROR_ALERT)
+  }
+  testImg.src = url
 })
 
 const fileInput = document.getElementById('gif_file');

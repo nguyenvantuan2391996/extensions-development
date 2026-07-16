@@ -6,129 +6,401 @@
     <title>Bubu Dudu GIF Picker</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
+        :root {
+            --bg: #f5f5f7;
+            --card-bg: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --border: #d2d2d7;
+            --accent: #0071e3;
+            --accent-hover: #0077ed;
+            --accent-active: #006edb;
+            --success: #34c759;
+            --danger: #ff3b30;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --radius-sm: 9px;
+            --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         html, body {
             width: 640px;
             height: 900px;
             margin: 0;
             padding: 0;
             overflow: hidden;
+            background: var(--bg);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+                "Helvetica Neue", Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            letter-spacing: -0.01em;
+        }
+
+        .scroll-area {
+            height: 100%;
+            overflow-y: auto;
+            padding: 28px 28px 20px;
+        }
+
+        /* ---------- Header ---------- */
+        .app-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin-bottom: 22px;
+        }
+
+        .app-header img {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+            margin-bottom: 10px;
+        }
+
+        .app-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin: 0 0 4px;
+            color: var(--text-primary);
+        }
+
+        .app-header p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .app-header p a {
+            color: var(--accent);
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        .app-header p a:hover {
+            text-decoration: underline;
+        }
+
+        /* ---------- Alerts ---------- */
+        .alert {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+
+        .alert-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        #success-alert {
+            background: rgba(52, 199, 89, 0.1);
+            color: #1c7a34;
+        }
+
+        #success-alert .alert-icon {
+            background: var(--success);
+        }
+
+        #error-alert {
+            background: rgba(255, 59, 48, 0.1);
+            color: #b3261e;
+        }
+
+        #error-alert .alert-icon {
+            background: var(--danger);
+        }
+
+        /* ---------- Cards ---------- */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            padding: 18px 20px 20px;
+        }
+
+        .card h2 {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-secondary);
+            margin: 0 0 14px;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1.15fr;
+            align-items: center;
+            gap: 10px 12px;
+        }
+
+        .field-row label {
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        /* ---------- Inputs ---------- */
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--text-primary);
+            background: #fbfbfd;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 7px 10px;
+            outline: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        select {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%236e6e73' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 26px;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+        }
+
+        input[type="text"]::placeholder {
+            color: #a1a1a6;
+        }
+
+        /* ---------- Buttons ---------- */
+        #btn-add-gif {
+            font-size: 13px;
+            font-weight: 500;
+            color: #fff;
+            background: var(--accent);
+            border: none;
+            border-radius: 980px;
+            padding: 7px 18px;
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.1s ease;
+            white-space: nowrap;
+        }
+
+        #btn-add-gif:hover {
+            background: var(--accent-hover);
+        }
+
+        #btn-add-gif:active {
+            background: var(--accent-active);
+            transform: scale(0.96);
+        }
+
+        #gif_file {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        #gif_file::file-selector-button,
+        #gif_file::-webkit-file-upload-button {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--accent);
+            background: rgba(0, 113, 227, 0.1);
+            border: none;
+            border-radius: 980px;
+            padding: 6px 14px;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        #gif_file:hover::file-selector-button,
+        #gif_file:hover::-webkit-file-upload-button {
+            background: rgba(0, 113, 227, 0.18);
+        }
+
+        /* ---------- GIF grid ---------- */
+        #gifContainer {
+            background: var(--card-bg);
+            border: none;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            padding: 14px;
         }
 
         .gif-item {
             position: relative;
             cursor: pointer;
-            border: 2px solid transparent;
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             overflow: hidden;
-            transition: border-color 0.2s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
         .gif-item:hover {
-            border-color: #3b82f6;
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
         }
 
         .gif-item.selected {
-            border-color: #22c55e;
+            box-shadow: 0 0 0 3px var(--success), 0 6px 16px rgba(0, 0, 0, 0.1);
         }
 
         .checkmark {
             position: absolute;
             top: 6px;
             right: 6px;
-            background-color: #22c55e;
+            background-color: var(--success);
             border-radius: 9999px;
             width: 20px;
             height: 20px;
             color: white;
-            font-size: 14px;
+            font-size: 12px;
+            font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
         }
 
         .delete-icon {
             position: absolute;
             bottom: 6px;
             right: 6px;
-            background-color: #ef4444;
+            background-color: var(--danger);
             border-radius: 9999px;
             width: 20px;
             height: 20px;
             color: white;
-            font-size: 14px;
+            font-size: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
         }
+
+        /* Refine dynamically-injected (Tailwind-classed) gif tiles */
+        #gifContainer .gif-item img {
+            border-radius: 0;
+            box-shadow: none;
+            display: block;
+        }
+
+        /* ---------- Footer ---------- */
+        footer {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 18px;
+        }
+
+        /* ---------- Scrollbars ---------- */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.18);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
     </style>
 </head>
-<body class="bg-gray-100 text-sm text-gray-800">
-<div class="h-full overflow-y-auto p-4 space-y-4">
+<body>
+<div class="scroll-area">
 
-    <div class="mb-1">
-        <h1 class="text-2xl text-center font-semibold text-gray-700">Bubu Dudu GIF Picker</h1>
-    </div>
-    <p class="text-center small">Buy me a coffee ☕ or donate here 👉 <a href="https://paypal.me/Newslette247" target="_blank" class="text-blue-600 hover:underline">paypal.me/Newslette247</a></p>
-
-    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" hidden="hidden" role="alert" id="success-alert">
-        <strong class="font-bold">Success!</strong>
-        <span class="block sm:inline">Your action has been completed successfully.</span>
+    <div class="app-header">
+        <img src="../images/bubu-dudu.png" alt="Bubu Dudu">
+        <h1>Bubu Dudu GIF Picker</h1>
+        <p>Buy me a coffee ☕ or donate here 👉 <a href="https://paypal.me/Newslette247" target="_blank">paypal.me/Newslette247</a></p>
     </div>
 
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" hidden="hidden" role="alert" id="error-alert">
-        <strong class="font-bold">Error!</strong>
-        <span class="block sm:inline">Something went wrong. Please try again.</span>
+    <div class="alert" hidden="hidden" role="alert" id="success-alert">
+        <span class="alert-icon">✓</span>
+        <span>Your action has been completed successfully.</span>
+    </div>
+
+    <div class="alert" hidden="hidden" role="alert" id="error-alert">
+        <span class="alert-icon">!</span>
+        <span>Something went wrong. Please try again.</span>
     </div>
 
     <!-- Config section -->
-    <div class="grid grid-cols-2 gap-4">
-        <div class="bg-white p-4 rounded shadow">
-            <h2 class="text-base font-semibold mb-3">Display Settings</h2>
-            <div class="grid grid-cols-2 gap-2">
-                <label class="self-center">GIF Size (px):</label>
-                <input id="gif_size" type="number" value="100" class="w-full border rounded px-2 py-1">
-                <label class="self-center">Position:</label>
-                <select id="gif_position" class="w-full border rounded px-2 py-1">
+    <div class="grid grid-cols-2 gap-4 mb-4">
+        <div class="card">
+            <h2>Display Settings</h2>
+            <div class="field-row">
+                <label>GIF Size (px)</label>
+                <input id="gif_size" type="number" value="100">
+                <label>Position</label>
+                <select id="gif_position">
                     <option value="top" selected>Top</option>
                     <option value="bottom">Bottom</option>
                 </select>
-                <label class="self-center">Animation:</label>
-                <select id="gif_animation" class="w-full border rounded px-2 py-1">
-                    <option value="left" selected>Left</option>
-                    <option value="right">Right</option>
+                <label>Animation</label>
+                <select id="gif_animation">
+                    <option value="left" selected>Left → Right</option>
+                    <option value="right">Right → Left</option>
+                    <option value="top">Top → Bottom</option>
+                    <option value="bottom">Bottom → Top</option>
                 </select>
-                <label class="self-center">Duration (s):</label>
-                <input id="gif_duration" type="number" value="60" class="w-full border rounded px-2 py-1">
+                <label>Duration (s)</label>
+                <input id="gif_duration" type="number" value="60">
             </div>
+            <p style="font-size:11px;color:var(--text-secondary);margin:10px 0 0;">
+                Position only applies when Animation is Left → Right or Right → Left.
+            </p>
         </div>
 
-        <div class="bg-white p-4 rounded shadow">
-            <h2 class="text-base font-semibold mb-3">Add GIF</h2>
+        <div class="card">
+            <h2>Add GIF</h2>
             <div class="flex flex-col gap-3">
                 <div>
-                    <label class="block mb-1">Import by URL:</label>
+                    <label class="block mb-1" style="font-size:13px;">Import by URL</label>
                     <div class="flex flex-col sm:flex-row items-stretch gap-2">
-                        <input type="text" placeholder="https://..." id="gif_url"
-                               class="flex-grow border rounded px-2 py-1 w-full" />
-                        <button id="btn-add-gif"
-                                class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 w-full sm:w-auto">
-                            Add
-                        </button>
+                        <input type="text" placeholder="https://..." id="gif_url" class="flex-grow" />
+                        <button id="btn-add-gif">Add</button>
                     </div>
                 </div>
                 <div>
-                    <label class="block mb-1">Upload from device:</label>
-                    <input type="file" accept="image/gif" id="gif_file" class="w-full text-sm file:px-3 file:py-1 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    <label class="block mb-1" style="font-size:13px;">Upload from device</label>
+                    <input type="file" accept="image/gif" id="gif_file" class="w-full">
                 </div>
             </div>
         </div>
     </div>
 
     <!-- GIF List -->
-    <div id="gifContainer" class="grid grid-cols-6 gap-3 max-h-[240px] overflow-y-auto border rounded p-2 bg-white"></div>
-    <footer class="text-center text-sm text-gray-500 mt-4">
-        © Copy right nguyenvantuan2391996@gmail.com
+    <div id="gifContainer" class="grid grid-cols-6 gap-3 max-h-[240px] overflow-y-auto"></div>
+    <footer>
+        © nguyenvantuan2391996@gmail.com
     </footer>
 </div>
 </body>
