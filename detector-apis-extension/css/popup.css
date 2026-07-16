@@ -114,10 +114,47 @@ body {
     font-size: 14px;
 }
 
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .request-count {
     font-size: 13px;
     font-weight: 500;
     color: var(--text-secondary);
+}
+
+.copy-all-btn {
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 980px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .15s ease, opacity .15s ease;
+}
+
+.copy-all-btn:hover {
+    background: #0077ed;
+}
+
+.copy-all-btn:active {
+    background: #0068d1;
+}
+
+.copy-all-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.copy-all-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.3);
 }
 
 .switch {

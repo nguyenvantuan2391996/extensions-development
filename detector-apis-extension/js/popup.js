@@ -1,4 +1,5 @@
 let totalRequestCount = 0;
+let curlByButtonId = {};
 
 window.addEventListener("load", async (event) => {
   console.log(event);
@@ -22,6 +23,12 @@ window.addEventListener("load", async (event) => {
             let apiStatus = Number(statusAndRequestID[0].split(" ")[0])
             let badgeClass = apiStatus >= 200 && apiStatus < 300 ? 'status-badge status-success' : 'status-badge status-danger';
             trContent += `<tr><td><button type="button" class="copy-btn" id=${curlCommand}>Copy</button></td><td class="url-cell">${items[element]}</td><td class="status-cell"><span class="${badgeClass}">${statusAndRequestID[0]}</span></td></tr>`;
+
+            let fullCurlCommand = items[curlCommand] || "";
+            if (items[element2 + "-raw-data"]) {
+              fullCurlCommand += " " + items[element2 + "-raw-data"];
+            }
+            curlByButtonId[curlCommand] = fullCurlCommand;
           }
           break;
         }
@@ -36,6 +43,7 @@ window.addEventListener("load", async (event) => {
     document.getElementById("request-count").textContent =
       `${arrAPIs.length} ${arrAPIs.length === 1 ? "request" : "requests"}`;
     totalRequestCount = arrAPIs.length;
+    document.getElementById("copy-all-btn").disabled = arrAPIs.length === 0;
     applySearchFilter();
 
     // handle list button
