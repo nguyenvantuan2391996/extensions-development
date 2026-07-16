@@ -93,6 +93,56 @@ async function copyCurl(id, items) {
   }
 }
 
+async function copyAllCurl() {
+  let rows = document
+    .querySelector("#table-result-detector-apis>tbody")
+    .getElementsByTagName("tr");
+
+  let curlList = [];
+  for (const row of rows) {
+    if (row.style.display === "none") {
+      continue;
+    }
+    let buttonID = row
+      .getElementsByTagName("td")[0]
+      .getElementsByTagName("button")[0].id;
+    if (curlByButtonId[buttonID]) {
+      curlList.push(curlByButtonId[buttonID]);
+    }
+  }
+
+  if (curlList.length === 0) {
+    try {
+      await displayAlert("alert-success", "No curl requests to copy!", 2000);
+    } catch (e) {
+      console.log(e);
+    }
+    return;
+  }
+
+  let allCurlText = curlList.join("\n\n");
+  await navigator.clipboard.writeText(allCurlText).then(async (r) => {
+    try {
+      console.log(r);
+      await displayAlert(
+        "alert-success",
+        `Copied ${curlList.length} curl request(s)!`,
+        2000
+      );
+    } catch (e) {
+      console.log(e);
+    }
+  });
+}
+
+document.getElementById("copy-all-btn").addEventListener("click", async function () {
+  try {
+    await copyAllCurl();
+  } catch (e) {
+    console.log(e);
+  }
+});
+
 function applySearchFilter() {
   let searchTerm = document.getElementById("search-input").value.trim();
   let searchTermLower = searchTerm.toLowerCase();
