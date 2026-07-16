@@ -16,3 +16,17 @@ function isExistedInArray(arr, value) {
 
   return false;
 }
+
+function isDetectedContentType(contentType) {
+  if (!contentType) {
+    return false;
+  }
+
+  for (const type of DETECTED_CONTENT_TYPES) {
+    if (contentType.includes(type)) {
+      return true;
+    }
+  }
+
+  return false;
+}
