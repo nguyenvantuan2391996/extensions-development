@@ -13,15 +13,28 @@ I will be super happy if you could help me endorse some skills or knowledge on m
 
 # About Bubu Dudu GIF Picker Extension
 - The extension is developed by Tuan Nguyen.
-The Bubu Dudu GIF Picker Extension lets you add a touch of cuteness to any website with just one click! Choose a single Bubu Dudu GIF from the built-in picker, and it will gracefully appear on your screen — floating in from the left, right, top, or bottom of the page.
+The Bubu Dudu GIF Picker Extension lets you add a touch of cuteness to any website with just one click! Choose a GIF from the built-in picker, and it will gracefully float across your screen — left → right, right → left, top → bottom, or bottom → top.
 
 🧸 Key Features:
 
-- 🎞️ Select a Bubu Dudu GIF from a curated collection
-- 🎯 Display the GIF on any webpage in a fun animated direction: left → right → top → bottom → and more
+- 🎞️ Select a Bubu Dudu GIF from a curated collection, or add your own via URL or file upload
+- 🎯 Display the GIF on any webpage with 4 animation directions: left → right, right → left, top → bottom, bottom → top
+- 🎛️ Fine-tune size, position, and duration to your liking
 - 🌐 Works on any website you visit
 - 🪶 Lightweight, simple, and charming
 
 Whether you're spicing up a presentation, surprising a friend, or just enjoying the vibe — this extension brings Bubu Dudu's cuteness wherever you browse.
+
+## How to use
+1. Click the extension icon to open the picker.
+2. Pick a GIF from the grid, or hit **+ Add GIF** to bring in your own (via URL or by uploading a `.gif` file).
+3. Adjust Size, Position, Direction, and Duration from the toolbar — changes apply instantly to the current tab.
+
+## What's new in 1.0.1
+- Redesigned popup with an Apple-inspired UI — compact toolbar, no more scrolling to see your GIFs
+- Fixed animation: Top → Bottom and Bottom → Top now actually animate vertically, instead of only pinning to an edge
+- Stricter GIF URL validation — the picker now checks the image actually loads before adding it
+- Keyboard-accessible GIF grid and an empty-state hint when your list is cleared out
+- Sharper toolbar icon at every size (16/32/48/128px)
 
 ☕ Like the tool? Buy me a coffee 👉 [https://paypal.me/Newslette247](https://paypal.me/Newslette247)
