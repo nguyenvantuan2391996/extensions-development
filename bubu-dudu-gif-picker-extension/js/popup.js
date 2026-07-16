@@ -59,45 +59,64 @@ document.addEventListener("DOMContentLoaded",  async function () {
   renderGifs()
 })
 
+function updateEmptyState() {
+  const emptyHint = document.getElementById("gif-empty-hint")
+  const hasItems = document.querySelectorAll("#gifContainer .gif-item").length > 0
+  emptyHint.hidden = hasItems
+}
+
 function addGifToDOM(src, prepend = false) {
   const gifContainer = document.getElementById("gifContainer")
-  let selectedGif = null
 
   const div = document.createElement('div')
   div.className = 'gif-item'
-
-  const inner = document.createElement('div')
-  inner.className = 'relative group'
+  div.tabIndex = 0
+  div.setAttribute('role', 'button')
+  div.setAttribute('aria-pressed', 'false')
+  div.setAttribute('aria-label', 'Select this GIF')
 
   const img = document.createElement('img')
   img.src = src
-  img.alt = src
-  img.className = 'w-full h-auto rounded-lg shadow-sm'
+  img.alt = 'GIF thumbnail'
 
   const deleteBtn = document.createElement('div')
-  deleteBtn.className = 'absolute top-1 left-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'
+  deleteBtn.className = 'delete-icon'
   deleteBtn.textContent = '✕'
+  deleteBtn.setAttribute('role', 'button')
+  deleteBtn.setAttribute('aria-label', 'Delete this GIF')
   deleteBtn.addEventListener('click', (e) => {
     e.stopPropagation()
     deleteGif(e, src)
   })
 
-  inner.appendChild(img)
-  inner.appendChild(deleteBtn)
-  div.appendChild(inner)
+  div.appendChild(img)
+  div.appendChild(deleteBtn)
 
-  div.onclick = async (e) => {
-    if (e.target.classList.contains("delete-icon")) return
-    document.querySelectorAll(".gif-item").forEach(item => item.classList.remove("selected"))
+  const selectThisGif = async () => {
+    document.querySelectorAll(".gif-item").forEach(item => {
+      item.classList.remove("selected")
+      item.setAttribute('aria-pressed', 'false')
+    })
     div.classList.add("selected")
-    selectedGif = src
+    div.setAttribute('aria-pressed', 'true')
     await updateCheckmark(div, src)
   }
+
+  div.addEventListener('click', selectThisGif)
+  div.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      selectThisGif()
+    }
+  })
+
   if (prepend) {
     gifContainer.insertBefore(div, gifContainer.firstChild)
   } else {
     gifContainer.appendChild(div)
   }
+
+  updateEmptyState()
 }
 
 document.getElementById("gif_size").onchange = async function (event) {
@@ -132,6 +151,7 @@ document.getElementById("btn-add-gif").addEventListener("click", async function 
     addGifToDOM(url)
     localStorage.setItem(LIST_GIFS, JSON.stringify(gifs_storage))
     urlInput.value = ""
+    closeAddGifPanel()
     alert(SUCCESS_ALERT)
   }
   testImg.onerror = () => {
@@ -153,9 +173,36 @@ fileInput.addEventListener('change', function () {
       localStorage.setItem(LIST_GIFS, JSON.stringify(gifs_storage));
 
       addGifToDOM(dataUrl);
+      fileInput.value = ""
+      closeAddGifPanel()
       alert(SUCCESS_ALERT);
     };
 
     reader.readAsDataURL(file);
+  }
+});
+
+const toggleAddGifBtn = document.getElementById('toggle-add-gif');
+const addGifPanel = document.getElementById('add-gif-panel');
+
+function closeAddGifPanel() {
+  addGifPanel.setAttribute('hidden', 'hidden')
+  toggleAddGifBtn.textContent = '+ Add GIF'
+  toggleAddGifBtn.classList.remove('is-open')
+}
+
+function openAddGifPanel() {
+  addGifPanel.removeAttribute('hidden')
+  toggleAddGifBtn.textContent = 'Close'
+  toggleAddGifBtn.classList.add('is-open')
+  document.getElementById('gif_url').focus()
+}
+
+toggleAddGifBtn.addEventListener('click', function () {
+  const isOpen = !addGifPanel.hasAttribute('hidden');
+  if (isOpen) {
+    closeAddGifPanel()
+  } else {
+    openAddGifPanel()
   }
 });

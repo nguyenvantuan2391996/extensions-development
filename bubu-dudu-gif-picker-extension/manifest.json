@@ -4,9 +4,17 @@
   "version": "1.0.1",
   "action": {
     "default_popup": "src/popup.html",
-    "default_icon": "images/bubu-dudu.png"
+    "default_icon": {
+      "16": "images/icon16.png",
+      "32": "images/icon32.png",
+      "48": "images/icon48.png",
+      "128": "images/bubu-dudu.png"
+    }
   },
   "icons": {
+    "16": "images/icon16.png",
+    "32": "images/icon32.png",
+    "48": "images/icon48.png",
     "128": "images/bubu-dudu.png"
   },
   "content_scripts": [

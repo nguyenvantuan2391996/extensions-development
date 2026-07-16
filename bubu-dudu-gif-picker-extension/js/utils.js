@@ -69,6 +69,7 @@ function deleteGif(event, src) {
 
     let current_gifs = JSON.parse(localStorage.getItem(LIST_GIFS))
     localStorage.setItem(LIST_GIFS, JSON.stringify(current_gifs.filter(item => item !== src)))
+    updateEmptyState()
 }
 
 async function alert(alert_type) {

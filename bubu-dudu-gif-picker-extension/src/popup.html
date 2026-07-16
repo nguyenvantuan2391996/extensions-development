@@ -17,9 +17,9 @@
             --accent-active: #006edb;
             --success: #34c759;
             --danger: #ff3b30;
-            --radius-lg: 18px;
-            --radius-md: 12px;
-            --radius-sm: 9px;
+            --radius-lg: 16px;
+            --radius-md: 11px;
+            --radius-sm: 8px;
             --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
         }
 
@@ -29,7 +29,7 @@
 
         html, body {
             width: 640px;
-            height: 900px;
+            height: 600px;
             margin: 0;
             padding: 0;
             overflow: hidden;
@@ -41,79 +41,117 @@
             letter-spacing: -0.01em;
         }
 
-        .scroll-area {
+        .shell {
             height: 100%;
-            overflow-y: auto;
-            padding: 28px 28px 20px;
+            display: flex;
+            flex-direction: column;
+            padding: 14px 16px 10px;
+            gap: 10px;
         }
 
         /* ---------- Header ---------- */
         .app-header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            margin-bottom: 22px;
-        }
-
-        .app-header img {
-            width: 56px;
-            height: 56px;
-            border-radius: 14px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
-            margin-bottom: 10px;
-        }
-
-        .app-header h1 {
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            margin: 0 0 4px;
-            color: var(--text-primary);
-        }
-
-        .app-header p {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin: 0;
-        }
-
-        .app-header p a {
-            color: var(--accent);
-            font-weight: 500;
-            text-decoration: none;
-        }
-
-        .app-header p a:hover {
-            text-decoration: underline;
-        }
-
-        /* ---------- Alerts ---------- */
-        .alert {
+            flex: none;
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 12px 16px;
-            border-radius: var(--radius-md);
+        }
+
+        .app-header img {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+            flex-shrink: 0;
+        }
+
+        .app-header .titles {
+            min-width: 0;
+        }
+
+        .app-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin: 0;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .app-header p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin: 2px 0 0;
+        }
+
+        /* ---------- Coffee donation badge ---------- */
+        .coffee-badge {
+            margin-left: auto;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #ffd28f, #ffab40);
+            color: #6b3d00;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 980px;
+            text-decoration: none;
+            box-shadow: 0 3px 10px rgba(255, 171, 64, 0.45);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .coffee-badge .emoji {
+            font-size: 15px;
+        }
+
+        .coffee-badge:hover {
+            transform: translateY(-1px) scale(1.03);
+            box-shadow: 0 5px 14px rgba(255, 171, 64, 0.55);
+        }
+
+        .coffee-badge:active {
+            transform: scale(0.96);
+        }
+
+        /* ---------- Alerts (floating toast, no layout shift) ---------- */
+        .alert[hidden] {
+            display: none;
+        }
+
+        .alert {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 14px;
+            border-radius: 980px;
             font-size: 13px;
             font-weight: 500;
-            margin-bottom: 16px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            white-space: nowrap;
         }
 
         .alert-icon {
-            width: 20px;
-            height: 20px;
+            width: 17px;
+            height: 17px;
             border-radius: 50%;
             flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #fff;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         #success-alert {
-            background: rgba(52, 199, 89, 0.1);
+            background: #eafaf0;
             color: #1c7a34;
         }
 
@@ -122,7 +160,7 @@
         }
 
         #error-alert {
-            background: rgba(255, 59, 48, 0.1);
+            background: #fdecea;
             color: #b3261e;
         }
 
@@ -130,47 +168,85 @@
             background: var(--danger);
         }
 
-        /* ---------- Cards ---------- */
-        .card {
+        /* ---------- Toolbar ---------- */
+        .toolbar {
+            flex: none;
             background: var(--card-bg);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-card);
-            padding: 18px 20px 20px;
+            padding: 10px 14px;
         }
 
-        .card h2 {
-            font-size: 13px;
+        .toolbar-row {
+            display: flex;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .field label {
+            font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.03em;
             color: var(--text-secondary);
-            margin: 0 0 14px;
-        }
-
-        .field-row {
-            display: grid;
-            grid-template-columns: 1fr 1.15fr;
+            display: flex;
             align-items: center;
-            gap: 10px 12px;
+            gap: 4px;
         }
 
-        .field-row label {
-            font-size: 13px;
-            color: var(--text-primary);
+        .info-dot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #e5e5ea;
+            color: var(--text-secondary);
+            font-size: 10px;
+            font-weight: 700;
+            cursor: help;
+            text-transform: none;
+        }
+
+        #gif_size {
+            width: 68px;
+        }
+
+        #gif_duration {
+            width: 68px;
+        }
+
+        #gif_position {
+            width: 90px;
+        }
+
+        #gif_animation {
+            width: 140px;
+        }
+
+        .toolbar-spacer {
+            margin-left: auto;
         }
 
         /* ---------- Inputs ---------- */
         input[type="text"],
         input[type="number"],
         select {
-            width: 100%;
             font-size: 13px;
             font-family: inherit;
             color: var(--text-primary);
             background: #fbfbfd;
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
-            padding: 7px 10px;
+            padding: 7px 9px;
             outline: none;
             transition: border-color 0.15s ease, box-shadow 0.15s ease;
             -webkit-appearance: none;
@@ -180,8 +256,8 @@
         select {
             background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%236e6e73' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
             background-repeat: no-repeat;
-            background-position: right 10px center;
-            padding-right: 26px;
+            background-position: right 8px center;
+            padding-right: 22px;
         }
 
         input[type="text"]:focus,
@@ -196,6 +272,7 @@
         }
 
         /* ---------- Buttons ---------- */
+        #toggle-add-gif,
         #btn-add-gif {
             font-size: 13px;
             font-weight: 500;
@@ -203,19 +280,44 @@
             background: var(--accent);
             border: none;
             border-radius: 980px;
-            padding: 7px 18px;
+            padding: 7px 15px;
             cursor: pointer;
             transition: background 0.15s ease, transform 0.1s ease;
             white-space: nowrap;
         }
 
+        #toggle-add-gif:hover,
         #btn-add-gif:hover {
             background: var(--accent-hover);
         }
 
+        #toggle-add-gif:active,
         #btn-add-gif:active {
             background: var(--accent-active);
             transform: scale(0.96);
+        }
+
+        #toggle-add-gif.is-open {
+            background: #e5e5ea;
+            color: var(--text-primary);
+        }
+
+        .add-gif-panel[hidden] {
+            display: none;
+        }
+
+        .add-gif-panel {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #f0f0f2;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .add-gif-panel input[type="text"] {
+            flex: 1 1 220px;
         }
 
         #gif_file {
@@ -231,8 +333,8 @@
             background: rgba(0, 113, 227, 0.1);
             border: none;
             border-radius: 980px;
-            padding: 6px 14px;
-            margin-right: 10px;
+            padding: 5px 12px;
+            margin-right: 8px;
             cursor: pointer;
             transition: background 0.15s ease;
         }
@@ -242,13 +344,16 @@
             background: rgba(0, 113, 227, 0.18);
         }
 
-        /* ---------- GIF grid ---------- */
+        /* ---------- GIF grid (fills remaining space, only scrollable area) ---------- */
         #gifContainer {
+            flex: 1 1 auto;
+            min-height: 0;
             background: var(--card-bg);
-            border: none;
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-card);
-            padding: 14px;
+            padding: 12px;
+            overflow-y: auto;
+            align-content: flex-start;
         }
 
         .gif-item {
@@ -265,20 +370,25 @@
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
         }
 
+        .gif-item:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--accent), 0 6px 16px rgba(0, 0, 0, 0.12);
+        }
+
         .gif-item.selected {
             box-shadow: 0 0 0 3px var(--success), 0 6px 16px rgba(0, 0, 0, 0.1);
         }
 
         .checkmark {
             position: absolute;
-            top: 6px;
-            right: 6px;
+            top: 5px;
+            right: 5px;
             background-color: var(--success);
             border-radius: 9999px;
-            width: 20px;
-            height: 20px;
+            width: 17px;
+            height: 17px;
             color: white;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 700;
             display: flex;
             align-items: center;
@@ -288,39 +398,118 @@
 
         .delete-icon {
             position: absolute;
-            bottom: 6px;
-            right: 6px;
+            bottom: 5px;
+            right: 5px;
             background-color: var(--danger);
             border-radius: 9999px;
-            width: 20px;
-            height: 20px;
+            width: 17px;
+            height: 17px;
             color: white;
-            font-size: 12px;
+            font-size: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.15s ease;
         }
 
-        /* Refine dynamically-injected (Tailwind-classed) gif tiles */
+        .gif-item:hover .delete-icon,
+        .gif-item:focus-visible .delete-icon,
+        .gif-item:focus-within .delete-icon {
+            opacity: 1;
+        }
+
         #gifContainer .gif-item img {
-            border-radius: 0;
-            box-shadow: none;
+            width: 100%;
+            height: auto;
             display: block;
         }
 
-        /* ---------- Footer ---------- */
-        footer {
+        .empty-hint {
+            grid-column: 1 / -1;
             text-align: center;
-            font-size: 11px;
             color: var(--text-secondary);
-            margin-top: 18px;
+            font-size: 13px;
+            padding: 48px 12px;
+        }
+
+        .empty-hint[hidden] {
+            display: none;
+        }
+
+        /* ---------- Footer ---------- */
+        .app-footer {
+            flex: none;
+            text-align: center;
+            padding-top: 8px;
+            border-top: 1px solid #e5e5ea;
+        }
+
+        .footer-meta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .footer-dot {
+            color: #c7c7cc;
+        }
+
+        .footer-email-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        .footer-email-link:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
+        .footer-contact {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .footer-contact-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .footer-socials {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .footer-social-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #f0f0f2;
+            color: var(--text-secondary);
+            transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+        }
+
+        .footer-social-link:hover {
+            background: var(--accent);
+            color: #fff;
+            transform: translateY(-1px);
         }
 
         /* ---------- Scrollbars ---------- */
         ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
         }
 
         ::-webkit-scrollbar-thumb {
@@ -334,12 +523,17 @@
     </style>
 </head>
 <body>
-<div class="scroll-area">
+<div class="shell">
 
     <div class="app-header">
         <img src="../images/bubu-dudu.png" alt="Bubu Dudu">
-        <h1>Bubu Dudu GIF Picker</h1>
-        <p>Buy me a coffee ☕ or donate here 👉 <a href="https://paypal.me/Newslette247" target="_blank">paypal.me/Newslette247</a></p>
+        <div class="titles">
+            <h1>Bubu Dudu GIF Picker</h1>
+            <p>Add a touch of cuteness to any website</p>
+        </div>
+        <a class="coffee-badge" href="https://paypal.me/Newslette247" target="_blank" rel="noopener">
+            <span class="emoji">☕</span> Buy me a coffee
+        </a>
     </div>
 
     <div class="alert" hidden="hidden" role="alert" id="success-alert">
@@ -352,55 +546,68 @@
         <span>Something went wrong. Please try again.</span>
     </div>
 
-    <!-- Config section -->
-    <div class="grid grid-cols-2 gap-4 mb-4">
-        <div class="card">
-            <h2>Display Settings</h2>
-            <div class="field-row">
-                <label>GIF Size (px)</label>
+    <!-- Toolbar: display settings + collapsible add-gif panel -->
+    <div class="toolbar">
+        <div class="toolbar-row">
+            <div class="field">
+                <label>Size (px)</label>
                 <input id="gif_size" type="number" value="100">
+            </div>
+            <div class="field">
                 <label>Position</label>
                 <select id="gif_position">
                     <option value="top" selected>Top</option>
                     <option value="bottom">Bottom</option>
                 </select>
-                <label>Animation</label>
+            </div>
+            <div class="field">
+                <label>Direction <span class="info-dot" title="Position only applies when Direction is Left → Right or Right → Left.">i</span></label>
                 <select id="gif_animation">
                     <option value="left" selected>Left → Right</option>
                     <option value="right">Right → Left</option>
                     <option value="top">Top → Bottom</option>
                     <option value="bottom">Bottom → Top</option>
                 </select>
+            </div>
+            <div class="field">
                 <label>Duration (s)</label>
                 <input id="gif_duration" type="number" value="60">
             </div>
-            <p style="font-size:11px;color:var(--text-secondary);margin:10px 0 0;">
-                Position only applies when Animation is Left → Right or Right → Left.
-            </p>
+            <button type="button" id="toggle-add-gif" class="toolbar-spacer">+ Add GIF</button>
         </div>
 
-        <div class="card">
-            <h2>Add GIF</h2>
-            <div class="flex flex-col gap-3">
-                <div>
-                    <label class="block mb-1" style="font-size:13px;">Import by URL</label>
-                    <div class="flex flex-col sm:flex-row items-stretch gap-2">
-                        <input type="text" placeholder="https://..." id="gif_url" class="flex-grow" />
-                        <button id="btn-add-gif">Add</button>
-                    </div>
-                </div>
-                <div>
-                    <label class="block mb-1" style="font-size:13px;">Upload from device</label>
-                    <input type="file" accept="image/gif" id="gif_file" class="w-full">
-                </div>
-            </div>
+        <div class="add-gif-panel" id="add-gif-panel" hidden="hidden">
+            <input type="text" placeholder="https://example.com/cute.gif" id="gif_url">
+            <button id="btn-add-gif">Add</button>
+            <input type="file" accept="image/gif" id="gif_file">
         </div>
     </div>
 
     <!-- GIF List -->
-    <div id="gifContainer" class="grid grid-cols-6 gap-3 max-h-[240px] overflow-y-auto"></div>
-    <footer>
-        © nguyenvantuan2391996@gmail.com
+    <div id="gifContainer" class="grid grid-cols-6 gap-3">
+        <p class="empty-hint" id="gif-empty-hint" hidden="hidden">No GIFs yet — add one above with "+ Add GIF" 👆</p>
+    </div>
+
+    <footer class="app-footer">
+        <div class="footer-meta">
+            <span>© 2026 Bubu Dudu GIF Picker Extension</span>
+            <span class="footer-dot">&middot;</span>
+            <a class="footer-email-link" href="mailto:nguyenvantuan2391996@gmail.com">nguyenvantuan2391996@gmail.com</a>
+        </div>
+        <div class="footer-contact">
+            <span class="footer-contact-label">Feedback or found a bug?</span>
+            <div class="footer-socials">
+                <a class="footer-social-link" href="mailto:nguyenvantuan2391996@gmail.com" aria-label="Email" title="Email">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M2 4h20v16H2V4zm2 2.24V6l8 5.99L20 6v.24l-8 6-8-6zM20 18V8.51l-8 6-8-6V18h16z"/></svg>
+                </a>
+                <a class="footer-social-link" href="https://www.linkedin.com/in/tuan-nguyen-van-555315156" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.85 0-2.14 1.45-2.14 2.94v5.66H9.5V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45z"/></svg>
+                </a>
+                <a class="footer-social-link" href="https://www.facebook.com/tuanelnino9/" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z"/></svg>
+                </a>
+            </div>
+        </div>
     </footer>
 </div>
 </body>
