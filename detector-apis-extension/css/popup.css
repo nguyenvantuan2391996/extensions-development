@@ -10,6 +10,8 @@
     --success-text: #1d8a43;
     --danger-bg: #fdeaea;
     --danger-text: #d70015;
+    --pending-bg: rgba(255, 159, 10, 0.15);
+    --pending-text: #b25c00;
     --radius: 12px;
 
     --table-header-bg: #fafafa;
@@ -43,6 +45,8 @@
         --success-text: #30d158;
         --danger-bg: rgba(255, 69, 58, 0.16);
         --danger-text: #ff453a;
+        --pending-bg: rgba(255, 159, 10, 0.2);
+        --pending-text: #ff9f0a;
 
         --table-header-bg: #242426;
         --row-hover-bg: #333335;
@@ -594,6 +598,30 @@ input:checked + .slider:before {
 .status-danger {
     background: var(--danger-bg);
     color: var(--danger-text);
+}
+
+.status-pending {
+    background: var(--pending-bg);
+    color: var(--pending-text);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pending-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: live-pulse 1.2s ease-in-out infinite;
+}
+
+.pending-row {
+    cursor: default;
+}
+
+.pending-row .url-cell {
+    color: var(--text-secondary);
 }
 
 .empty-state {

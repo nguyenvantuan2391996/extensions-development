@@ -1,13 +1,21 @@
 {
   "name": "Detector APIs Extension",
   "description": "The extension supports getting all APIs and CURL command when load a website.",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "action": {
     "default_popup": "src/popup.html",
-    "default_icon": "images/detector-apis-extension.png"
+    "default_icon": {
+      "16": "images/icon16.png",
+      "32": "images/icon32.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    }
   },
   "icons": {
-    "128": "images/detector-apis-extension.png"
+    "16": "images/icon16.png",
+    "32": "images/icon32.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
   },
   "content_scripts": [
     {
@@ -16,9 +24,20 @@
       ],
       "js": [
         "js/constants.js",
-        "js/utils.js"
+        "js/utils.js",
+        "js/response-bridge.js"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "js/response-capture.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
     }
   ],
   "background": {

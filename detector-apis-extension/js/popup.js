@@ -70,6 +70,7 @@ async function renderTable() {
               requestHeaders: parseHeadersJSON(items[element2 + "-request-headers"]),
               responseHeaders: parseHeadersJSON(items[element2 + "-response-headers"]),
               requestBody: items[element2 + "-request-body"] || "",
+              responseBody: items[element2 + "-response-body"] || "",
             };
           }
           break;
@@ -80,6 +81,19 @@ async function renderTable() {
     knownRowUrls = new Set(arrAPIs);
     isFirstRender = false;
 
+    let pendingCount = 0;
+    for (const key of Object.keys(items)) {
+      if (!key.endsWith("-pending")) {
+        continue;
+      }
+      let pendingUrl = key.slice(0, -"-pending".length);
+      if (isExistedInArray(arrAPIs, pendingUrl)) {
+        continue;
+      }
+      pendingCount++;
+      trContent += `<tr class="pending-row"><td></td><td class="url-cell">${escapeHtml(pendingUrl)}</td><td class="status-cell"><span class="status-badge status-pending"><span class="pending-dot"></span>${escapeHtml(items[key] || "")} pending</span></td></tr>`;
+    }
+
     document.querySelector(
       "#table-result-detector-apis>tbody"
     ).innerHTML = `<tbody>${trContent}</tbody>`;
@@ -87,7 +101,8 @@ async function renderTable() {
       .getElementById("table-wrap")
       .classList.toggle("is-empty", trContent === "");
     document.getElementById("request-count").textContent =
-      `${arrAPIs.length} ${arrAPIs.length === 1 ? "request" : "requests"}`;
+      `${arrAPIs.length} ${arrAPIs.length === 1 ? "request" : "requests"}` +
+      (pendingCount > 0 ? ` · ${pendingCount} pending` : "");
     totalRequestCount = arrAPIs.length;
     document.getElementById("copy-all-btn").disabled = arrAPIs.length === 0;
     document.getElementById("export-postman-btn").disabled = arrAPIs.length === 0;
@@ -191,9 +206,9 @@ function renderHeadersTable(headers) {
   return `<table class="kv-table"><tbody>${rows}</tbody></table>`;
 }
 
-function renderBody(body) {
+function renderBody(body, emptyMessage) {
   if (!body) {
-    return '<div class="detail-empty">No request body</div>';
+    return `<div class="detail-empty">${escapeHtml(emptyMessage || "No body")}</div>`;
   }
   let formatted = body;
   try {
@@ -225,7 +240,11 @@ function buildDetailRow(buttonID) {
       </div>
       <div class="detail-section">
         <div class="detail-subtitle">Request Body</div>
-        ${renderBody(info.requestBody)}
+        ${renderBody(info.requestBody, "No request body")}
+      </div>
+      <div class="detail-section">
+        <div class="detail-subtitle">Response Body</div>
+        ${renderBody(info.responseBody, "No response body captured")}
       </div>
     </div>
   `;
@@ -362,18 +381,33 @@ async function exportPostmanCollection() {
 
     let requestHeaders = info.requestHeaders || [];
     let contentType = findHeaderValue(requestHeaders, CONTENT_TYPE).toLowerCase();
+    let postmanRequest = {
+      method: info.method || "GET",
+      header: requestHeaders.map(function (h) {
+        return { key: h.name, value: h.value };
+      }),
+      body: buildPostmanRequestBody(info, contentType),
+      url: info.url,
+    };
+
+    let responses = [];
+    if (info.responseBody) {
+      responses.push({
+        name: "Saved Response",
+        originalRequest: postmanRequest,
+        status: info.status || "",
+        code: Number(info.status) || 0,
+        header: (info.responseHeaders || []).map(function (h) {
+          return { key: h.name, value: h.value };
+        }),
+        body: info.responseBody,
+      });
+    }
 
     postmanItems.push({
       name: info.url,
-      request: {
-        method: info.method || "GET",
-        header: requestHeaders.map(function (h) {
-          return { key: h.name, value: h.value };
-        }),
-        body: buildPostmanRequestBody(info, contentType),
-        url: info.url,
-      },
-      response: [],
+      request: postmanRequest,
+      response: responses,
     });
   }
 
@@ -451,15 +485,30 @@ function applySearchFilter() {
     }
   }
 
+  let pendingRows = document.querySelectorAll(
+    "#table-result-detector-apis>tbody tr.pending-row"
+  );
+  let visiblePendingCount = 0;
+  for (const row of pendingRows) {
+    let isMatch = row
+      .querySelector(".url-cell")
+      .textContent.toLowerCase()
+      .includes(searchTermLower);
+    row.style.display = isMatch ? "" : "none";
+    if (isMatch) {
+      visiblePendingCount++;
+    }
+  }
+
   let tableWrap = document.getElementById("table-wrap");
   let emptyStateIcon = document.querySelector(".empty-state-icon");
   let emptyStateText = document.querySelector(".empty-state-text");
 
-  if (totalRequestCount === 0) {
+  if (totalRequestCount === 0 && pendingRows.length === 0) {
     tableWrap.classList.add("is-empty");
     emptyStateIcon.textContent = "📡";
     emptyStateText.textContent = "No API requests detected yet.";
-  } else if (matchCount === 0) {
+  } else if (matchCount === 0 && visiblePendingCount === 0) {
     tableWrap.classList.add("is-empty");
     emptyStateIcon.textContent = "🔍";
     emptyStateText.textContent = `No requests match "${searchTerm}".`;

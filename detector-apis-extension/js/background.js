@@ -6,6 +6,22 @@ chrome.webRequest.onBeforeRequest.addListener(
     const uniqueKey = generateUniqueKey(PATTERN_API_NAME_DETECTOR_API);
     await chrome.storage.local.set({ [uniqueKey]: details.url });
     await trackAndEvict(details.url, uniqueKey);
+
+    // "xmlhttprequest" covers both fetch() and XHR calls (Chrome reports
+    // fetch under this same resourceType), so this is a reasonable signal
+    // that the request is API-ish before we know its response content-type.
+    if (details.type === "xmlhttprequest") {
+      await chrome.storage.local.set({
+        [details.url + "-pending"]: details.method,
+      });
+    }
+  },
+  { urls: ["<all_urls>"] }
+);
+
+chrome.webRequest.onErrorOccurred.addListener(
+  async function (details) {
+    await chrome.storage.local.remove(details.url + "-pending");
   },
   { urls: ["<all_urls>"] }
 );
@@ -42,7 +58,9 @@ async function trackAndEvict(url, uniqueKey) {
         evictedUrl + "-raw-data",
         evictedUrl + "-request-headers",
         evictedUrl + "-response-headers",
-        evictedUrl + "-request-body"
+        evictedUrl + "-request-body",
+        evictedUrl + "-response-body",
+        evictedUrl + "-pending"
       );
       for (const key of Object.keys(items)) {
         if (
@@ -74,6 +92,7 @@ chrome.webRequest.onHeadersReceived.addListener(
       [details.url]: infoRequest,
       [details.url + "-response-headers"]: JSON.stringify(headers || []),
     });
+    await chrome.storage.local.remove(details.url + "-pending");
 
     await updateBadgeCount();
   },
@@ -137,7 +156,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     });
   },
   { urls: ["<all_urls>"] },
-  ["requestHeaders"]
+  ["requestHeaders", "extraHeaders"]
 );
 
 chrome.webRequest.onBeforeRequest.addListener(
@@ -205,6 +224,24 @@ chrome.webRequest.onBeforeRequest.addListener(
   { urls: ["<all_urls>"] },
   ["requestBody"]
 );
+
+// Response bodies are captured in the page's own JS context (via
+// js/response-capture.js hooking fetch/XHR, since chrome.webRequest cannot
+// read response bodies) and relayed here through js/response-bridge.js.
+chrome.runtime.onMessage.addListener(function (message) {
+  if (message && message.type === "DETECTOR_APIS_RESPONSE_BODY") {
+    handleResponseBodyCapture(message);
+  }
+});
+
+async function handleResponseBodyCapture(message) {
+  if (!isDetectedContentType(message.contentType)) {
+    return;
+  }
+  await chrome.storage.local.set({
+    [message.url + "-response-body"]: message.body || "",
+  });
+}
 
 // load main website
 chrome.tabs.onUpdated.addListener(async function (tabId, changeInfo, tab) {
