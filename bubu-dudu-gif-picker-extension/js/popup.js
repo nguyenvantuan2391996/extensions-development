@@ -4,10 +4,20 @@ document.addEventListener("DOMContentLoaded",  async function () {
   const isFirstRun = !initState[IS_INIT]
 
   if (isFirstRun) {
+    // The content script only auto-injects into pages loaded after install.
+    // Inject it into the current tab directly so picking a GIF works right
+    // away, without reloading (and disrupting) whatever the user was doing.
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
     if (tab?.id) {
-      chrome.tabs.reload(tab.id)
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ["js/content.js", "js/constants.js", "js/utils.js"]
+        })
+      } catch (e) {
+        // Injection can fail on restricted pages (chrome://, the Web Store, etc.) — nothing to do.
+      }
     }
   }
 
@@ -173,8 +183,13 @@ document.getElementById("btn-add-gif").addEventListener("click", async function 
   const testImg = new Image()
   testImg.onload = async () => {
     gifs_storage.push(url)
+    try {
+      await chrome.storage.local.set({ [LIST_GIFS]: gifs_storage })
+    } catch (e) {
+      alert(ERROR_ALERT, "Couldn't save — storage is full. Try removing some GIFs first.")
+      return
+    }
     addGifToDOM(url)
-    await chrome.storage.local.set({ [LIST_GIFS]: gifs_storage })
     urlInput.value = ""
     closeAddGifPanel()
     alert(SUCCESS_ALERT)
@@ -217,7 +232,13 @@ fileInput.addEventListener('change', async function () {
     }
 
     gifs_storage.push(dataUrl);
-    await chrome.storage.local.set({ [LIST_GIFS]: gifs_storage });
+    try {
+      await chrome.storage.local.set({ [LIST_GIFS]: gifs_storage });
+    } catch (e) {
+      alert(ERROR_ALERT, "Couldn't save — storage is full. Try removing some GIFs first.")
+      fileInput.value = ""
+      return
+    }
 
     addGifToDOM(dataUrl);
     fileInput.value = ""

@@ -35,6 +35,12 @@ Whether you're spicing up a presentation, surprising a friend, or just enjoying 
 - Adding a GIF that's already in your list now shows a clear "already in your list" message instead of creating a duplicate
 - Size (20–600px) and Duration (5–300s) are now validated — invalid input reverts to a safe default with an explanation, instead of silently breaking the animation
 - Uploaded GIF files are capped at 3MB to keep your saved list from ballooning past the storage limit
+- Fixed the GIF not appearing on tabs that finished loading in the background (e.g. opened with a middle-click) — it now shows up as soon as you switch to them
+- The extension now targets the exact tab that navigated instead of guessing from the "active" tab, avoiding mix-ups when multiple browser windows are open
+- Page loads inside iframes no longer trigger redundant re-renders
+- First-time setup no longer reloads your current tab — the picker is wired up in place instead
+- Saving a GIF that would exceed the browser's storage limit now shows a clear warning instead of silently failing
+- Deeper Apple-style polish: spring-like button/tile animations, a frosted-glass toast for notifications, and a "pop" effect when you select a GIF
 
 ## What's new in 1.0.1
 - Redesigned popup with an Apple-inspired UI — compact toolbar, no more scrolling to see your GIFs

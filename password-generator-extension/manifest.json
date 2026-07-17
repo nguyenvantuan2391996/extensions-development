@@ -21,6 +21,8 @@
     }
   ],
   "host_permissions": [],
-  "permissions": [],
+  "permissions": [
+    "storage"
+  ],
   "manifest_version": 3
 }
