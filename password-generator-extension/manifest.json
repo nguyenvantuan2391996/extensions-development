@@ -1,7 +1,7 @@
 {
   "name": "Password Generator Extension",
   "description": "The extension supports generating random password strongest.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "action": {
     "default_popup": "src/popup.html",
     "default_icon": "images/password-generator-extension.png"
