@@ -14,6 +14,16 @@ RIGHT = "right"
 SUCCESS_ALERT = "success-alert"
 ERROR_ALERT = "error-alert"
 
+GIF_SIZE_MIN = 20
+GIF_SIZE_MAX = 600
+GIF_SIZE_DEFAULT = 100
+
+GIF_DURATION_MIN = 5
+GIF_DURATION_MAX = 300
+GIF_DURATION_DEFAULT = 60
+
+MAX_GIF_FILE_SIZE_BYTES = 3 * 1024 * 1024
+
 LIST_GIFS_DEFAULT = [
     "https://media.tenor.com/E-OQudBhX7UAAAAj/bubu-running-gif.gif",
     "https://media.tenor.com/kNS-PDTdtwYAAAAj/bubu-bike-running.gif",

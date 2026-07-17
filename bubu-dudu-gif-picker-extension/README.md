@@ -30,6 +30,12 @@ Whether you're spicing up a presentation, surprising a friend, or just enjoying 
 2. Pick a GIF from the grid, or hit **+ Add GIF** to bring in your own (via URL or by uploading a `.gif` file).
 3. Adjust Size, Position, Direction, and Duration from the toolbar — changes apply instantly to the current tab.
 
+## What's new in 1.0.2
+- Unified storage backend (`chrome.storage.local`) for your saved GIFs and settings, instead of splitting across `localStorage` and `chrome.storage.local` — fixes a rare desync where your selected GIF could reset after a browser/extension update
+- Adding a GIF that's already in your list now shows a clear "already in your list" message instead of creating a duplicate
+- Size (20–600px) and Duration (5–300s) are now validated — invalid input reverts to a safe default with an explanation, instead of silently breaking the animation
+- Uploaded GIF files are capped at 3MB to keep your saved list from ballooning past the storage limit
+
 ## What's new in 1.0.1
 - Redesigned popup with an Apple-inspired UI — compact toolbar, no more scrolling to see your GIFs
 - Fixed animation: Top → Bottom and Bottom → Top now actually animate vertically, instead of only pinning to an edge

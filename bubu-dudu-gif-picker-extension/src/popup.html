@@ -21,6 +21,9 @@
             --radius-md: 11px;
             --radius-sm: 8px;
             --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+            --separator: rgba(60, 60, 67, 0.12);
+            --ease-spring: cubic-bezier(0.34, 1.35, 0.64, 1);
+            --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
         }
 
         * {
@@ -38,7 +41,9 @@
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
                 "Helvetica Neue", Helvetica, Arial, sans-serif;
             -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
             letter-spacing: -0.01em;
+            line-height: 1.35;
         }
 
         .shell {
@@ -70,16 +75,18 @@
         }
 
         .app-header h1 {
-            font-size: 18px;
+            font-size: 19px;
             font-weight: 700;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.025em;
             margin: 0;
             color: var(--text-primary);
             line-height: 1.2;
         }
 
         .app-header p {
-            font-size: 12px;
+            font-size: 12.5px;
+            font-weight: 400;
+            letter-spacing: -0.005em;
             color: var(--text-secondary);
             margin: 2px 0 0;
         }
@@ -99,7 +106,7 @@
             border-radius: 980px;
             text-decoration: none;
             box-shadow: 0 3px 10px rgba(255, 171, 64, 0.45);
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            transition: transform 0.25s var(--ease-spring), box-shadow 0.2s var(--ease-standard);
             white-space: nowrap;
         }
 
@@ -108,12 +115,13 @@
         }
 
         .coffee-badge:hover {
-            transform: translateY(-1px) scale(1.03);
+            transform: translateY(-1px) scale(1.04);
             box-shadow: 0 5px 14px rgba(255, 171, 64, 0.55);
         }
 
         .coffee-badge:active {
-            transform: scale(0.96);
+            transform: scale(0.95);
+            transition-duration: 0.1s;
         }
 
         /* ---------- Alerts (floating toast, no layout shift) ---------- */
@@ -134,8 +142,16 @@
             border-radius: 980px;
             font-size: 13px;
             font-weight: 500;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
             white-space: nowrap;
+            backdrop-filter: saturate(180%) blur(16px);
+            -webkit-backdrop-filter: saturate(180%) blur(16px);
+            animation: alertDropIn 0.35s var(--ease-spring);
+        }
+
+        @keyframes alertDropIn {
+            0% { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.96); }
+            100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
         }
 
         .alert-icon {
@@ -151,7 +167,7 @@
         }
 
         #success-alert {
-            background: #eafaf0;
+            background: rgba(234, 250, 240, 0.85);
             color: #1c7a34;
         }
 
@@ -160,7 +176,7 @@
         }
 
         #error-alert {
-            background: #fdecea;
+            background: rgba(253, 236, 234, 0.85);
             color: #b3261e;
         }
 
@@ -248,7 +264,7 @@
             border-radius: var(--radius-sm);
             padding: 7px 9px;
             outline: none;
-            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            transition: border-color 0.18s var(--ease-standard), box-shadow 0.18s var(--ease-standard);
             -webkit-appearance: none;
             appearance: none;
         }
@@ -282,19 +298,21 @@
             border-radius: 980px;
             padding: 7px 15px;
             cursor: pointer;
-            transition: background 0.15s ease, transform 0.1s ease;
+            transition: background 0.15s var(--ease-standard), transform 0.2s var(--ease-spring);
             white-space: nowrap;
         }
 
         #toggle-add-gif:hover,
         #btn-add-gif:hover {
             background: var(--accent-hover);
+            transform: translateY(-1px);
         }
 
         #toggle-add-gif:active,
         #btn-add-gif:active {
             background: var(--accent-active);
-            transform: scale(0.96);
+            transform: scale(0.95);
+            transition-duration: 0.1s;
         }
 
         #toggle-add-gif.is-open {
@@ -309,7 +327,7 @@
         .add-gif-panel {
             margin-top: 10px;
             padding-top: 10px;
-            border-top: 1px solid #f0f0f2;
+            border-top: 1px solid var(--separator);
             display: flex;
             align-items: center;
             flex-wrap: wrap;
@@ -362,12 +380,17 @@
             border-radius: var(--radius-md);
             overflow: hidden;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            transition: transform 0.25s var(--ease-spring), box-shadow 0.2s var(--ease-standard);
         }
 
         .gif-item:hover {
             transform: translateY(-2px) scale(1.03);
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        .gif-item:active {
+            transform: scale(0.97);
+            transition-duration: 0.1s;
         }
 
         .gif-item:focus-visible {
@@ -394,6 +417,13 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+            animation: checkmarkPop 0.32s var(--ease-spring);
+        }
+
+        @keyframes checkmarkPop {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); }
         }
 
         .delete-icon {
@@ -411,13 +441,15 @@
             justify-content: center;
             cursor: pointer;
             opacity: 0;
-            transition: opacity 0.15s ease;
+            transition: opacity 0.15s var(--ease-standard), transform 0.15s var(--ease-spring);
+            transform: scale(0.85);
         }
 
         .gif-item:hover .delete-icon,
         .gif-item:focus-visible .delete-icon,
         .gif-item:focus-within .delete-icon {
             opacity: 1;
+            transform: scale(1);
         }
 
         #gifContainer .gif-item img {
@@ -443,7 +475,7 @@
             flex: none;
             text-align: center;
             padding-top: 8px;
-            border-top: 1px solid #e5e5ea;
+            border-top: 1px solid var(--separator);
         }
 
         .footer-meta {
@@ -497,13 +529,13 @@
             border-radius: 50%;
             background: #f0f0f2;
             color: var(--text-secondary);
-            transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+            transition: background 0.15s var(--ease-standard), color 0.15s var(--ease-standard), transform 0.2s var(--ease-spring);
         }
 
         .footer-social-link:hover {
             background: var(--accent);
             color: #fff;
-            transform: translateY(-1px);
+            transform: translateY(-1px) scale(1.08);
         }
 
         /* ---------- Scrollbars ---------- */
@@ -538,12 +570,12 @@
 
     <div class="alert" hidden="hidden" role="alert" id="success-alert">
         <span class="alert-icon">✓</span>
-        <span>Your action has been completed successfully.</span>
+        <span class="alert-message" data-default="Your action has been completed successfully.">Your action has been completed successfully.</span>
     </div>
 
     <div class="alert" hidden="hidden" role="alert" id="error-alert">
         <span class="alert-icon">!</span>
-        <span>Something went wrong. Please try again.</span>
+        <span class="alert-message" data-default="Something went wrong. Please try again.">Something went wrong. Please try again.</span>
     </div>
 
     <!-- Toolbar: display settings + collapsible add-gif panel -->
@@ -551,7 +583,7 @@
         <div class="toolbar-row">
             <div class="field">
                 <label>Size (px)</label>
-                <input id="gif_size" type="number" value="100">
+                <input id="gif_size" type="number" value="100" min="20" max="600" step="10">
             </div>
             <div class="field">
                 <label>Position</label>
@@ -571,7 +603,7 @@
             </div>
             <div class="field">
                 <label>Duration (s)</label>
-                <input id="gif_duration" type="number" value="60">
+                <input id="gif_duration" type="number" value="60" min="5" max="300" step="5">
             </div>
             <button type="button" id="toggle-add-gif" class="toolbar-spacer">+ Add GIF</button>
         </div>

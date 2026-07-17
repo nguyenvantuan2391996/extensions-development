@@ -8,8 +8,8 @@ async function updateCheckmark(selectedDiv, src) {
     check.className = "checkmark";
     check.innerHTML = "✔";
     selectedDiv.appendChild(check);
-    localStorage.setItem(GIF_SELECTED, JSON.stringify([src]))
     /* global chrome */
+    await chrome.storage.local.set({ [GIF_SELECTED]: JSON.stringify([src]) })
     await chrome.tabs.query(
         {
             active: true,
@@ -34,11 +34,13 @@ async function updateCheckmark(selectedDiv, src) {
     await alert(SUCCESS_ALERT)
 }
 
-function displayCheckmark() {
-    const selected = JSON.parse(localStorage.getItem(GIF_SELECTED))
-    if (!!!selected) {
+async function displayCheckmark() {
+    /* global chrome */
+    const result = await chrome.storage.local.get([GIF_SELECTED])
+    if (!result[GIF_SELECTED]) {
         return
     }
+    const selected = JSON.parse(result[GIF_SELECTED])
 
     const container = document.getElementById("gifContainer");
     const list_gifs = container.querySelectorAll(".gif-item img");
@@ -50,12 +52,14 @@ function displayCheckmark() {
             check.className = "checkmark";
             check.innerHTML = "✔";
             list_div[i].appendChild(check);
+            list_div[i].classList.add("selected")
+            list_div[i].setAttribute('aria-pressed', 'true')
             break
         }
     }
 }
 
-function deleteGif(event, src) {
+async function deleteGif(event, src) {
     event.stopPropagation();
     const container = document.getElementById("gifContainer");
     const list_gifs = container.querySelectorAll(".gif-item img");
@@ -67,13 +71,19 @@ function deleteGif(event, src) {
         }
     });
 
-    let current_gifs = JSON.parse(localStorage.getItem(LIST_GIFS))
-    localStorage.setItem(LIST_GIFS, JSON.stringify(current_gifs.filter(item => item !== src)))
+    /* global chrome */
+    const result = await chrome.storage.local.get([LIST_GIFS])
+    const current_gifs = result[LIST_GIFS] || []
+    await chrome.storage.local.set({ [LIST_GIFS]: current_gifs.filter(item => item !== src) })
     updateEmptyState()
 }
 
-async function alert(alert_type) {
+async function alert(alert_type, message) {
     let element = document.getElementById(alert_type)
+    let messageEl = element.querySelector('.alert-message')
+    if (messageEl) {
+        messageEl.textContent = message || messageEl.dataset.default
+    }
     if (element.hasAttribute('hidden')) {
         element.removeAttribute('hidden')
     }

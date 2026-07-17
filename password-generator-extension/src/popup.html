@@ -4,63 +4,476 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Password Generator</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card-bg: #ffffff;
+      --input-bg: #f3f4f6;
+      --text-primary: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --border: #d2d2d7;
+      --accent: #0071e3;
+      --accent-soft: rgba(0, 113, 227, 0.1);
+      --success: #34c759;
+      --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1e;
+        --card-bg: #2c2c2e;
+        --input-bg: #3a3a3c;
+        --text-primary: #f5f5f7;
+        --text-secondary: #98989d;
+        --border: #48484a;
+        --accent: #0a84ff;
+        --accent-soft: rgba(10, 132, 255, 0.16);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      color-scheme: light dark;
+    }
+
+    body {
+      min-width: 500px;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+        "Helvetica Neue", Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em;
+    }
+
+    .shell {
+      padding: 14px;
+    }
+
+    /* ---------- Header ---------- */
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .app-header img {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      flex-shrink: 0;
+    }
+
+    .app-header .titles {
+      min-width: 0;
+    }
+
+    .app-header h1 {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .app-header p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin: 2px 0 0;
+    }
+
+    .coffee-badge {
+      margin-left: auto;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #ffd28f, #ffab40);
+      color: #6b3d00;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 980px;
+      text-decoration: none;
+      box-shadow: 0 3px 10px rgba(255, 171, 64, 0.45);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .coffee-badge:hover {
+      transform: translateY(-1px) scale(1.03);
+      box-shadow: 0 5px 14px rgba(255, 171, 64, 0.55);
+    }
+
+    .coffee-badge:active {
+      transform: scale(0.96);
+    }
+
+    /* ---------- Card ---------- */
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: var(--shadow-card);
+      padding: 16px;
+    }
+
+    /* ---------- Password field ---------- */
+    .password-field {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    #password {
+      width: 100%;
+      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      text-align: center;
+      padding: 13px 44px 13px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    #copy {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      padding: 0;
+      transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    }
+
+    #copy:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    #copy:active {
+      transform: translateY(-50%) scale(0.9);
+    }
+
+    /* ---------- Generate button ---------- */
+    #generate {
+      display: block;
+      width: 100%;
+      border: none;
+      border-radius: 980px;
+      background: var(--accent);
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      padding: 12px 16px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 113, 227, 0.32);
+      transition: transform 0.12s ease, box-shadow 0.15s ease;
+    }
+
+    #generate:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(0, 113, 227, 0.4);
+    }
+
+    #generate:active {
+      transform: scale(0.98);
+    }
+
+    /* ---------- Section labels ---------- */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      margin: 18px 0 6px;
+    }
+
+    /* ---------- Length field ---------- */
+    #length {
+      width: 100%;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text-primary);
+      background: transparent;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    #length:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    /* ---------- Toggle list (Apple Settings style) ---------- */
+    .toggle-list {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+
+    .toggle-row + .toggle-row {
+      border-top: 1px solid var(--border);
+    }
+
+    .toggle-row .label-text {
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .toggle-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .toggle-grid .toggle-row {
+      border-top: 1px solid var(--border);
+    }
+
+    .toggle-grid .toggle-row:nth-child(1),
+    .toggle-grid .toggle-row:nth-child(2) {
+      border-top: none;
+    }
+
+    .toggle-grid .toggle-row:nth-child(odd) {
+      border-right: 1px solid var(--border);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch .slider {
+      position: absolute;
+      inset: 0;
+      cursor: pointer;
+      background-color: var(--border);
+      transition: 0.2s;
+      border-radius: 34px;
+    }
+
+    .switch .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      top: 2px;
+      background-color: white;
+      transition: 0.2s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+
+    .switch input:checked + .slider {
+      background-color: var(--success);
+    }
+
+    .switch input:focus-visible + .slider {
+      box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.3);
+    }
+
+    .switch input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+
+    /* ---------- Footer ---------- */
+    .app-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 12px;
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .footer-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .footer-dot {
+      opacity: 0.5;
+    }
+
+    .footer-email-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+
+    .footer-email-link:hover {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    .footer-socials {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .footer-social-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      color: var(--text-secondary);
+      background: transparent;
+      transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    }
+
+    .footer-social-link:hover {
+      color: var(--accent);
+      background: var(--accent-soft);
+      transform: translateY(-1px);
+    }
+  </style>
 </head>
-<body class="bg-white text-gray-800" style="min-width: 500px; height: auto">
-<div class="bg-white p-2 rounded-xl shadow-md">
-  <div class="mb-4">
-    <label class="block text-xl font-medium mb-1 text-center">Generate a Strong Password!</label>
-    <div class="relative">
-      <input id="password" type="text" readonly class="w-full p-2 pr-10 border rounded-lg bg-gray-100 text-sm text-gray-800 font-mono"/>
-      <button id="copy" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800" title="Copy to clipboard">
-        📋
-      </button>
+<body>
+<div class="shell">
+  <header class="app-header">
+    <img src="../images/password-generator-extension.png" alt="Password Generator">
+    <div class="titles">
+      <h1>Password Generator</h1>
+      <p>Generate strong, secure passwords instantly</p>
     </div>
+    <a class="coffee-badge" href="https://paypal.me/Newslette247" target="_blank" rel="noopener">
+      <span class="emoji">☕</span> Buy me a coffee
+    </a>
+  </header>
+
+  <div class="card">
+    <div class="password-field">
+      <input id="password" type="text" readonly />
+      <button id="copy" type="button" title="Copy to clipboard">📋</button>
+    </div>
+
+    <form id="generator-form">
+      <button type="submit" id="generate">Generate Password</button>
+
+      <div class="section-label">Length</div>
+      <label for="length" style="display:none">Password length</label>
+      <input id="length" type="number" min="6" max="64" value="16" />
+
+      <div class="section-label">Character Types</div>
+      <div class="toggle-list toggle-grid">
+        <label class="toggle-row">
+          <span class="label-text">Lowercase (a-z)</span>
+          <span class="switch">
+            <input id="include-lower" type="checkbox" checked />
+            <span class="slider"></span>
+          </span>
+        </label>
+        <label class="toggle-row">
+          <span class="label-text">Uppercase (A-Z)</span>
+          <span class="switch">
+            <input id="include-upper" type="checkbox" checked />
+            <span class="slider"></span>
+          </span>
+        </label>
+        <label class="toggle-row">
+          <span class="label-text">Numbers (0-9)</span>
+          <span class="switch">
+            <input id="include-number" type="checkbox" checked />
+            <span class="slider"></span>
+          </span>
+        </label>
+        <label class="toggle-row">
+          <span class="label-text">Symbols (!@#$%^&amp;*()+)</span>
+          <span class="switch">
+            <input id="include-symbol" type="checkbox" checked />
+            <span class="slider"></span>
+          </span>
+        </label>
+        <label class="toggle-row">
+          <span class="label-text">Other symbols (~`[];?,)</span>
+          <span class="switch">
+            <input id="include-other" type="checkbox" />
+            <span class="slider"></span>
+          </span>
+        </label>
+        <label class="toggle-row">
+          <span class="label-text">Exclude duplicates</span>
+          <span class="switch">
+            <input id="exclude-duplicates" type="checkbox" />
+            <span class="slider"></span>
+          </span>
+        </label>
+      </div>
+    </form>
   </div>
 
-  <form id="generator-form">
-  <button type="submit" id="generate" class="w-full bg-blue-600 text-white py-2 rounded-lg mb-4 hover:bg-blue-700">
-    Generate Password
-  </button>
-
-  <div class="space-y-2">
-    <div>
-      <label class="block text-sm font-medium">Password Length</label>
-      <label for="length"></label><input id="length" type="number" min="6" max="64" value="16" class="w-full p-2 border rounded-lg" />
+  <footer class="app-footer">
+    <div class="footer-meta">
+      <span>© 2026 Password Generator Extension</span>
+      <span class="footer-dot">&middot;</span>
+      <a class="footer-email-link" href="mailto:nguyenvantuan2391996@gmail.com">nguyenvantuan2391996@gmail.com</a>
     </div>
-
-    <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-      <label class="flex items-center">
-        <input id="include-lower" type="checkbox" checked class="mr-2" />
-        Allow Lowercase (a-z)
-      </label>
-      <label class="flex items-center">
-        <input id="include-upper" type="checkbox" checked class="mr-2" />
-        Allow Uppercase (A-Z)
-      </label>
-      <label class="flex items-center">
-        <input id="include-number" type="checkbox" checked class="mr-2" />
-        Allow Numbers (0-9)
-      </label>
-      <label class="flex items-center">
-        <input id="include-symbol" type="checkbox" checked class="mr-2" />
-        Allow Symbols (!@#$%^&*()+)
-      </label>
-      <label class="flex items-center">
-        <input id="include-other" type="checkbox" class="mr-2" />
-        Allow Other Symbols (~`[];?,)
-      </label>
-      <label class="flex items-center">
-        <input id="exclude-duplicates" type="checkbox" class="mr-2" />
-        Exclude duplicate characters
-      </label>
+    <div class="footer-socials">
+      <a class="footer-social-link" href="mailto:nguyenvantuan2391996@gmail.com" aria-label="Email" title="Email">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M2 4h20v16H2V4zm2 2.24V6l8 5.99L20 6v.24l-8 6-8-6zM20 18V8.51l-8 6-8-6V18h16z"/></svg>
+      </a>
+      <a class="footer-social-link" href="https://www.linkedin.com/in/tuan-nguyen-van-555315156" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.85 0-2.14 1.45-2.14 2.94v5.66H9.5V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45z"/></svg>
+      </a>
+      <a class="footer-social-link" href="https://www.facebook.com/tuanelnino9/" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z"/></svg>
+      </a>
     </div>
-
-  </div>
-  </form>
-  <p class="text-center text-sm text-gray-500 mt-6">
-    Buy me a coffee ☕ or donate here 👉 <a href="https://paypal.me/Newslette247" target="_blank" class="text-blue-600 hover:underline">https://paypal.me/Newslette247</a>
-  </p>
+  </footer>
 </div>
 
 <script src="../js/constants.js"></script>

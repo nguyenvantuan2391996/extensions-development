@@ -1,5 +1,9 @@
 document.addEventListener("DOMContentLoaded",  async function () {
-  if (!localStorage.getItem(IS_INIT)) {
+  /* global chrome */
+  const initState = await chrome.storage.local.get([IS_INIT])
+  const isFirstRun = !initState[IS_INIT]
+
+  if (isFirstRun) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
     if (tab?.id) {
@@ -7,18 +11,18 @@ document.addEventListener("DOMContentLoaded",  async function () {
     }
   }
 
-  let gifs_storage = JSON.parse(localStorage.getItem(LIST_GIFS))
+  const listState = await chrome.storage.local.get([LIST_GIFS])
   let gifs = LIST_GIFS_DEFAULT
-  if (!!gifs_storage && gifs_storage.length > 0) {
-    gifs = gifs_storage
+  if (listState[LIST_GIFS] && listState[LIST_GIFS].length > 0) {
+    gifs = listState[LIST_GIFS]
   } else {
-    localStorage.setItem(LIST_GIFS, JSON.stringify(LIST_GIFS_DEFAULT))
+    await chrome.storage.local.set({ [LIST_GIFS]: LIST_GIFS_DEFAULT })
   }
 
-  function renderGifs() {
+  async function renderGifs() {
     gifs.forEach(src => addGifToDOM(src))
-    if (!localStorage.getItem(IS_INIT)) {
-      localStorage.setItem(IS_INIT, "true")
+    if (isFirstRun) {
+      await chrome.storage.local.set({ [IS_INIT]: true })
       return
     }
 
@@ -53,10 +57,10 @@ document.addEventListener("DOMContentLoaded",  async function () {
       }
     })
 
-    displayCheckmark()
+    await displayCheckmark()
   }
 
-  renderGifs()
+  await renderGifs()
 })
 
 function updateEmptyState() {
@@ -120,7 +124,14 @@ function addGifToDOM(src, prepend = false) {
 }
 
 document.getElementById("gif_size").onchange = async function (event) {
-  await setGifSize(event.target.value)
+  const value = Number(event.target.value)
+  if (!Number.isFinite(value) || value < GIF_SIZE_MIN || value > GIF_SIZE_MAX) {
+    alert(ERROR_ALERT, `Size must be between ${GIF_SIZE_MIN} and ${GIF_SIZE_MAX}px.`)
+    event.target.value = GIF_SIZE_DEFAULT
+    await setGifSize(GIF_SIZE_DEFAULT)
+    return
+  }
+  await setGifSize(value)
 }
 
 document.getElementById("gif_position").onchange = async function (event) {
@@ -132,54 +143,89 @@ document.getElementById("gif_animation").onchange = async function (event) {
 }
 
 document.getElementById("gif_duration").onchange = async function (event) {
-  await setGifDuration(event.target.value)
+  const value = Number(event.target.value)
+  if (!Number.isFinite(value) || value < GIF_DURATION_MIN || value > GIF_DURATION_MAX) {
+    alert(ERROR_ALERT, `Duration must be between ${GIF_DURATION_MIN} and ${GIF_DURATION_MAX}s.`)
+    event.target.value = GIF_DURATION_DEFAULT
+    await setGifDuration(GIF_DURATION_DEFAULT)
+    return
+  }
+  await setGifDuration(value)
 }
 
 document.getElementById("btn-add-gif").addEventListener("click", async function () {
+  /* global chrome */
   const urlInput = document.getElementById("gif_url")
   const url = urlInput.value.trim()
 
   if (!/\.gif(\?.*)?$/i.test(url)) {
-    alert(ERROR_ALERT)
+    alert(ERROR_ALERT, "Please enter a valid .gif URL.")
+    return
+  }
+
+  const result = await chrome.storage.local.get([LIST_GIFS])
+  const gifs_storage = result[LIST_GIFS] || []
+  if (gifs_storage.includes(url)) {
+    alert(ERROR_ALERT, "This GIF is already in your list.")
     return
   }
 
   const testImg = new Image()
-  testImg.onload = () => {
-    let gifs_storage = JSON.parse(localStorage.getItem(LIST_GIFS)) || []
+  testImg.onload = async () => {
     gifs_storage.push(url)
     addGifToDOM(url)
-    localStorage.setItem(LIST_GIFS, JSON.stringify(gifs_storage))
+    await chrome.storage.local.set({ [LIST_GIFS]: gifs_storage })
     urlInput.value = ""
     closeAddGifPanel()
     alert(SUCCESS_ALERT)
   }
   testImg.onerror = () => {
-    alert(ERROR_ALERT)
+    alert(ERROR_ALERT, "Couldn't load that GIF. Check the URL and try again.")
   }
   testImg.src = url
 })
 
 const fileInput = document.getElementById('gif_file');
-fileInput.addEventListener('change', function () {
+fileInput.addEventListener('change', async function () {
+  /* global chrome */
   const file = fileInput.files[0];
-  if (file && file.type === "image/gif") {
-    const reader = new FileReader();
+  if (!file) return
 
-    reader.onload = function (e) {
-      const dataUrl = e.target.result; // base64 string
-      let gifs_storage = JSON.parse(localStorage.getItem(LIST_GIFS)) || [];
-      gifs_storage.push(dataUrl);
-      localStorage.setItem(LIST_GIFS, JSON.stringify(gifs_storage));
-
-      addGifToDOM(dataUrl);
-      fileInput.value = ""
-      closeAddGifPanel()
-      alert(SUCCESS_ALERT);
-    };
-
-    reader.readAsDataURL(file);
+  if (file.type !== "image/gif") {
+    alert(ERROR_ALERT, "Please choose a .gif file.")
+    fileInput.value = ""
+    return
   }
+
+  if (file.size > MAX_GIF_FILE_SIZE_BYTES) {
+    alert(ERROR_ALERT, `GIF is too large (max ${Math.round(MAX_GIF_FILE_SIZE_BYTES / (1024 * 1024))}MB). Please choose a smaller file.`)
+    fileInput.value = ""
+    return
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = async function (e) {
+    const dataUrl = e.target.result; // base64 string
+    const result = await chrome.storage.local.get([LIST_GIFS])
+    const gifs_storage = result[LIST_GIFS] || [];
+
+    if (gifs_storage.includes(dataUrl)) {
+      alert(ERROR_ALERT, "This GIF is already in your list.")
+      fileInput.value = ""
+      return
+    }
+
+    gifs_storage.push(dataUrl);
+    await chrome.storage.local.set({ [LIST_GIFS]: gifs_storage });
+
+    addGifToDOM(dataUrl);
+    fileInput.value = ""
+    closeAddGifPanel()
+    alert(SUCCESS_ALERT);
+  };
+
+  reader.readAsDataURL(file);
 });
 
 const toggleAddGifBtn = document.getElementById('toggle-add-gif');
