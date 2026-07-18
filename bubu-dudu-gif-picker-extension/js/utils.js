@@ -2,36 +2,44 @@ function delay(time) {
     return new Promise((resolve) => setTimeout(resolve, time));
 }
 
+function isSupportedTabUrl(url) {
+    return !!url && /^https?:\/\//i.test(url)
+}
+
+/* global chrome */
+async function sendToActiveTab(message) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab?.id || !isSupportedTabUrl(tab.url)) {
+        throw new Error("unsupported-page")
+    }
+    await chrome.tabs.sendMessage(tab.id, message)
+}
+
+async function notifyActiveTab(message) {
+    try {
+        await sendToActiveTab(message)
+        await alert(SUCCESS_ALERT)
+    } catch (e) {
+        if (e.message === "unsupported-page") {
+            await alert(ERROR_ALERT, "This page doesn't support Bubu Dudu (e.g. a browser settings page).")
+        } else {
+            await alert(ERROR_ALERT, "Couldn't apply this on the current tab. Try reloading the page.")
+        }
+    }
+}
+
 async function updateCheckmark(selectedDiv, src) {
     document.querySelectorAll(".checkmark").forEach(c => c.remove());
     const check = document.createElement("div");
     check.className = "checkmark";
     check.innerHTML = "✔";
     selectedDiv.appendChild(check);
-    /* global chrome */
     await chrome.storage.local.set({ [GIF_SELECTED]: JSON.stringify([src]) })
-    await chrome.tabs.query(
-        {
-            active: true,
-            currentWindow: true,
-        },
-        function (tabs) {
-            try {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    from: POPUP_SCREEN,
-                    subject: HANDLE_SET_GIF_SELECTED,
-                    gif_src: src
-                })
-            } catch (e) {
-                console.error(e)
-            }
-
-            if (chrome.runtime.lastError) {
-                console.error(chrome.runtime.lastError.message)
-            }
-        }
-    )
-    await alert(SUCCESS_ALERT)
+    await notifyActiveTab({
+        from: POPUP_SCREEN,
+        subject: HANDLE_SET_GIF_SELECTED,
+        gif_src: src
+    })
 }
 
 async function displayCheckmark() {
@@ -93,113 +101,50 @@ async function alert(alert_type, message) {
 }
 
 async function setGifSize(size) {
-    /* global chrome */
-    await chrome.tabs.query(
-        {
-            active: true,
-            currentWindow: true,
-        },
-        function (tabs) {
-            try {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    from: POPUP_SCREEN,
-                    subject: HANDLE_SET_GIF_SIZE,
-                    gif_size: size
-                })
-            } catch (e) {
-                alert(ERROR_ALERT)
-                return
-            }
-
-            if (chrome.runtime.lastError) {
-                alert(ERROR_ALERT)
-            }
-        }
-    )
-
-    await alert(SUCCESS_ALERT)
+    await notifyActiveTab({
+        from: POPUP_SCREEN,
+        subject: HANDLE_SET_GIF_SIZE,
+        gif_size: size
+    })
 }
 
 async function setGifPosition(position) {
-    /* global chrome */
-    await chrome.tabs.query(
-        {
-            active: true,
-            currentWindow: true,
-        },
-        function (tabs) {
-            try {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    from: POPUP_SCREEN,
-                    subject: HANDLE_SET_GIF_POSITION,
-                    gif_position: position
-                })
-            } catch (e) {
-                alert(ERROR_ALERT)
-                return
-            }
-
-            if (chrome.runtime.lastError) {
-                alert(ERROR_ALERT)
-            }
-        }
-    )
-
-    await alert(SUCCESS_ALERT)
+    await notifyActiveTab({
+        from: POPUP_SCREEN,
+        subject: HANDLE_SET_GIF_POSITION,
+        gif_position: position
+    })
 }
 
 async function setGifAnimation(animation) {
-    /* global chrome */
-    await chrome.tabs.query(
-        {
-            active: true,
-            currentWindow: true,
-        },
-        function (tabs) {
-            try {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    from: POPUP_SCREEN,
-                    subject: HANDLE_SET_GIF_ANIMATION,
-                    gif_animation: animation
-                })
-            } catch (e) {
-                alert(ERROR_ALERT)
-                return
-            }
-
-            if (chrome.runtime.lastError) {
-                alert(ERROR_ALERT)
-            }
-        }
-    )
-
-    await alert(SUCCESS_ALERT)
+    await notifyActiveTab({
+        from: POPUP_SCREEN,
+        subject: HANDLE_SET_GIF_ANIMATION,
+        gif_animation: animation
+    })
 }
 
 async function setGifDuration(duration) {
+    await notifyActiveTab({
+        from: POPUP_SCREEN,
+        subject: HANDLE_SET_GIF_DURATION,
+        gif_duration: duration
+    })
+}
+
+async function setSiteDisabled(hostname, disabled) {
     /* global chrome */
-    await chrome.tabs.query(
-        {
-            active: true,
-            currentWindow: true,
-        },
-        function (tabs) {
-            try {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    from: POPUP_SCREEN,
-                    subject: HANDLE_SET_GIF_DURATION,
-                    gif_duration: duration
-                })
-            } catch (e) {
-                alert(ERROR_ALERT)
-                return
-            }
+    const result = await chrome.storage.local.get([DISABLED_HOSTS])
+    const hosts = result[DISABLED_HOSTS] || []
+    const next = disabled
+        ? Array.from(new Set([...hosts, hostname]))
+        : hosts.filter(h => h !== hostname)
+    await chrome.storage.local.set({ [DISABLED_HOSTS]: next })
+    await notifyActiveTab({ from: POPUP_SCREEN, subject: HANDLE_SET_DISABLED_HOSTS })
+}
 
-            if (chrome.runtime.lastError) {
-                alert(ERROR_ALERT)
-            }
-        }
-    )
-
-    await alert(SUCCESS_ALERT)
+async function setRandomMode(enabled) {
+    /* global chrome */
+    await chrome.storage.local.set({ [RANDOM_MODE]: enabled })
+    await notifyActiveTab({ from: POPUP_SCREEN, subject: HANDLE_SET_RANDOM_MODE })
 }

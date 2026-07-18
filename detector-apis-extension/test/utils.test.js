@@ -11,11 +11,20 @@ test("checkUndefined", () => {
   assert.equal(g.checkUndefined(0), false);
 });
 
-test("generateUniqueKey prefixes and does not repeat", () => {
-  const a = g.generateUniqueKey("prefix_");
-  const b = g.generateUniqueKey("prefix_");
-  assert.ok(a.startsWith("prefix_"));
-  assert.notEqual(a, b);
+test("shellEscape neutralizes single quotes for embedding in a '...' shell string", () => {
+  assert.equal(g.shellEscape(`it's here`), "it'\\''s here");
+  assert.equal(g.shellEscape("no quotes"), "no quotes");
+  assert.equal(g.shellEscape(`'''`), "'\\'''\\'''\\''");
+});
+
+test("truncateBody caps long strings and leaves short ones/non-strings alone", () => {
+  assert.equal(g.truncateBody("short"), "short");
+  assert.equal(g.truncateBody(undefined), undefined);
+  const long = "x".repeat(g.MAX_BODY_LENGTH + 500);
+  const truncated = g.truncateBody(long);
+  assert.equal(truncated.length, g.MAX_BODY_LENGTH + "\n...[truncated]".length);
+  assert.ok(truncated.startsWith("x".repeat(g.MAX_BODY_LENGTH)));
+  assert.ok(truncated.endsWith("...[truncated]"));
 });
 
 test("isExistedInArray", () => {

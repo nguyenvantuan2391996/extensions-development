@@ -1,3 +1,6 @@
+const STYLE_ID = "bubu-dudu-gif-picker-style"
+const CONTAINER_ID = "bubu-dudu-gif-picker"
+
 chrome.runtime.onMessage.addListener(async function(msg) {
     if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SET_GIF_SIZE) {
         await chrome.storage.local.set({ gif_size: msg.gif_size })
@@ -24,35 +27,72 @@ chrome.runtime.onMessage.addListener(async function(msg) {
         await handleWebsiteLoaded()
     }
 
+    if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SET_DISABLED_HOSTS) {
+        await handleWebsiteLoaded()
+    }
+
+    if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SET_RANDOM_MODE) {
+        await handleWebsiteLoaded()
+    }
+
     if (msg.from === BACKGROUND_SCREEN && msg.subject === HANDLE_MAIN_WEBSITE_LOADED) {
         await handleWebsiteLoaded()
     }
 });
 
 async function handleWebsiteLoaded() {
-    await chrome.storage.local.get(
-        [
-            "gif_selected",
-            "gif_size",
-            "gif_position",
-            "gif_animation",
-            "gif_duration"
-        ],
-        function (result) {
-            render(result)
-        })
-}
-function render(result) {
-    if (!!!result.gif_selected) {
+    const result = await chrome.storage.local.get([
+        "gif_selected",
+        "gif_size",
+        "gif_position",
+        "gif_animation",
+        "gif_duration",
+        "disabled_hosts",
+        "random_mode",
+        "list_gifs"
+    ])
+
+    const disabledHosts = result.disabled_hosts || []
+    if (disabledHosts.includes(window.location.hostname)) {
+        removeGif()
         return
     }
 
-    let container_bubu_dudu = document.getElementById("bubu-dudu-gif-picker")
-    if (container_bubu_dudu) {
-        container_bubu_dudu.remove()
+    let gifSrc = null
+    if (result.random_mode && result.list_gifs && result.list_gifs.length > 0) {
+        gifSrc = result.list_gifs[Math.floor(Math.random() * result.list_gifs.length)]
+    } else if (result.gif_selected) {
+        try {
+            gifSrc = JSON.parse(result.gif_selected)[0]
+        } catch (e) {
+            gifSrc = null
+        }
     }
 
-    const style = document.createElement("style")
+    render({ ...result, gif_src: gifSrc })
+}
+
+function removeGif() {
+    const container = document.getElementById(CONTAINER_ID)
+    if (container) {
+        container.remove()
+    }
+}
+
+function render(result) {
+    if (!result.gif_src) {
+        removeGif()
+        return
+    }
+
+    removeGif()
+
+    let style = document.getElementById(STYLE_ID)
+    if (!style) {
+        style = document.createElement("style")
+        style.id = STYLE_ID
+        document.head.appendChild(style)
+    }
     style.textContent = `body {
               margin: 0;
             }
@@ -91,17 +131,16 @@ function render(result) {
               50% { bottom: 45vh; }
               100% { bottom: 110vh; }
             }`
-    document.head.appendChild(style)
 
     const container = document.createElement("div")
-    container.id = "bubu-dudu-gif-picker"
+    container.id = CONTAINER_ID
     container.style.background = "none"
     container.style.backgroundColor = "transparent"
     container.style.backgroundImage = "none"
 
     const bubu_dudu = document.createElement("img")
-    bubu_dudu.src = JSON.parse(result.gif_selected)[0]
-    bubu_dudu.alt = JSON.parse(result.gif_selected)[0]
+    bubu_dudu.src = result.gif_src
+    bubu_dudu.alt = result.gif_src
     bubu_dudu.className = "character"
 
     bubu_dudu.style.zIndex = "9999"

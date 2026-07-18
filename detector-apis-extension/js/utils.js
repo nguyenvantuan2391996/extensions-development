@@ -2,9 +2,18 @@ function checkUndefined(item) {
   return typeof item === "undefined";
 }
 
-function generateUniqueKey(prefix) {
-  const randomString = Math.random().toString(36).substring(2, 12);
-  return `${prefix}_${randomString}`;
+// Escapes a value for safe embedding inside a single-quoted shell string
+// (as used by the generated curl commands): close the quote, insert an
+// escaped quote, reopen the quote.
+function shellEscape(value) {
+  return String(value).replace(/'/g, "'\\''");
+}
+
+function truncateBody(text) {
+  if (typeof text !== "string" || text.length <= MAX_BODY_LENGTH) {
+    return text;
+  }
+  return text.slice(0, MAX_BODY_LENGTH) + "\n...[truncated]";
 }
 
 function isExistedInArray(arr, value) {

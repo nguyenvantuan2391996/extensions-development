@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bubu Dudu GIF Picker</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         :root {
             --bg: #f5f5f7;
@@ -200,6 +199,13 @@
             gap: 10px;
         }
 
+        .toolbar-row-secondary {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--separator);
+            align-items: center;
+        }
+
         .field {
             display: flex;
             flex-direction: column;
@@ -371,6 +377,9 @@
             box-shadow: var(--shadow-card);
             padding: 12px;
             overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
             align-content: flex-start;
         }
 
@@ -467,6 +476,80 @@
         }
 
         .empty-hint[hidden] {
+            display: none;
+        }
+
+        /* ---------- Switch toggle (this site / random mode) ---------- */
+        .switch-field {
+            flex-direction: row;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .switch-field label:first-child {
+            margin: 0;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 34px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .switch-slider {
+            position: absolute;
+            inset: 0;
+            cursor: pointer;
+            background: #e5e5ea;
+            border-radius: 999px;
+            transition: background 0.18s var(--ease-standard);
+        }
+
+        .switch-slider::before {
+            content: "";
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            left: 2px;
+            top: 2px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            transition: transform 0.18s var(--ease-spring);
+        }
+
+        .switch input:checked + .switch-slider {
+            background: var(--success);
+        }
+
+        .switch input:checked + .switch-slider::before {
+            transform: translateX(14px);
+        }
+
+        .switch input:disabled + .switch-slider {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ---------- Unsupported page banner ---------- */
+        .page-banner {
+            flex: none;
+            background: rgba(255, 204, 0, 0.15);
+            color: #7a5c00;
+            font-size: 12.5px;
+            padding: 8px 14px;
+            border-radius: var(--radius-md);
+        }
+
+        .page-banner[hidden] {
             display: none;
         }
 
@@ -578,6 +661,10 @@
         <span class="alert-message" data-default="Something went wrong. Please try again.">Something went wrong. Please try again.</span>
     </div>
 
+    <p class="page-banner" id="page-banner" hidden="hidden">
+        Bubu Dudu can't run on this page. Display settings won't apply here, but you can still manage your GIF library below.
+    </p>
+
     <!-- Toolbar: display settings + collapsible add-gif panel -->
     <div class="toolbar">
         <div class="toolbar-row">
@@ -605,6 +692,23 @@
                 <label>Duration (s)</label>
                 <input id="gif_duration" type="number" value="60" min="5" max="300" step="5">
             </div>
+        </div>
+
+        <div class="toolbar-row toolbar-row-secondary">
+            <div class="field switch-field">
+                <label for="site_toggle">Show on this site</label>
+                <label class="switch">
+                    <input type="checkbox" id="site_toggle" checked>
+                    <span class="switch-slider"></span>
+                </label>
+            </div>
+            <div class="field switch-field">
+                <label for="random_mode_toggle">Random each visit</label>
+                <label class="switch">
+                    <input type="checkbox" id="random_mode_toggle">
+                    <span class="switch-slider"></span>
+                </label>
+            </div>
             <button type="button" id="toggle-add-gif" class="toolbar-spacer">+ Add GIF</button>
         </div>
 
@@ -612,11 +716,14 @@
             <input type="text" placeholder="https://example.com/cute.gif" id="gif_url">
             <button id="btn-add-gif">Add</button>
             <input type="file" accept="image/gif" id="gif_file">
+            <button type="button" id="btn-export-gifs">Export list</button>
+            <button type="button" id="btn-import-gifs">Import list</button>
+            <input type="file" accept="application/json,.json" id="import_file" hidden="hidden">
         </div>
     </div>
 
     <!-- GIF List -->
-    <div id="gifContainer" class="grid grid-cols-6 gap-3">
+    <div id="gifContainer">
         <p class="empty-hint" id="gif-empty-hint" hidden="hidden">No GIFs yet — add one above with "+ Add GIF" 👆</p>
     </div>
 

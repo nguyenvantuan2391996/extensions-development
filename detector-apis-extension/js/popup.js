@@ -1,12 +1,27 @@
 let totalRequestCount = 0;
 let curlByButtonId = {};
 let detailsByButtonId = {};
-let knownRowUrls = new Set();
+// requestId -> { tr, kind: "data" | "pending", buttonID, status, detailTr }
+let rowsByRequestId = new Map();
 let isFirstRender = true;
 let renderDebounceTimer = null;
+let expandedRequestId = null;
+// The tab this popup was opened for. Requests are captured extension-wide
+// (all tabs share one chrome.storage.local); with showAllTabs off, the popup
+// filters down to just this tab's requests, like DevTools' per-tab Network
+// panel. Resolved once at load and kept for the popup's lifetime.
+let activeTabId = null;
+// Defaults to true (show every tab's requests) so switching tabs never looks
+// like the log got wiped. Users who want the DevTools-style per-tab view can
+// switch it off; the choice is remembered across popup opens.
+let showAllTabs = true;
 
 window.addEventListener("load", async (event) => {
   console.log(event);
+
+  activeTabId = await getActiveTabId();
+  showAllTabs = await getShowAllTabsPreference();
+  document.getElementById("all-tabs-toggle").checked = showAllTabs;
 
   await updateSwitchValue()
   await renderTable();
@@ -19,6 +34,29 @@ window.addEventListener("load", async (event) => {
   });
 });
 
+function getActiveTabId() {
+  return new Promise(function (resolve) {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      resolve(tabs && tabs[0] ? tabs[0].id : null);
+    });
+  });
+}
+
+function getShowAllTabsPreference() {
+  return new Promise(function (resolve) {
+    chrome.storage.local.get([SHOW_ALL_TABS_KEY], function (items) {
+      // absent (first run) -> default to true, not false
+      resolve(items[SHOW_ALL_TABS_KEY] !== false);
+    });
+  });
+}
+
+document.getElementById("all-tabs-toggle").addEventListener("change", async function (e) {
+  showAllTabs = e.target.checked;
+  await chrome.storage.local.set({ [SHOW_ALL_TABS_KEY]: showAllTabs });
+  await renderTable();
+});
+
 function scheduleRender() {
   if (renderDebounceTimer) {
     clearTimeout(renderDebounceTimer);
@@ -29,149 +67,309 @@ function scheduleRender() {
   }, 300);
 }
 
-async function renderTable() {
-  let expandedRow = document.querySelector(".data-row.expanded");
-  let expandedButtonId = expandedRow
-    ? expandedRow.getElementsByTagName("td")[0].getElementsByTagName("button")[0].id
-    : null;
-
-  await chrome.storage.local.get(null, async function (items) {
-    let trContent = "";
-    let arrAPIs = [];
-    curlByButtonId = {};
-    detailsByButtonId = {};
-
-    for (let element of Object.keys(items)) {
-      for (const element2 of Object.keys(items)) {
-        if (items[element] === element2) {
-          let curlCommand = items[element] + "-curl-detector-apis";
-          let statusAndRequestID = items[element2].split("|");
-          if (
-            isDetectedContentType(statusAndRequestID[2]) &&
-            !isExistedInArray(arrAPIs, element2)
-          ) {
-            arrAPIs.push(element2);
-            let apiStatus = Number(statusAndRequestID[0].split(" ")[0])
-            let badgeClass = apiStatus >= 200 && apiStatus < 300 ? 'status-badge status-success' : 'status-badge status-danger';
-            let isNewRow = !isFirstRender && !knownRowUrls.has(element2);
-            let rowClass = isNewRow ? "data-row row-new" : "data-row";
-            trContent += `<tr class="${rowClass}"><td><button type="button" class="copy-btn" id=${curlCommand}>Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${items[element]}</td><td class="status-cell"><span class="${badgeClass}">${statusAndRequestID[0]}</span></td></tr>`;
-
-            let fullCurlCommand = items[curlCommand] || "";
-            if (items[element2 + "-raw-data"]) {
-              fullCurlCommand += " " + items[element2 + "-raw-data"];
-            }
-            curlByButtonId[curlCommand] = fullCurlCommand;
-
-            detailsByButtonId[curlCommand] = {
-              url: items[element],
-              method: statusAndRequestID[0].split(" ")[1] || "",
-              status: statusAndRequestID[0].split(" ")[0] || "",
-              requestHeaders: parseHeadersJSON(items[element2 + "-request-headers"]),
-              responseHeaders: parseHeadersJSON(items[element2 + "-response-headers"]),
-              requestBody: items[element2 + "-request-body"] || "",
-              responseBody: items[element2 + "-response-body"] || "",
-            };
-          }
-          break;
-        }
-      }
-    }
-
-    knownRowUrls = new Set(arrAPIs);
-    isFirstRender = false;
-
-    let pendingCount = 0;
-    for (const key of Object.keys(items)) {
-      if (!key.endsWith("-pending")) {
-        continue;
-      }
-      let pendingUrl = key.slice(0, -"-pending".length);
-      if (isExistedInArray(arrAPIs, pendingUrl)) {
-        continue;
-      }
-      pendingCount++;
-      trContent += `<tr class="pending-row"><td></td><td class="url-cell">${escapeHtml(pendingUrl)}</td><td class="status-cell"><span class="status-badge status-pending"><span class="pending-dot"></span>${escapeHtml(items[key] || "")} pending</span></td></tr>`;
-    }
-
-    document.querySelector(
-      "#table-result-detector-apis>tbody"
-    ).innerHTML = `<tbody>${trContent}</tbody>`;
-    document
-      .getElementById("table-wrap")
-      .classList.toggle("is-empty", trContent === "");
-    document.getElementById("request-count").textContent =
-      `${arrAPIs.length} ${arrAPIs.length === 1 ? "request" : "requests"}` +
-      (pendingCount > 0 ? ` · ${pendingCount} pending` : "");
-    totalRequestCount = arrAPIs.length;
-    document.getElementById("copy-all-btn").disabled = arrAPIs.length === 0;
-    document.getElementById("export-postman-btn").disabled = arrAPIs.length === 0;
-    applySearchFilter();
-
-    // handle list button
-    let listTR = document.querySelectorAll(
-      "#table-result-detector-apis>tbody tr.data-row"
-    );
-    for (const trTag of listTR) {
-      let buttonID = trTag
-        .getElementsByTagName("td")[0]
-        .getElementsByTagName("button")[0].id;
-
-      document
-        .getElementById(buttonID)
-        .addEventListener("click", async function (e) {
-          e.stopPropagation();
-          try {
-            await copyCurl(buttonID, items);
-          } catch (e) {
-            console.log(e);
-          }
-        });
-
-      trTag.addEventListener("click", function () {
-        toggleDetailRow(trTag, buttonID);
-      });
-
-      if (trTag.classList.contains("row-new")) {
-        setTimeout(function () {
-          trTag.classList.remove("row-new");
-        }, 1600);
-      }
-    }
-
-    if (expandedButtonId) {
-      let expandButton = document.getElementById(expandedButtonId);
-      let rowToExpand = expandButton ? expandButton.closest("tr") : null;
-      if (rowToExpand && rowToExpand.style.display !== "none") {
-        toggleDetailRow(rowToExpand, expandedButtonId);
-      }
-    }
-  });
+function getTbody() {
+  return document.querySelector("#table-result-detector-apis>tbody");
 }
 
-async function copyCurl(id, items) {
-  for (let element of Object.keys(items)) {
-    for (const element2 of Object.keys(items)) {
-      if (
-        items[element] === element2 &&
-        element2 + "-curl-detector-apis" === id
-      ) {
-        let curlCommand = items[id];
-        if (items[element2 + "-raw-data"]) {
-          curlCommand += " " + items[element2 + "-raw-data"];
-        }
-        await navigator.clipboard.writeText(curlCommand).then(async (r) => {
-          try {
-            console.log(r);
-            await displayAlert("alert-success", "Copied successfully!", 2000);
-          } catch (e) {
-            console.log(e);
-          }
-        });
-        break;
-      }
+function firstPendingRow(tbody) {
+  return tbody.querySelector("tr.pending-row");
+}
+
+// data rows are always grouped above pending rows, so a freshly-seen data
+// row is inserted right before the first pending row instead of at the end
+function insertDataRow(tr, tbody) {
+  const anchor = firstPendingRow(tbody);
+  if (anchor) {
+    tbody.insertBefore(tr, anchor);
+  } else {
+    tbody.appendChild(tr);
+  }
+}
+
+function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow) {
+  let tr = document.createElement("tr");
+  tr.className = isNewRow ? "data-row row-new" : "data-row";
+  tr.dataset.requestId = requestId;
+  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td>`;
+  return tr;
+}
+
+function buildPendingRowElement(requestId, url, method) {
+  let tr = document.createElement("tr");
+  tr.className = "pending-row";
+  tr.dataset.requestId = requestId;
+  tr.innerHTML = `<td></td><td class="url-cell">${escapeHtml(url)}</td><td class="status-cell"><span class="status-badge status-pending"><span class="pending-dot"></span>${escapeHtml(method || "")} pending</span></td>`;
+  return tr;
+}
+
+function badgeClassForStatus(statusCode) {
+  let apiStatus = Number(statusCode.split(" ")[0]);
+  return apiStatus >= 200 && apiStatus < 300
+    ? "status-badge status-success"
+    : "status-badge status-danger";
+}
+
+function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
+  let buttonID = requestId + "-curl-detector-apis";
+  let statusCode = statusAndRequestID[0];
+  let badgeClass = badgeClassForStatus(statusCode);
+
+  let fullCurlCommand = items[buttonID] || "";
+  if (items[requestId + "-raw-data"]) {
+    fullCurlCommand += " " + items[requestId + "-raw-data"];
+  }
+  curlByButtonId[buttonID] = fullCurlCommand;
+  detailsByButtonId[buttonID] = {
+    url: url,
+    method: statusCode.split(" ")[1] || "",
+    status: statusCode.split(" ")[0] || "",
+    requestHeaders: parseHeadersJSON(items[requestId + "-request-headers"]),
+    responseHeaders: parseHeadersJSON(items[requestId + "-response-headers"]),
+    requestBody: items[requestId + "-request-body"] || "",
+    responseBody: items[requestId + "-response-body"] || "",
+  };
+
+  let entry = rowsByRequestId.get(requestId);
+
+  // a pending row for this request just completed: drop the pending row and
+  // fall through to create the real data row in its place
+  if (entry && entry.kind === "pending") {
+    entry.tr.remove();
+    entry = null;
+  }
+
+  if (!entry) {
+    let isNewRow = !isFirstRender;
+    let tr = buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow);
+    insertDataRow(tr, tbody);
+    entry = { tr: tr, kind: "data", buttonID: buttonID, status: statusCode, detailTr: null };
+    rowsByRequestId.set(requestId, entry);
+
+    if (isNewRow) {
+      setTimeout(function () {
+        tr.classList.remove("row-new");
+      }, 1600);
+    }
+    return;
+  }
+
+  if (entry.status !== statusCode) {
+    entry.status = statusCode;
+    let badge = entry.tr.querySelector(".status-cell .status-badge");
+    badge.className = badgeClass;
+    badge.textContent = statusCode;
+  }
+}
+
+function upsertPendingRow(requestId, url, method, tbody) {
+  if (rowsByRequestId.has(requestId)) {
+    return;
+  }
+  let tr = buildPendingRowElement(requestId, url, method);
+  tbody.appendChild(tr);
+  rowsByRequestId.set(requestId, { tr: tr, kind: "pending" });
+}
+
+function removeRow(requestId, entry) {
+  entry.tr.remove();
+  if (entry.detailTr) {
+    entry.detailTr.remove();
+  }
+  if (expandedRequestId === requestId) {
+    expandedRequestId = null;
+  }
+  rowsByRequestId.delete(requestId);
+  if (entry.buttonID) {
+    delete curlByButtonId[entry.buttonID];
+    delete detailsByButtonId[entry.buttonID];
+  }
+}
+
+function clearTable() {
+  getTbody().innerHTML = "";
+  rowsByRequestId.clear();
+  curlByButtonId = {};
+  detailsByButtonId = {};
+  expandedRequestId = null;
+  totalRequestCount = 0;
+  isFirstRender = false;
+
+  document.getElementById("table-wrap").classList.add("is-empty");
+  document.getElementById("request-count").textContent = "0 requests";
+  document.getElementById("copy-all-btn").disabled = true;
+  document.getElementById("export-postman-btn").disabled = true;
+  applySearchFilter();
+}
+
+function refreshExpandedDetail(entry) {
+  if (!entry.detailTr) {
+    return;
+  }
+  let freshDetail = buildDetailRow(entry.buttonID);
+  entry.detailTr.replaceWith(freshDetail);
+  entry.detailTr = freshDetail;
+}
+
+// Reads only the bounded set of currently-tracked requests (REQUEST_ORDER_KEY)
+// plus their per-request fields, instead of chrome.storage.local.get(null) +
+// a full O(n^2) join, and patches the existing DOM instead of rebuilding the
+// whole <tbody> innerHTML on every change. Requests are captured
+// extension-wide (all tabs), so this filters down to just activeTabId,
+// matching DevTools' per-tab Network panel.
+async function renderTable() {
+  let orderResult = await chrome.storage.local.get(REQUEST_ORDER_KEY);
+  let order = orderResult[REQUEST_ORDER_KEY] || [];
+
+  if (order.length === 0) {
+    clearTable();
+    return;
+  }
+
+  let keys = [];
+  for (const requestId of order) {
+    keys.push(
+      requestId,
+      requestId + "-url",
+      requestId + "-tab-id",
+      requestId + "-curl-detector-apis",
+      requestId + "-raw-data",
+      requestId + "-request-headers",
+      requestId + "-response-headers",
+      requestId + "-request-body",
+      requestId + "-response-body",
+      requestId + "-pending"
+    );
+  }
+  let items = await chrome.storage.local.get(keys);
+
+  let tbody = getTbody();
+  let seenIds = new Set();
+  let requestCount = 0;
+  let pendingCount = 0;
+
+  for (const requestId of order) {
+    // activeTabId unknown (chrome.tabs.query found no active tab) -> fall
+    // back to showing everything rather than an empty list.
+    if (
+      !showAllTabs &&
+      activeTabId !== null &&
+      activeTabId !== undefined &&
+      items[requestId + "-tab-id"] !== activeTabId
+    ) {
+      continue;
+    }
+
+    let url = items[requestId + "-url"] || "";
+    let rawInfo = items[requestId];
+    let statusAndRequestID = typeof rawInfo === "string" ? rawInfo.split("|") : null;
+
+    if (statusAndRequestID && isDetectedContentType(statusAndRequestID[2])) {
+      seenIds.add(requestId);
+      requestCount++;
+      upsertDataRow(requestId, url, statusAndRequestID, items, tbody);
+      continue;
+    }
+
+    let pendingMethod = items[requestId + "-pending"];
+    if (pendingMethod) {
+      seenIds.add(requestId);
+      pendingCount++;
+      upsertPendingRow(requestId, url, pendingMethod, tbody);
     }
   }
+
+  for (const [requestId, entry] of Array.from(rowsByRequestId)) {
+    if (!seenIds.has(requestId)) {
+      removeRow(requestId, entry);
+    }
+  }
+
+  isFirstRender = false;
+  totalRequestCount = requestCount;
+
+  document
+    .getElementById("table-wrap")
+    .classList.toggle("is-empty", requestCount === 0 && pendingCount === 0);
+  document.getElementById("request-count").textContent =
+    `${requestCount} ${requestCount === 1 ? "request" : "requests"}` +
+    (pendingCount > 0 ? ` · ${pendingCount} pending` : "");
+  document.getElementById("copy-all-btn").disabled = requestCount === 0;
+  document.getElementById("export-postman-btn").disabled = requestCount === 0;
+
+  if (expandedRequestId) {
+    let entry = rowsByRequestId.get(expandedRequestId);
+    if (entry) {
+      refreshExpandedDetail(entry);
+    }
+  }
+
+  applySearchFilter();
+}
+
+function toggleDetailRow(tr) {
+  let requestId = tr.dataset.requestId;
+  let entry = rowsByRequestId.get(requestId);
+  if (!entry) {
+    return;
+  }
+
+  if (entry.detailTr) {
+    entry.detailTr.remove();
+    entry.detailTr = null;
+    tr.classList.remove("expanded");
+    if (expandedRequestId === requestId) {
+      expandedRequestId = null;
+    }
+    return;
+  }
+
+  if (expandedRequestId && expandedRequestId !== requestId) {
+    let previous = rowsByRequestId.get(expandedRequestId);
+    if (previous && previous.detailTr) {
+      previous.detailTr.remove();
+      previous.detailTr = null;
+      previous.tr.classList.remove("expanded");
+    }
+  }
+
+  let detailTr = buildDetailRow(entry.buttonID);
+  tr.insertAdjacentElement("afterend", detailTr);
+  tr.classList.add("expanded");
+  entry.detailTr = detailTr;
+  expandedRequestId = requestId;
+}
+
+// single delegated listener instead of binding a click handler per row/button
+// on every render
+getTbody().addEventListener("click", function (e) {
+  let copyBtn = e.target.closest(".copy-btn");
+  if (copyBtn) {
+    e.stopPropagation();
+    copyCurl(copyBtn.id).catch(function (err) {
+      console.log(err);
+    });
+    return;
+  }
+
+  let dataRow = e.target.closest("tr.data-row");
+  if (dataRow) {
+    toggleDetailRow(dataRow);
+  }
+});
+
+async function copyCurl(id) {
+  let curlCommand = curlByButtonId[id];
+  if (!curlCommand) {
+    return;
+  }
+  await navigator.clipboard.writeText(curlCommand).then(async (r) => {
+    try {
+      console.log(r);
+      await displayAlert("alert-success", "Copied successfully!", 2000);
+    } catch (e) {
+      console.log(e);
+    }
+  });
 }
 
 function parseHeadersJSON(raw) {
@@ -250,25 +448,6 @@ function buildDetailRow(buttonID) {
   `;
   tr.appendChild(td);
   return tr;
-}
-
-function toggleDetailRow(trTag, buttonID) {
-  let existing = trTag.nextElementSibling;
-  if (existing && existing.classList.contains("detail-row")) {
-    existing.remove();
-    trTag.classList.remove("expanded");
-    return;
-  }
-
-  document.querySelectorAll(".detail-row").forEach(function (row) {
-    row.remove();
-  });
-  document.querySelectorAll(".data-row.expanded").forEach(function (row) {
-    row.classList.remove("expanded");
-  });
-
-  trTag.insertAdjacentElement("afterend", buildDetailRow(buttonID));
-  trTag.classList.add("expanded");
 }
 
 async function copyAllCurl() {
@@ -460,13 +639,6 @@ document.getElementById("export-postman-btn").addEventListener("click", async fu
 });
 
 function applySearchFilter() {
-  document.querySelectorAll(".detail-row").forEach(function (row) {
-    row.remove();
-  });
-  document.querySelectorAll(".data-row.expanded").forEach(function (row) {
-    row.classList.remove("expanded");
-  });
-
   let searchTerm = document.getElementById("search-input").value.trim();
   let searchTermLower = searchTerm.toLowerCase();
   let rows = document.querySelectorAll(
@@ -482,6 +654,9 @@ function applySearchFilter() {
     row.style.display = isMatch ? "" : "none";
     if (isMatch) {
       matchCount++;
+    }
+    if (!isMatch && row.classList.contains("expanded")) {
+      toggleDetailRow(row);
     }
   }
 

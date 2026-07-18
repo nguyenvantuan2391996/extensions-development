@@ -4,6 +4,7 @@ const { loadScripts } = require("./helpers/loadGlobals");
 
 function createFakeChrome() {
   let store = {};
+  let failNextSetCalls = 0;
 
   const local = {
     get: (keys) => {
@@ -20,6 +21,12 @@ function createFakeChrome() {
       return Promise.resolve(result);
     },
     set: (obj) => {
+      if (failNextSetCalls > 0) {
+        failNextSetCalls--;
+        return Promise.reject(
+          new Error("Resource::kQuotaBytes quota exceeded")
+        );
+      }
       Object.assign(store, obj);
       return Promise.resolve();
     },
@@ -55,15 +62,18 @@ function createFakeChrome() {
       tabs: { onUpdated: noopListener },
     },
     dump: () => store,
+    failNextSet: (n) => {
+      failNextSetCalls = n;
+    },
   };
 }
 
 function buildBackgroundSandbox() {
-  const { chrome, dump } = createFakeChrome();
+  const { chrome, dump, failNextSet } = createFakeChrome();
   const sandbox = { chrome, importScripts: () => {} };
   loadScripts(["js/constants.js", "js/utils.js"], { sandbox });
   loadScripts(["js/background.js"], { sandbox });
-  return { sandbox, dump };
+  return { sandbox, dump, failNextSet };
 }
 
 test("getValueHeaderByKey is case-insensitive and returns '' when missing", () => {
@@ -73,72 +83,102 @@ test("getValueHeaderByKey is case-insensitive and returns '' when missing", () =
   assert.equal(sandbox.getValueHeaderByKey("missing", headers), "");
 });
 
-test("trackAndEvict drops stale duplicate uniqueKey mappings for the same URL", async () => {
-  const { sandbox, dump } = buildBackgroundSandbox();
-  const url = "https://api.example.com/data";
+test("safeStorageSet swallows a quota-exceeded rejection instead of throwing", async () => {
+  const { sandbox, dump, failNextSet } = buildBackgroundSandbox();
+  failNextSet(1);
 
-  await sandbox.chrome.storage.local.set({
-    "detector-apis-extension-extension-_old1": url,
-    "detector-apis-extension-extension-_old2": url,
-  });
+  await assert.doesNotReject(sandbox.safeStorageSet({ "some-key": "value" }));
 
-  const newKey = "detector-apis-extension-extension-_new";
-  await sandbox.chrome.storage.local.set({ [newKey]: url });
-  await sandbox.trackAndEvict(url, newKey);
-
-  const state = dump();
-  assert.equal(state["detector-apis-extension-extension-_old1"], undefined);
-  assert.equal(state["detector-apis-extension-extension-_old2"], undefined);
-  assert.equal(state[newKey], url);
+  assert.equal(dump()["some-key"], undefined, "the failed write never landed");
 });
 
-test("trackAndEvict evicts the least-recently-seen URL once MAX_TRACKED_REQUESTS is exceeded", async () => {
+test("trackAndEvict doesn't throw even if persisting the updated order fails (regression: a rejected set() used to abort the rest of the listener)", async () => {
+  const { sandbox, failNextSet } = buildBackgroundSandbox();
+  failNextSet(1);
+
+  await assert.doesNotReject(sandbox.trackAndEvict("req-1"));
+});
+
+test("trackAndEvict appends requestIds in the order they're seen", async () => {
+  const { sandbox, dump } = buildBackgroundSandbox();
+
+  await sandbox.trackAndEvict("req-1");
+  await sandbox.trackAndEvict("req-2");
+  await sandbox.trackAndEvict("req-3");
+
+  const order = dump()[sandbox.REQUEST_ORDER_KEY];
+  assert.equal(order.length, 3);
+  assert.equal(order[0], "req-1");
+  assert.equal(order[1], "req-2");
+  assert.equal(order[2], "req-3");
+});
+
+test("trackAndEvict evicts the oldest requestId (and all its keys) once MAX_TRACKED_REQUESTS is exceeded", async () => {
   const { sandbox, dump } = buildBackgroundSandbox();
   const max = sandbox.MAX_TRACKED_REQUESTS;
 
   for (let i = 0; i < max; i++) {
-    const url = `https://api.example.com/item-${i}`;
-    const key = `detector-apis-extension-extension-_k${i}`;
+    const requestId = `req-${i}`;
     await sandbox.chrome.storage.local.set({
-      [key]: url,
-      [url + "-curl-detector-apis"]: "curl '" + url + "'",
+      [requestId + "-url"]: `https://api.example.com/item-${i}`,
+      [requestId + "-curl-detector-apis"]: "curl '...'",
     });
-    await sandbox.trackAndEvict(url, key);
+    await sandbox.trackAndEvict(requestId);
   }
 
-  const overflowUrl = "https://api.example.com/item-overflow";
-  const overflowKey = "detector-apis-extension-extension-_koverflow";
-  await sandbox.chrome.storage.local.set({ [overflowKey]: overflowUrl });
-  await sandbox.trackAndEvict(overflowUrl, overflowKey);
+  await sandbox.trackAndEvict("req-overflow");
 
   const state = dump();
   assert.equal(
-    state["https://api.example.com/item-0-curl-detector-apis"],
+    state["req-0-curl-detector-apis"],
     undefined,
-    "oldest URL's curl data should be evicted"
+    "oldest request's curl data should be evicted"
   );
   assert.equal(
-    state["detector-apis-extension-extension-_k0"],
+    state["req-0-url"],
     undefined,
-    "oldest URL's uniqueKey mapping should be evicted"
+    "oldest request's url should be evicted"
   );
-  assert.equal(
-    state[overflowUrl + "-curl-detector-apis"] === undefined,
-    true
-  );
-  assert.equal(state[sandbox.REQUEST_ORDER_KEY].length, max);
-  assert.ok(state[sandbox.REQUEST_ORDER_KEY].includes(overflowUrl));
-  assert.ok(!state[sandbox.REQUEST_ORDER_KEY].includes("https://api.example.com/item-0"));
+  assert.equal(state["req-overflow-curl-detector-apis"], undefined);
+  const order = state[sandbox.REQUEST_ORDER_KEY];
+  assert.equal(order.length, max);
+  assert.ok(order.includes("req-overflow"));
+  assert.ok(!order.includes("req-0"));
 });
 
-test("handleResponseBodyCapture only stores bodies for detected content-types", async () => {
+test("claimPendingBodyMatch is FIFO per url and returns null once drained", () => {
+  const { sandbox } = buildBackgroundSandbox();
+  sandbox.registerPendingBodyMatch("https://api.example.com/graphql", "req-a");
+  sandbox.registerPendingBodyMatch("https://api.example.com/graphql", "req-b");
+
+  assert.equal(sandbox.claimPendingBodyMatch("https://api.example.com/graphql"), "req-a");
+  assert.equal(sandbox.claimPendingBodyMatch("https://api.example.com/graphql"), "req-b");
+  assert.equal(sandbox.claimPendingBodyMatch("https://api.example.com/graphql"), null);
+});
+
+test("untrackPendingBodyMatch removes a queued requestId so it's never claimed", () => {
+  const { sandbox } = buildBackgroundSandbox();
+  sandbox.registerPendingBodyMatch("https://api.example.com/graphql", "req-a");
+  sandbox.registerPendingBodyMatch("https://api.example.com/graphql", "req-b");
+
+  sandbox.untrackPendingBodyMatch("req-a");
+
+  assert.equal(sandbox.claimPendingBodyMatch("https://api.example.com/graphql"), "req-b");
+});
+
+test("handleResponseBodyCapture stores the body under the claimed requestId, only for detected content-types", async () => {
   const { sandbox, dump } = buildBackgroundSandbox();
 
+  sandbox.registerPendingBodyMatch("https://api.example.com/data", "req-1");
   await sandbox.handleResponseBodyCapture({
     url: "https://api.example.com/data",
     contentType: "application/json",
     body: '{"ok":true}',
   });
+
+  // an image response was never registered as a pending match (background.js
+  // only calls registerPendingBodyMatch for detected content-types), so
+  // there's nothing to claim and nothing gets stored.
   await sandbox.handleResponseBodyCapture({
     url: "https://cdn.example.com/logo.png",
     contentType: "image/png",
@@ -146,6 +186,31 @@ test("handleResponseBodyCapture only stores bodies for detected content-types", 
   });
 
   const state = dump();
-  assert.equal(state["https://api.example.com/data-response-body"], '{"ok":true}');
+  assert.equal(state["req-1-response-body"], '{"ok":true}');
   assert.equal(state["https://cdn.example.com/logo.png-response-body"], undefined);
+});
+
+test("clearTabRequests removes only the requests belonging to the given tab", async () => {
+  const { sandbox, dump } = buildBackgroundSandbox();
+
+  await sandbox.chrome.storage.local.set({
+    "req-1-tab-id": 10,
+    "req-1-url": "https://a.example.com",
+  });
+  await sandbox.trackAndEvict("req-1");
+
+  await sandbox.chrome.storage.local.set({
+    "req-2-tab-id": 20,
+    "req-2-url": "https://b.example.com",
+  });
+  await sandbox.trackAndEvict("req-2");
+
+  await sandbox.clearTabRequests(10);
+
+  const state = dump();
+  assert.equal(state["req-1-url"], undefined);
+  assert.equal(state["req-2-url"], "https://b.example.com");
+  const order = state[sandbox.REQUEST_ORDER_KEY];
+  assert.equal(order.length, 1);
+  assert.equal(order[0], "req-2");
 });

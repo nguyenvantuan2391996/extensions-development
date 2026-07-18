@@ -200,6 +200,13 @@ body {
     font-size: 14px;
 }
 
+.toolbar-divider {
+    width: 1px;
+    height: 18px;
+    background: var(--border);
+    flex-shrink: 0;
+}
+
 .toolbar-right {
     display: flex;
     align-items: center;

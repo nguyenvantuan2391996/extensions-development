@@ -1,22 +1,39 @@
+let currentHostname = null
+
 document.addEventListener("DOMContentLoaded",  async function () {
   /* global chrome */
   const initState = await chrome.storage.local.get([IS_INIT])
   const isFirstRun = !initState[IS_INIT]
 
-  if (isFirstRun) {
-    // The content script only auto-injects into pages loaded after install.
-    // Inject it into the current tab directly so picking a GIF works right
-    // away, without reloading (and disrupting) whatever the user was doing.
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tabSupported = isSupportedTabUrl(activeTab?.url)
+  if (tabSupported) {
+    currentHostname = new URL(activeTab.url).hostname
+  } else {
+    document.getElementById("page-banner").removeAttribute("hidden")
+    document.getElementById("site_toggle").disabled = true
+  }
 
-    if (tab?.id) {
+  if (isFirstRun) {
+    // The content script only auto-injects into pages that were (re)loaded
+    // after install. If the current tab was already open before that, it
+    // has no content script yet — inject it directly so picking a GIF works
+    // right away, without reloading (and disrupting) whatever the user was
+    // doing. Ping first: if the tab loaded *after* install, the manifest's
+    // content script is already there, and injecting again would collide
+    // with its top-level `const` declarations.
+    if (activeTab?.id && tabSupported) {
       try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ["js/content.js", "js/constants.js", "js/utils.js"]
-        })
+        await chrome.tabs.sendMessage(activeTab.id, { from: POPUP_SCREEN, subject: "ping" })
       } catch (e) {
-        // Injection can fail on restricted pages (chrome://, the Web Store, etc.) — nothing to do.
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: activeTab.id },
+            files: ["js/content.js", "js/constants.js", "js/utils.js"]
+          })
+        } catch (e2) {
+          // Injection can fail on restricted pages (chrome://, the Web Store, etc.) — nothing to do.
+        }
       }
     }
   }
@@ -36,36 +53,42 @@ document.addEventListener("DOMContentLoaded",  async function () {
       return
     }
 
-    chrome.storage.local.get(["gif_size", "gif_position", "gif_animation", "gif_duration"], (result) => {
-      if (chrome.runtime.lastError) {
-        alert(ERROR_ALERT)
-        return
-      }
+    chrome.storage.local.get(
+      ["gif_size", "gif_position", "gif_animation", "gif_duration", DISABLED_HOSTS, RANDOM_MODE],
+      (result) => {
+        if (chrome.runtime.lastError) {
+          alert(ERROR_ALERT)
+          return
+        }
 
-      if (!!result.gif_size) {
-        document.getElementById("gif_size").value = result.gif_size
-      } else {
-        setGifSize(document.getElementById("gif_size").value)
-      }
+        if (!!result.gif_size) {
+          document.getElementById("gif_size").value = result.gif_size
+        } else {
+          setGifSize(document.getElementById("gif_size").value)
+        }
 
-      if (!!result.gif_position) {
-        document.getElementById("gif_position").value = result.gif_position
-      } else {
-        setGifPosition(document.getElementById("gif_position").value)
-      }
+        if (!!result.gif_position) {
+          document.getElementById("gif_position").value = result.gif_position
+        } else {
+          setGifPosition(document.getElementById("gif_position").value)
+        }
 
-      if (!!result.gif_animation) {
-        document.getElementById("gif_animation").value = result.gif_animation
-      } else {
-        setGifAnimation(document.getElementById("gif_animation").value)
-      }
+        if (!!result.gif_animation) {
+          document.getElementById("gif_animation").value = result.gif_animation
+        } else {
+          setGifAnimation(document.getElementById("gif_animation").value)
+        }
 
-      if (!!result.gif_duration) {
-        document.getElementById("gif_duration").value = result.gif_duration
-      } else {
-        setGifDuration(document.getElementById("gif_duration").value)
-      }
-    })
+        if (!!result.gif_duration) {
+          document.getElementById("gif_duration").value = result.gif_duration
+        } else {
+          setGifDuration(document.getElementById("gif_duration").value)
+        }
+
+        const disabledHosts = result[DISABLED_HOSTS] || []
+        document.getElementById("site_toggle").checked = tabSupported && !disabledHosts.includes(currentHostname)
+        document.getElementById("random_mode_toggle").checked = !!result[RANDOM_MODE]
+      })
 
     await displayCheckmark()
   }
@@ -163,6 +186,15 @@ document.getElementById("gif_duration").onchange = async function (event) {
   await setGifDuration(value)
 }
 
+document.getElementById("site_toggle").onchange = async function (event) {
+  if (!currentHostname) return
+  await setSiteDisabled(currentHostname, !event.target.checked)
+}
+
+document.getElementById("random_mode_toggle").onchange = async function (event) {
+  await setRandomMode(event.target.checked)
+}
+
 document.getElementById("btn-add-gif").addEventListener("click", async function () {
   /* global chrome */
   const urlInput = document.getElementById("gif_url")
@@ -248,6 +280,51 @@ fileInput.addEventListener('change', async function () {
 
   reader.readAsDataURL(file);
 });
+
+document.getElementById("btn-export-gifs").addEventListener("click", async function () {
+  /* global chrome */
+  const result = await chrome.storage.local.get([LIST_GIFS])
+  const gifs_storage = result[LIST_GIFS] || []
+  const blob = new Blob([JSON.stringify(gifs_storage, null, 2)], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "bubu-dudu-gifs.json"
+  a.click()
+  URL.revokeObjectURL(url)
+})
+
+const importFileInput = document.getElementById("import_file")
+document.getElementById("btn-import-gifs").addEventListener("click", function () {
+  importFileInput.click()
+})
+
+importFileInput.addEventListener("change", async function () {
+  /* global chrome */
+  const file = importFileInput.files[0]
+  if (!file) return
+
+  try {
+    const text = await file.text()
+    const imported = JSON.parse(text)
+    if (!Array.isArray(imported) || !imported.every(item => typeof item === "string")) {
+      throw new Error("invalid-format")
+    }
+
+    const result = await chrome.storage.local.get([LIST_GIFS])
+    const current = result[LIST_GIFS] || []
+    const merged = Array.from(new Set([...current, ...imported]))
+    const newOnes = merged.filter(src => !current.includes(src))
+
+    await chrome.storage.local.set({ [LIST_GIFS]: merged })
+    newOnes.forEach(src => addGifToDOM(src))
+    alert(SUCCESS_ALERT, `Imported ${newOnes.length} new GIF${newOnes.length === 1 ? "" : "s"}.`)
+  } catch (e) {
+    alert(ERROR_ALERT, "Couldn't import that file — make sure it's a GIF list exported from this extension.")
+  } finally {
+    importFileInput.value = ""
+  }
+})
 
 const toggleAddGifBtn = document.getElementById('toggle-add-gif');
 const addGifPanel = document.getElementById('add-gif-panel');
