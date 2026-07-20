@@ -17,8 +17,6 @@ let activeTabId = null;
 let showAllTabs = true;
 
 window.addEventListener("load", async (event) => {
-  console.log(event);
-
   activeTabId = await getActiveTabId();
   showAllTabs = await getShowAllTabsPreference();
   document.getElementById("all-tabs-toggle").checked = showAllTabs;
