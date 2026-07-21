@@ -5,6 +5,8 @@ const { loadScripts } = require("./helpers/loadGlobals");
 function createFakeChrome() {
   let store = {};
   let failNextSetCalls = 0;
+  let badgeText = "";
+  let activeTab = null;
 
   const local = {
     get: (keys) => {
@@ -49,7 +51,10 @@ function createFakeChrome() {
     chrome: {
       storage: { local },
       action: {
-        setBadgeText: () => Promise.resolve(),
+        setBadgeText: ({ text }) => {
+          badgeText = text;
+          return Promise.resolve();
+        },
         setBadgeBackgroundColor: () => Promise.resolve(),
       },
       webRequest: {
@@ -59,21 +64,29 @@ function createFakeChrome() {
         onErrorOccurred: noopListener,
       },
       runtime: { onMessage: noopListener },
-      tabs: { onUpdated: noopListener },
+      tabs: {
+        onUpdated: noopListener,
+        query: () => Promise.resolve(activeTab ? [activeTab] : []),
+      },
     },
     dump: () => store,
     failNextSet: (n) => {
       failNextSetCalls = n;
     },
+    badgeText: () => badgeText,
+    setActiveTab: (tab) => {
+      activeTab = tab;
+    },
   };
 }
 
 function buildBackgroundSandbox() {
-  const { chrome, dump, failNextSet } = createFakeChrome();
+  const { chrome, dump, failNextSet, badgeText, setActiveTab } =
+    createFakeChrome();
   const sandbox = { chrome, importScripts: () => {} };
   loadScripts(["js/constants.js", "js/utils.js"], { sandbox });
   loadScripts(["js/background.js"], { sandbox });
-  return { sandbox, dump, failNextSet };
+  return { sandbox, dump, failNextSet, badgeText, setActiveTab };
 }
 
 test("getValueHeaderByKey is case-insensitive and returns '' when missing", () => {
@@ -166,7 +179,7 @@ test("untrackPendingBodyMatch removes a queued requestId so it's never claimed",
   assert.equal(sandbox.claimPendingBodyMatch("https://api.example.com/graphql"), "req-b");
 });
 
-test("handleResponseBodyCapture stores the body under the claimed requestId, only for detected content-types", async () => {
+test("handleResponseBodyCapture stores the body under the claimed requestId, only when a match was registered", async () => {
   const { sandbox, dump } = buildBackgroundSandbox();
 
   sandbox.registerPendingBodyMatch("https://api.example.com/data", "req-1");
@@ -176,9 +189,9 @@ test("handleResponseBodyCapture stores the body under the claimed requestId, onl
     body: '{"ok":true}',
   });
 
-  // an image response was never registered as a pending match (background.js
-  // only calls registerPendingBodyMatch for detected content-types), so
-  // there's nothing to claim and nothing gets stored.
+  // this url was never registered as a pending match (e.g. a non-XHR/fetch
+  // resource that response-capture.js never hooks), so there's nothing to
+  // claim and nothing gets stored — regardless of content-type.
   await sandbox.handleResponseBodyCapture({
     url: "https://cdn.example.com/logo.png",
     contentType: "image/png",
@@ -188,6 +201,84 @@ test("handleResponseBodyCapture stores the body under the claimed requestId, onl
   const state = dump();
   assert.equal(state["req-1-response-body"], '{"ok":true}');
   assert.equal(state["https://cdn.example.com/logo.png-response-body"], undefined);
+});
+
+test("isTrackableRequest rejects CORS preflight OPTIONS requests but keeps other XHR/fetch methods", () => {
+  const { sandbox } = buildBackgroundSandbox();
+  assert.equal(
+    sandbox.isTrackableRequest({ type: "xmlhttprequest", method: "OPTIONS" }),
+    false
+  );
+  assert.equal(
+    sandbox.isTrackableRequest({ type: "xmlhttprequest", method: "GET" }),
+    true
+  );
+  assert.equal(
+    sandbox.isTrackableRequest({ type: "xmlhttprequest", method: "DELETE" }),
+    true
+  );
+  assert.equal(
+    sandbox.isTrackableRequest({ type: "image", method: "GET" }),
+    false
+  );
+});
+
+test("buildCurlCommandBase: GET has no --request flag (curl's own default)", () => {
+  const { sandbox } = buildBackgroundSandbox();
+  assert.equal(
+    sandbox.buildCurlCommandBase("GET", "https://api.example.com/x"),
+    "curl 'https://api.example.com/x'"
+  );
+});
+
+test("buildCurlCommandBase: DELETE/PATCH/POST all get an explicit --request (regression: used to silently run as GET when executed)", () => {
+  const { sandbox } = buildBackgroundSandbox();
+  assert.equal(
+    sandbox.buildCurlCommandBase("DELETE", "https://api.example.com/x"),
+    "curl --request DELETE 'https://api.example.com/x'"
+  );
+  assert.equal(
+    sandbox.buildCurlCommandBase("PATCH", "https://api.example.com/x"),
+    "curl --request PATCH 'https://api.example.com/x'"
+  );
+  assert.equal(
+    sandbox.buildCurlCommandBase("POST", "https://api.example.com/x"),
+    "curl --request POST 'https://api.example.com/x'"
+  );
+});
+
+test("updateBadgeCount counts every tab's requests by default (All tabs on)", async () => {
+  const { sandbox, dump, badgeText } = buildBackgroundSandbox();
+
+  await sandbox.chrome.storage.local.set({
+    "req-1": "200 GET||application/json",
+    "req-1-tab-id": 10,
+    "req-2": "200 GET||application/json",
+    "req-2-tab-id": 20,
+    [sandbox.REQUEST_ORDER_KEY]: ["req-1", "req-2"],
+  });
+
+  await sandbox.updateBadgeCount();
+
+  assert.equal(badgeText(), "2");
+});
+
+test("updateBadgeCount only counts the active tab's requests when 'All tabs' is off (regression: badge used to always show the global count, disagreeing with what the popup showed)", async () => {
+  const { sandbox, setActiveTab, badgeText } = buildBackgroundSandbox();
+
+  await sandbox.chrome.storage.local.set({
+    "req-1": "200 GET||application/json",
+    "req-1-tab-id": 10,
+    "req-2": "200 GET||application/json",
+    "req-2-tab-id": 20,
+    [sandbox.REQUEST_ORDER_KEY]: ["req-1", "req-2"],
+    [sandbox.SHOW_ALL_TABS_KEY]: false,
+  });
+  setActiveTab({ id: 10 });
+
+  await sandbox.updateBadgeCount();
+
+  assert.equal(badgeText(), "1");
 });
 
 test("clearTabRequests removes only the requests belonging to the given tab", async () => {

@@ -1,6 +1,6 @@
 {
   "name": "detector-apis-extension",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "private": true,
   "description": "Chrome extension that detects API requests fired by a page and lets you inspect/export them.",
   "scripts": {

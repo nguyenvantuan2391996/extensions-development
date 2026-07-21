@@ -27,13 +27,24 @@ async function safeStorageSet(items) {
 // requestId. So response bodies can only be correlated back to a requestId
 // on a best-effort basis: see registerPendingBodyMatch/claimPendingBodyMatch.
 
+// Scope everything to fetch()/XHR calls that are actually calls the page's
+// own code made: images, css, fonts, etc. can never be "API traffic" for
+// this extension's purposes (excluded via XHR_RESOURCE_TYPE), and CORS
+// preflight OPTIONS requests are the browser negotiating on the page's
+// behalf, not a call the page asked for — the page never sees the OPTIONS
+// response, and for any non-trivial cross-origin API almost every real call
+// generates one, so left untracked they drown out the actual GET/POST/etc.
+// request they precede. All five listeners below must apply this same
+// check consistently: tracking a requestId in one listener but not another
+// would leave storage keys that are never evicted (eviction only walks
+// REQUEST_ORDER_KEY, which only the first onBeforeRequest listener writes).
+function isTrackableRequest(details) {
+  return details.type === XHR_RESOURCE_TYPE && details.method !== "OPTIONS";
+}
+
 chrome.webRequest.onBeforeRequest.addListener(
   async function (details) {
-    // Scope everything to fetch()/XHR calls up front: images, css, fonts,
-    // etc. can never be "API traffic" for this extension's purposes, and
-    // skipping them here means they never take a slot in the bounded
-    // tracked-request list and never leave any storage keys to clean up.
-    if (details.type !== XHR_RESOURCE_TYPE) {
+    if (!isTrackableRequest(details)) {
       return;
     }
 
@@ -49,7 +60,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 
 chrome.webRequest.onErrorOccurred.addListener(
   async function (details) {
-    if (details.type !== XHR_RESOURCE_TYPE) {
+    if (!isTrackableRequest(details)) {
       return;
     }
     untrackPendingBodyMatch(details.requestId);
@@ -86,6 +97,11 @@ async function trackAndEvict(requestId) {
 
   if (keysToRemove.length > 0) {
     await chrome.storage.local.remove(keysToRemove);
+    // Eviction can remove already-completed (and already-counted) requests.
+    // Without this, the badge would stay stale — showing a higher count than
+    // what's actually left in storage — until the next response happens to
+    // arrive and trigger updateBadgeCount() on its own.
+    await updateBadgeCount();
   }
   await safeStorageSet({ [REQUEST_ORDER_KEY]: order });
 }
@@ -147,7 +163,7 @@ function untrackPendingBodyMatch(requestId) {
 
 chrome.webRequest.onHeadersReceived.addListener(
   async function (details) {
-    if (details.type !== XHR_RESOURCE_TYPE) {
+    if (!isTrackableRequest(details)) {
       return;
     }
 
@@ -167,7 +183,16 @@ chrome.webRequest.onHeadersReceived.addListener(
     });
     await chrome.storage.local.remove(details.requestId + "-pending");
 
-    if (isDetectedContentType(contentType)) {
+    // Register for body capture whenever there's *any* content-type — not
+    // narrowed to JSON-ish types anymore, so REST responses with vendor/other
+    // content-types still get their body captured. Importantly this must
+    // stay in sync with response-capture.js's own dispatch condition (also
+    // "any truthy content-type"): the two sides pair up 1:1 per-url in FIFO
+    // order (see pendingBodyMatchesByUrl above), so registering here for a
+    // response the page-side hook will never dispatch for (e.g. no
+    // content-type at all, so nothing to capture) would leave a permanent
+    // stuck entry that steals a *later*, unrelated same-url response's body.
+    if (contentType) {
       registerPendingBodyMatch(details.url, details.requestId);
     }
 
@@ -177,11 +202,17 @@ chrome.webRequest.onHeadersReceived.addListener(
   ["responseHeaders", "extraHeaders"]
 );
 
-// Counts tracked requests whose response content-type qualifies as "API
-// traffic", across all tabs. Reads only REQUEST_ORDER_KEY plus the (bounded,
-// <= MAX_TRACKED_REQUESTS) requestIds it lists, instead of
-// chrome.storage.local.get(null) + a nested scan over every key, which used
-// to cost O((total stored keys)^2) on every response received.
+// Counts tracked requests that have completed (got a response). Reads only
+// REQUEST_ORDER_KEY plus the (bounded, <= MAX_TRACKED_REQUESTS) requestIds it
+// lists, instead of chrome.storage.local.get(null) + a nested scan over every
+// key, which used to cost O((total stored keys)^2) on every response
+// received. Counts every completed fetch/XHR request (already scoped to
+// XHR_RESOURCE_TYPE upstream) rather than only ones with a JSON-ish
+// content-type. Mirrors the popup's own "All tabs" preference (js/popup.js's
+// renderTable) so the badge and the popup's own request count can never
+// disagree: previously the badge always counted every tab regardless of the
+// toggle, so switching "All tabs" off made the popup show a filtered
+// single-tab subset while the badge kept showing the old global count.
 async function updateBadgeCount() {
   const { [REQUEST_ORDER_KEY]: order } = await chrome.storage.local.get(
     REQUEST_ORDER_KEY
@@ -192,14 +223,34 @@ async function updateBadgeCount() {
     return;
   }
 
-  const items = await chrome.storage.local.get(order);
+  const { [SHOW_ALL_TABS_KEY]: showAllTabs } = await chrome.storage.local.get(
+    SHOW_ALL_TABS_KEY
+  );
+
+  let activeTabId = null;
+  if (showAllTabs === false) {
+    const tabs = await chrome.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
+    });
+    activeTabId = tabs && tabs[0] ? tabs[0].id : null;
+  }
+
+  const keys =
+    activeTabId === null
+      ? order
+      : order.concat(order.map((requestId) => requestId + "-tab-id"));
+  const items = await chrome.storage.local.get(keys);
   let count = 0;
 
   for (const requestId of order) {
-    const statusAndRequestID = String(items[requestId] || "").split("|");
-    if (isDetectedContentType(statusAndRequestID[2])) {
-      count++;
+    if (!items[requestId]) {
+      continue;
     }
+    if (activeTabId !== null && items[requestId + "-tab-id"] !== activeTabId) {
+      continue;
+    }
+    count++;
   }
 
   await chrome.action.setBadgeText({ text: count > 0 ? String(count) : "" });
@@ -216,20 +267,26 @@ function getValueHeaderByKey(key, headers) {
   return "";
 }
 
+// GET is curl's implicit default, so it needs no flag; every other method
+// (including POST) must be passed explicitly via --request. POST used to look
+// like it worked without this because attaching --data-raw/--data makes curl
+// infer POST on its own — but that only covered POST requests that actually
+// had a body. DELETE, PATCH, HEAD, OPTIONS, and body-less POST requests all
+// silently ran as GET when the exported curl command was executed.
+function buildCurlCommandBase(method, url) {
+  if (!method || method === "GET") {
+    return "curl '" + shellEscape(url) + "'";
+  }
+  return "curl --request " + method + " '" + shellEscape(url) + "'";
+}
+
 chrome.webRequest.onBeforeSendHeaders.addListener(
   async function (details) {
-    if (details.type !== XHR_RESOURCE_TYPE) {
+    if (!isTrackableRequest(details)) {
       return;
     }
 
-    let curlCommand = "";
-
-    if (details.method !== "PUT") {
-      curlCommand = "curl '" + shellEscape(details.url) + "'";
-    } else {
-      curlCommand =
-        "curl --location --request PUT '" + shellEscape(details.url) + "'";
-    }
+    let curlCommand = buildCurlCommandBase(details.method, details.url);
 
     details.requestHeaders.forEach(function (header) {
       curlCommand +=
@@ -253,7 +310,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 
 chrome.webRequest.onBeforeRequest.addListener(
   async function (details) {
-    if (details.type !== XHR_RESOURCE_TYPE) {
+    if (!isTrackableRequest(details)) {
       return;
     }
 
@@ -337,9 +394,6 @@ chrome.runtime.onMessage.addListener(function (message) {
 });
 
 async function handleResponseBodyCapture(message) {
-  if (!isDetectedContentType(message.contentType)) {
-    return;
-  }
   const requestId = claimPendingBodyMatch(message.url);
   if (!requestId) {
     return;
@@ -349,31 +403,27 @@ async function handleResponseBodyCapture(message) {
   });
 }
 
-// load main website
-chrome.tabs.onUpdated.addListener(async function (tabId, changeInfo, tab) {
-  await chrome.tabs.query(
-    {
-      active: true,
-      lastFocusedWindow: true,
-    },
-    async function (tabs) {
-        if (
-            changeInfo.status === LOADING &&
-            !checkUndefined(tabs[0]) &&
-            !checkUndefined(tab) &&
-            tabs[0].url === tab.url
-        ) {
-            await chrome.storage.local.get([
-                PRESERVE_LOG_KEY
-            ], async function (items) {
-               if (!!!items.preserve_log_key) {
-                   await clearTabRequests(tabId);
-               }
-            });
-        }
-    }
-  );
-});
+// Clears a tab's own tracked requests when it starts a fresh navigation (and
+// Preserve log is off) — mirrors DevTools' per-tab Network panel, which
+// clears on navigate regardless of whether that tab is the focused one.
+// Previously this only fired when the navigating tab happened to be the
+// active tab in the last-focused window (compared by url, not even by tab
+// id), so a background tab's stale pre-navigation requests were never
+// cleared — they'd sit around and get shown alongside the tab's new
+// requests once "All tabs" (or later switching to that tab) surfaced them.
+async function handleTabNavigation(tabId, changeInfo) {
+  if (changeInfo.status !== LOADING) {
+    return;
+  }
+  const { [PRESERVE_LOG_KEY]: preserveLog } = await chrome.storage.local.get([
+    PRESERVE_LOG_KEY,
+  ]);
+  if (!preserveLog) {
+    await clearTabRequests(tabId);
+  }
+}
+
+chrome.tabs.onUpdated.addListener(handleTabNavigation);
 
 // Clears only the tracked requests that belong to the given tab, instead of
 // chrome.storage.local.clear()'ing everything — so navigating one tab (with

@@ -88,7 +88,8 @@ function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, i
   let tr = document.createElement("tr");
   tr.className = isNewRow ? "data-row row-new" : "data-row";
   tr.dataset.requestId = requestId;
-  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td>`;
+  tr.title = "Click to see headers and body";
+  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}" title="Copy this request as a curl command">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td>`;
   return tr;
 }
 
@@ -96,6 +97,7 @@ function buildPendingRowElement(requestId, url, method) {
   let tr = document.createElement("tr");
   tr.className = "pending-row";
   tr.dataset.requestId = requestId;
+  tr.title = "Waiting for a response — curl/headers/body aren't available until it completes";
   tr.innerHTML = `<td></td><td class="url-cell">${escapeHtml(url)}</td><td class="status-cell"><span class="status-badge status-pending"><span class="pending-dot"></span>${escapeHtml(method || "")} pending</span></td>`;
   return tr;
 }
@@ -261,7 +263,11 @@ async function renderTable() {
     let rawInfo = items[requestId];
     let statusAndRequestID = typeof rawInfo === "string" ? rawInfo.split("|") : null;
 
-    if (statusAndRequestID && isDetectedContentType(statusAndRequestID[2])) {
+    // Show every completed fetch/XHR request, not just JSON-ish ones: REST
+    // APIs often complete without a matching content-type (204 No Content on
+    // DELETE, vendor types like application/vnd.api+json, ...) and used to
+    // vanish here with no indication they'd been filtered out.
+    if (statusAndRequestID) {
       seenIds.add(requestId);
       requestCount++;
       upsertDataRow(requestId, url, statusAndRequestID, items, tbody);
@@ -718,9 +724,6 @@ async function displayAlert(typeAlert, msg, delayTime) {
 
 async function updateSwitchValue() {
   let switchPreserve = document.getElementById("preserve-log");
-  await chrome.storage.local.get([
-    "preserve_log_key"
-  ], async function (items) {
-    switchPreserve.checked = !!items.preserve_log_key;
-  });
+  let items = await chrome.storage.local.get([PRESERVE_LOG_KEY]);
+  switchPreserve.checked = !!items[PRESERVE_LOG_KEY];
 }

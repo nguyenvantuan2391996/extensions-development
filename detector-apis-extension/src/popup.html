@@ -22,11 +22,11 @@
 
     <div class="toolbar">
         <div class="toolbar-left">
-            <label class="switch">
+            <label class="switch" title="Keep the list across page reloads/navigations. Off by default, so navigating to a new page clears it — like DevTools' Preserve log.">
                 <input type="checkbox" id="preserve-log">
                 <span class="slider"></span>
             </label>
-            <span class="toolbar-label">Preserve log</span>
+            <span class="toolbar-label" title="Keep the list across page reloads/navigations. Off by default, so navigating to a new page clears it — like DevTools' Preserve log.">Preserve log</span>
 
             <span class="toolbar-divider"></span>
 
@@ -34,13 +34,13 @@
                 <input type="checkbox" id="all-tabs-toggle" checked>
                 <span class="slider"></span>
             </label>
-            <span class="toolbar-label">All tabs</span>
+            <span class="toolbar-label" title="Uncheck to show only the current tab's requests">All tabs</span>
         </div>
         <div class="toolbar-right">
             <span class="live-indicator" title="Watching for new requests in real time"><span class="live-dot"></span>Live</span>
-            <button type="button" class="export-btn" id="export-postman-btn" disabled>Export Postman</button>
-            <button type="button" class="copy-all-btn" id="copy-all-btn" disabled>Copy All Curl</button>
-            <span class="request-count" id="request-count">0 requests</span>
+            <button type="button" class="export-btn" id="export-postman-btn" disabled title="Export every request currently visible in the list below as a Postman collection (.json)">Export Postman</button>
+            <button type="button" class="copy-all-btn" id="copy-all-btn" disabled title="Copy a curl command for every request currently visible in the list below">Copy All Curl</button>
+            <span class="request-count" id="request-count" title="Completed requests · pending ones are still waiting for a response">0 requests</span>
         </div>
     </div>
 
@@ -53,9 +53,9 @@
         <table class="result-table" id="table-result-detector-apis">
             <thead>
             <tr>
-                <th class="col-curl">Curl</th>
-                <th class="col-url">URL</th>
-                <th class="col-status">Status</th>
+                <th class="col-curl" title="Copy this request as a curl command">Curl</th>
+                <th class="col-url" title="Click a row to see its full request/response headers and body">URL</th>
+                <th class="col-status" title="HTTP method and response status code">Status</th>
             </tr>
             </thead>
             <tbody>
@@ -93,6 +93,6 @@
 </body>
 </html>
 
-<script src="../js/popup.js"></script>
 <script src="../js/constants.js"></script>
 <script src="../js/utils.js"></script>
+<script src="../js/popup.js"></script>

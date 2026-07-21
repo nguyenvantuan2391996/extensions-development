@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.1.0 - 2026-07-21
+
+### Fixed
+- **REST API calls that didn't respond with a JSON-ish content-type were silently invisible.** The popup, the toolbar badge count, and response-body capture all used to require a response's `Content-Type` to match a narrow whitelist (JSON/form-urlencoded/GraphQL) before showing/counting/capturing a completed request — so `DELETE` calls returning `204 No Content` (no header at all), vendor content-types like `application/vnd.api+json`, `text/json`, etc. never appeared, with no indication anything had been filtered out. Every completed fetch/XHR request now shows up regardless of content-type.
+- **CORS preflight `OPTIONS` requests drowned out real API calls (and inflated the badge count).** Once the above fix stopped hiding rows, preflight requests — which `chrome.webRequest` reports with the same resource type as the real call they precede, and which the page itself never even sees the response to — started showing up too, usually outnumbering the actual GET/POST/etc. calls for any cross-origin API. `OPTIONS` requests are no longer tracked at all.
+- Exported curl commands only special-cased the `PUT` method (`--request PUT`); every other verb — `DELETE`, `PATCH`, `HEAD`, `OPTIONS` while it was still tracked, and `POST` with no request body — had no `--request` flag and silently ran as **GET** when the copied command was executed.
+- "Clear on navigate" (when Preserve log is off) only fired when the navigating tab happened to also be the currently *active* tab — a background tab's stale pre-navigation requests were never cleared, and would resurface mixed with its new requests once viewed.
+- A response-body FIFO desync introduced while fixing the content-type issue above (registering every completed request for body capture, while the page-side hook still only dispatches for responses with *some* content-type) could permanently misattribute a captured body to an earlier, unrelated same-url request. Fixed by keeping both sides' conditions in sync.
+- The "Preserve log" checkbox could briefly show its default state instead of the saved one when the popup opened, due to mixing `await` with the callback form of `chrome.storage.local.get`.
+- **Toolbar badge count could disagree with the popup's own request count.** The badge always counted requests across every tab, even when "All tabs" was switched off and the popup was showing just the active tab's subset. The badge also went stale (kept showing a too-high count) whenever old, already-counted requests were evicted to stay under the 150-tracked-request cap, since eviction never triggered a recount — only the next completed response did. The badge now respects the "All tabs" toggle exactly like the popup, and recalculates immediately after every eviction.
+
+### Added
+- Tooltips on the toolbar switches/buttons, table column headers, and each row explaining what they do (Preserve log, Export Postman, Copy All Curl, click-to-expand, pending rows).
+
+### Changed
+- `src/popup.html` now loads `js/constants.js` and `js/utils.js` before `js/popup.js` (previously reversed, which happened not to break anything but was fragile).
+
 ## 1.0.9 - 2026-07-18
 
 ### Added
