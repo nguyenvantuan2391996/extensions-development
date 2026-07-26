@@ -16,9 +16,12 @@ I will be super happy if you could help me endorse some skills or knowledge on m
 
 Generate strong, secure passwords in one click! This simple yet powerful extension lets you customize password length and character types (lowercase, uppercase, numbers, symbols, and more). Features include:
 
-- 💡 One-click password generation
-- 🧩 Custom character options
+- 💡 One-click password generation, with a fresh password generated automatically as soon as you open the popup
+- 🧩 Custom character options (lowercase, uppercase, numbers, symbols, and more)
+- 📊 Live strength meter (Weak / Medium / Strong) that updates as you tweak your options
+- 💾 Your chosen options are remembered across popup opens (synced via `chrome.storage.sync`)
 - 🚫 Option to exclude duplicate characters
+- ⚠️ Clear warning if you deselect every character type instead of generating an empty/invalid password
 - 📋 Copy password instantly with a single click
 
 ☕ Like the tool? Buy me a coffee 👉 [https://paypal.me/Newslette247](https://paypal.me/Newslette247)
