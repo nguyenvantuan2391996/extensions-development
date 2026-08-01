@@ -1,6 +1,6 @@
 {
   "name": "Chess Game Extension",
-  "description": "Play chess right in your browser: 2 players on the same device, or challenge a Minimax + Alpha-Beta AI. Progress and stats are saved automatically.",
+  "description": "Play chess in your browser: 2 players, or challenge a Minimax + Alpha-Beta AI. Progress and stats saved automatically.",
   "version": "1.0.0",
   "action": {
     "default_popup": "src/popup.html",
