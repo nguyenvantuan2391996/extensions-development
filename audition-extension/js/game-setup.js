@@ -88,7 +88,7 @@ function buildLocalSongCard(file) {
   titleEl.textContent = file.name.replace(/\.[^.]+$/, "");
   const artistEl = document.createElement("div");
   artistEl.className = "song-card__artist";
-  artistEl.textContent = "Từ máy tính";
+  artistEl.textContent = "From your computer";
   text.append(titleEl, artistEl);
 
   const badge = document.createElement("span");
@@ -103,11 +103,11 @@ function buildLocalSongCard(file) {
 function renderLocalFiles(files) {
   localGrid.innerHTML = "";
   if (files.length === 0) {
-    localFilesStatus.textContent = "Không có file nhạc nào được chọn";
+    localFilesStatus.textContent = "No music files selected";
     return;
   }
   files.forEach((file) => localGrid.appendChild(buildLocalSongCard(file)));
-  localFilesStatus.textContent = files.length + " file nhạc";
+  localFilesStatus.textContent = files.length + " music file(s)";
 }
 
 btnPickLocalFiles.addEventListener("click", () => localFilesInput.click());
@@ -118,7 +118,7 @@ localFilesInput.addEventListener("change", () => {
 
 btnLetsGo.addEventListener("click", () => {
   if (!selectedFile || !selectedDanceType) {
-    AlertError("Vui lòng chọn nhạc và kiểu nhảy");
+    AlertError("Please pick a song and a dance mode");
     return;
   }
   previewAudio.pause();

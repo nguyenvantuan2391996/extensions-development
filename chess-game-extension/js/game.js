@@ -40,11 +40,11 @@
     let aiThinking = false;
 
     function colorLabel(color) {
-        return color === WHITE ? "Trắng" : "Đen";
+        return color === WHITE ? "White" : "Black";
     }
 
     function modeLabel() {
-        return mode === "ai" ? "Đấu với máy" : "2 người";
+        return mode === "ai" ? "Vs. AI" : "2 players";
     }
 
     function toPixel(r, c) {
@@ -166,10 +166,10 @@
             const inCheck = isChessInCheck(board, turn);
             if (inCheck) {
                 const winner = opponentColor(turn);
-                showOverlay("Chiếu bí!", `${colorLabel(winner)} thắng.`, "Chơi lại");
+                showOverlay("Checkmate!", `${colorLabel(winner)} wins.`, "Restart");
                 if (mode === "ai") bumpStats(winner === humanColor ? "win" : "loss");
             } else {
-                showOverlay("Hết cờ (Stalemate)", "Không còn nước đi hợp lệ. Hòa cờ.", "Chơi lại");
+                showOverlay("Stalemate", "No legal moves left. It's a draw.", "Restart");
                 if (mode === "ai") bumpStats("draw");
             }
             clearState();

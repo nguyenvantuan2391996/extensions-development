@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,7 +9,7 @@
 <body>
 <div class="bg-glow"></div>
 
-<button type="button" class="back-link" id="btn-close">&larr; Đóng</button>
+<button type="button" class="back-link" id="btn-close">&larr; Close</button>
 
 <!-- ==================================================================== -->
 <!-- Setup view: pick a local song + a dance mode                          -->
@@ -23,7 +23,7 @@
             </a>
         </div>
         <h1 class="home-hero__title">AUDITION</h1>
-        <p class="home-hero__subtitle">Nơi cảm xúc thăng hoa</p>
+        <p class="home-hero__subtitle">Where emotions come alive</p>
     </div>
 
     <div class="guide-strip">
@@ -31,16 +31,16 @@
         <div class="guide-chip"><span class="guide-arrows">⬆ ⬇ ⬅ ➡</span><span>Up / Down / Left / Right</span></div>
         <div class="guide-chip"><span class="guide-arrows">↖ ↙ ↗ ↘</span><span>Diagonals</span></div>
         <div class="guide-chip"><kbd>Esc</kbd><span>Pause</span></div>
-        <div class="guide-chip"><span class="guide-arrows">📱</span><span>Trên điện thoại: dùng nút chạm trong game</span></div>
+        <div class="guide-chip"><span class="guide-arrows">📱</span><span>On mobile: use the on-screen buttons in-game</span></div>
     </div>
 
     <section class="select-section">
-        <h2 class="select-section__title">1. Chọn nhạc từ máy tính</h2>
-        <p class="song-search__status" style="margin-bottom: 0.6rem;">Extension không đi kèm bài hát nào - hãy chọn file nhạc (mp3, ogg, wav...) từ máy tính của bạn.</p>
+        <h2 class="select-section__title">1. Pick a song from your computer</h2>
+        <p class="song-search__status" style="margin-bottom: 0.6rem;">The extension doesn't ship with any songs - pick an audio file (mp3, ogg, wav...) from your own computer.</p>
 
         <div class="local-folder-group">
             <button type="button" id="btn-pick-local-files" class="local-folder-btn">
-                📂 Chọn file nhạc...
+                📂 Choose music file...
             </button>
             <input type="file" id="local-files-input" accept="audio/*" multiple hidden>
             <span id="local-files-status" class="song-search__status"></span>
@@ -50,24 +50,24 @@
     </section>
 
     <section class="select-section">
-        <h2 class="select-section__title">2. Chọn kiểu nhảy</h2>
+        <h2 class="select-section__title">2. Pick a dance mode</h2>
         <div class="card-grid dance-grid">
             <div class="dance-card" data-value="4k">
                 <i class="dance-card__icon">🎯</i>
                 <div class="dance-card__title">4K Dance</div>
-                <div class="dance-card__desc">4 phím cơ bản</div>
+                <div class="dance-card__desc">4 basic keys</div>
                 <div class="dance-card__best">Best: 0</div>
             </div>
             <div class="dance-card" data-value="8k">
                 <i class="dance-card__icon">🧭</i>
                 <div class="dance-card__title">8K Dance</div>
-                <div class="dance-card__desc">4 phím + chéo</div>
+                <div class="dance-card__desc">4 keys + diagonals</div>
                 <div class="dance-card__best">Best: 0</div>
             </div>
             <div class="dance-card" data-value="beat-up">
                 <i class="dance-card__icon">⚡</i>
                 <div class="dance-card__title">Beat-up Dance</div>
-                <div class="dance-card__desc">Bắt nhịp liên tục</div>
+                <div class="dance-card__desc">Continuous beat catching</div>
                 <div class="dance-card__best">Best: 0</div>
             </div>
         </div>
@@ -119,7 +119,7 @@
 
     <div id="4k-8k-dance">
         <div id="result">
-            <div id="pic" class="judgement-badge judgement-badge--ready">Sẵn sàng</div>
+            <div id="pic" class="judgement-badge judgement-badge--ready">Ready</div>
         </div>
         <div class="container" id="container">
             <div id="position-space"></div>
@@ -142,7 +142,7 @@
 
     <div id="beat-up-dance" hidden>
         <div id="result-beat-up">
-            <div id="pic-beat-up" class="judgement-badge judgement-badge--ready">Sẵn sàng</div>
+            <div id="pic-beat-up" class="judgement-badge judgement-badge--ready">Ready</div>
         </div>
 
         <div class="bars-beat-up">
@@ -186,24 +186,24 @@
 
     <div class="touch-controls" id="touch-controls">
         <div class="npad">
-            <button type="button" class="npad-btn npad-btn--7" data-code="Numpad7" data-modes="8k,beat-up" aria-label="Trái-Lên">↖</button>
-            <button type="button" class="npad-btn npad-btn--8" data-code="Numpad8" data-modes="4k,8k" aria-label="Lên">↑</button>
-            <button type="button" class="npad-btn npad-btn--9" data-code="Numpad9" data-modes="8k,beat-up" aria-label="Phải-Lên">↗</button>
-            <button type="button" class="npad-btn npad-btn--4" data-code="Numpad4" data-modes="4k,8k,beat-up" aria-label="Trái">←</button>
-            <button type="button" class="npad-btn npad-btn--5" data-code="Space" data-modes="4k,8k,beat-up" aria-label="Nhịp">●</button>
-            <button type="button" class="npad-btn npad-btn--6" data-code="Numpad6" data-modes="4k,8k,beat-up" aria-label="Phải">→</button>
-            <button type="button" class="npad-btn npad-btn--1" data-code="Numpad1" data-modes="8k,beat-up" aria-label="Trái-Xuống">↙</button>
-            <button type="button" class="npad-btn npad-btn--2" data-code="Numpad2" data-modes="4k,8k" aria-label="Xuống">↓</button>
-            <button type="button" class="npad-btn npad-btn--3" data-code="Numpad3" data-modes="8k,beat-up" aria-label="Phải-Xuống">↘</button>
+            <button type="button" class="npad-btn npad-btn--7" data-code="Numpad7" data-modes="8k,beat-up" aria-label="Left-Up">↖</button>
+            <button type="button" class="npad-btn npad-btn--8" data-code="Numpad8" data-modes="4k,8k" aria-label="Up">↑</button>
+            <button type="button" class="npad-btn npad-btn--9" data-code="Numpad9" data-modes="8k,beat-up" aria-label="Right-Up">↗</button>
+            <button type="button" class="npad-btn npad-btn--4" data-code="Numpad4" data-modes="4k,8k,beat-up" aria-label="Left">←</button>
+            <button type="button" class="npad-btn npad-btn--5" data-code="Space" data-modes="4k,8k,beat-up" aria-label="Beat">●</button>
+            <button type="button" class="npad-btn npad-btn--6" data-code="Numpad6" data-modes="4k,8k,beat-up" aria-label="Right">→</button>
+            <button type="button" class="npad-btn npad-btn--1" data-code="Numpad1" data-modes="8k,beat-up" aria-label="Left-Down">↙</button>
+            <button type="button" class="npad-btn npad-btn--2" data-code="Numpad2" data-modes="4k,8k" aria-label="Down">↓</button>
+            <button type="button" class="npad-btn npad-btn--3" data-code="Numpad3" data-modes="8k,beat-up" aria-label="Right-Down">↘</button>
         </div>
         <div class="touch-controls__side">
-            <button type="button" class="side-btn" id="touch-pause-btn" aria-label="Tạm dừng">⏸</button>
-            <button type="button" class="side-btn" data-code="NumpadDecimal" data-modes="4k,8k" aria-label="Đảo phím">⇄</button>
+            <button type="button" class="side-btn" id="touch-pause-btn" aria-label="Pause">⏸</button>
+            <button type="button" class="side-btn" data-code="NumpadDecimal" data-modes="4k,8k" aria-label="Swap keys">⇄</button>
         </div>
     </div>
 
     <a class="coffee-badge" id="play-coffee-badge" href="https://paypal.me/Newslette247" target="_blank" rel="noopener">
-        <span class="emoji">☕</span> Thích trò chơi? Mời tôi cà phê
+        <span class="emoji">☕</span> Enjoying the game? Buy me a coffee
     </a>
 </div>
 

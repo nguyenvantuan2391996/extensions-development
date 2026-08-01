@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Cờ Vua</title>
+    <title>Chess</title>
     <link rel="stylesheet" href="../css/popup.css">
 </head>
 <body>
@@ -14,39 +14,39 @@
                     <span class="emoji">☕</span> Buy me a coffee
                 </a>
             </div>
-            <h1 class="home-hero__title">CỜ VUA</h1>
-            <p class="home-hero__subtitle">2 người trên cùng máy, hoặc đấu với AI (Minimax + cắt tỉa Alpha-Beta)</p>
+            <h1 class="home-hero__title">CHESS</h1>
+            <p class="home-hero__subtitle">2 players on the same device, or challenge an AI (Minimax + Alpha-Beta pruning)</p>
         </div>
 
         <div class="resume-card" id="resume-card" hidden>
             <div class="resume-card__text">
-                <strong>Có ván đang chơi dở</strong>
+                <strong>You have a game in progress</strong>
                 <span id="resume-desc"></span>
             </div>
-            <button type="button" class="button button--ghost" id="btn-resume">Chơi tiếp</button>
+            <button type="button" class="button button--ghost" id="btn-resume">Resume</button>
         </div>
 
         <div class="mode-grid">
             <div class="mode-card mode-card--active" data-mode="human">
                 <i class="mode-card__icon">🧑‍🤝‍🧑</i>
-                <div class="mode-card__title">2 người</div>
-                <div class="mode-card__desc">Thay phiên đánh trên cùng một máy</div>
+                <div class="mode-card__title">2 players</div>
+                <div class="mode-card__desc">Take turns on the same device</div>
             </div>
             <div class="mode-card" data-mode="ai">
                 <i class="mode-card__icon">🤖</i>
-                <div class="mode-card__title">Đấu với máy</div>
-                <div class="mode-card__desc">Bạn cầm Trắng, AI cầm Đen</div>
+                <div class="mode-card__title">Vs. AI</div>
+                <div class="mode-card__desc">You play White, AI plays Black</div>
             </div>
         </div>
 
-        <button type="button" class="button" id="btn-play">Bắt đầu ván mới</button>
+        <button type="button" class="button" id="btn-play">Start new game</button>
 
         <div class="stats-bar">
-            <div class="stats-chip"><span class="stats-chip__num" id="stat-win">0</span>Thắng</div>
-            <div class="stats-chip"><span class="stats-chip__num" id="stat-loss">0</span>Thua</div>
-            <div class="stats-chip"><span class="stats-chip__num" id="stat-draw">0</span>Hòa</div>
+            <div class="stats-chip"><span class="stats-chip__num" id="stat-win">0</span>Wins</div>
+            <div class="stats-chip"><span class="stats-chip__num" id="stat-loss">0</span>Losses</div>
+            <div class="stats-chip"><span class="stats-chip__num" id="stat-draw">0</span>Draws</div>
         </div>
-        <div class="stats-hint">(Thống kê tính cho các ván đấu với máy)</div>
+        <div class="stats-hint">(Stats counted for games against the AI)</div>
 
         <footer class="app-footer">
             <div class="footer-meta">

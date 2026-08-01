@@ -32,7 +32,7 @@ let isPaused = false;
 let isCountingDown = true;
 const gameLoopControl = { start: null, stop: null };
 
-// The currently picked local file + dance type, kept around so "Chơi lại"
+// The currently picked local file + dance type, kept around so "Play again"
 // can restart the exact same run without going back through setup.
 let currentFile = null;
 let currentTypeDance = null;

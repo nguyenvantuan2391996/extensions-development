@@ -32,9 +32,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const state = result.chessGameState;
         if (state && state.gameActive) {
             resumeCard.hidden = false;
-            const modeLabel = state.mode === "ai" ? "Đấu với máy" : "2 người";
-            const turnLabel = state.turn === "white" ? "Trắng" : "Đen";
-            resumeDesc.textContent = `${modeLabel} · Lượt: ${turnLabel}`;
+            const modeLabel = state.mode === "ai" ? "Vs. AI" : "2 players";
+            const turnLabel = state.turn === "white" ? "White" : "Black";
+            resumeDesc.textContent = `${modeLabel} · Turn: ${turnLabel}`;
         }
 
         const stats = result.chessStats || { win: 0, loss: 0, draw: 0 };
