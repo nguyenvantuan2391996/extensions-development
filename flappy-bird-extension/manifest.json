@@ -1,7 +1,7 @@
 {
   "name": "Flappy Bird Extension",
   "description": "Play Flappy Bird in your browser: tap/Space to fly, or watch a Q-learning AI teach itself to play. Best score saved automatically.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "action": {
     "default_popup": "src/popup.html",
     "default_icon": {
