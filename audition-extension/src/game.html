@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audition</title>
+    <link rel="stylesheet" href="../css/game.css">
+</head>
+<body>
+<div class="bg-glow"></div>
+
+<button type="button" class="back-link" id="btn-close">&larr; Đóng</button>
+
+<!-- ==================================================================== -->
+<!-- Setup view: pick a local song + a dance mode                          -->
+<!-- ==================================================================== -->
+<div id="setup-view">
+    <div class="home-hero">
+        <div class="home-hero__top">
+            <span class="home-hero__eyebrow">Rhythm dance game</span>
+            <a class="coffee-badge" href="https://paypal.me/Newslette247" target="_blank" rel="noopener">
+                <span class="emoji">☕</span> Buy me a coffee
+            </a>
+        </div>
+        <h1 class="home-hero__title">AUDITION</h1>
+        <p class="home-hero__subtitle">Nơi cảm xúc thăng hoa</p>
+    </div>
+
+    <div class="guide-strip">
+        <div class="guide-chip"><kbd>Del</kbd><span>Reverse mode</span></div>
+        <div class="guide-chip"><span class="guide-arrows">⬆ ⬇ ⬅ ➡</span><span>Up / Down / Left / Right</span></div>
+        <div class="guide-chip"><span class="guide-arrows">↖ ↙ ↗ ↘</span><span>Diagonals</span></div>
+        <div class="guide-chip"><kbd>Esc</kbd><span>Pause</span></div>
+        <div class="guide-chip"><span class="guide-arrows">📱</span><span>Trên điện thoại: dùng nút chạm trong game</span></div>
+    </div>
+
+    <section class="select-section">
+        <h2 class="select-section__title">1. Chọn nhạc từ máy tính</h2>
+        <p class="song-search__status" style="margin-bottom: 0.6rem;">Extension không đi kèm bài hát nào - hãy chọn file nhạc (mp3, ogg, wav...) từ máy tính của bạn.</p>
+
+        <div class="local-folder-group">
+            <button type="button" id="btn-pick-local-files" class="local-folder-btn">
+                📂 Chọn file nhạc...
+            </button>
+            <input type="file" id="local-files-input" accept="audio/*" multiple hidden>
+            <span id="local-files-status" class="song-search__status"></span>
+        </div>
+
+        <div class="card-grid song-grid" id="song-grid-local"></div>
+    </section>
+
+    <section class="select-section">
+        <h2 class="select-section__title">2. Chọn kiểu nhảy</h2>
+        <div class="card-grid dance-grid">
+            <div class="dance-card" data-value="4k">
+                <i class="dance-card__icon">🎯</i>
+                <div class="dance-card__title">4K Dance</div>
+                <div class="dance-card__desc">4 phím cơ bản</div>
+                <div class="dance-card__best">Best: 0</div>
+            </div>
+            <div class="dance-card" data-value="8k">
+                <i class="dance-card__icon">🧭</i>
+                <div class="dance-card__title">8K Dance</div>
+                <div class="dance-card__desc">4 phím + chéo</div>
+                <div class="dance-card__best">Best: 0</div>
+            </div>
+            <div class="dance-card" data-value="beat-up">
+                <i class="dance-card__icon">⚡</i>
+                <div class="dance-card__title">Beat-up Dance</div>
+                <div class="dance-card__desc">Bắt nhịp liên tục</div>
+                <div class="dance-card__best">Best: 0</div>
+            </div>
+        </div>
+    </section>
+
+    <button type="button" class="button" id="btn-lets-go">▶ Let's go!</button>
+</div>
+
+<!-- ==================================================================== -->
+<!-- Play view                                                             -->
+<!-- ==================================================================== -->
+<div id="play-view" hidden>
+    <div class="hud-bar">
+        <div class="hud-item">
+            <span class="hud-label">Score</span>
+            <span id="score" class="hud-value score">0</span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">Combo</span>
+            <span id="combo" class="hud-value combo"></span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">Perfect Streak</span>
+            <span id="perfect-streak" class="hud-value perfect-streak"></span>
+        </div>
+        <div class="hud-item">
+            <span class="hud-label">Best</span>
+            <span id="best-score" class="hud-value best">0</span>
+        </div>
+        <div id="count-reverse" class="hud-item hud-item--reverse">
+            <p id="reverse" class="reverse"></p>
+        </div>
+    </div>
+
+    <div id="countdown-overlay" class="overlay" hidden>
+        <div class="overlay__inner">
+            <div class="countdown-ready-badge">🎵</div>
+            <p id="countdown-text" class="countdown-text"></p>
+        </div>
+    </div>
+
+    <div id="pause-overlay" class="overlay" hidden>
+        <div class="overlay__inner">
+            <p class="pause-title">Paused</p>
+            <button type="button" class="overlay-btn" id="btn-pause-resume">Resume</button>
+            <button type="button" class="overlay-btn overlay-btn--ghost" id="btn-pause-quit">Quit</button>
+        </div>
+    </div>
+
+    <div id="4k-8k-dance">
+        <div id="result">
+            <div id="pic" class="judgement-badge judgement-badge--ready">Sẵn sàng</div>
+        </div>
+        <div class="container" id="container">
+            <div id="position-space"></div>
+            <div class="box" id="box"></div>
+        </div>
+        <div id="list-key" class="margin-css">
+            <div class="key-slot key-slot--empty" id="1"></div>
+            <div class="key-slot key-slot--empty" id="2"></div>
+            <div class="key-slot key-slot--empty" id="3"></div>
+            <div class="key-slot key-slot--empty" id="4"></div>
+            <div class="key-slot key-slot--empty" id="5"></div>
+            <div class="key-slot key-slot--empty" id="6"></div>
+            <div class="key-slot key-slot--empty" id="7"></div>
+            <div class="key-slot key-slot--empty" id="8"></div>
+            <div class="key-slot key-slot--empty" id="9"></div>
+            <div class="key-slot key-slot--empty" id="10"></div>
+            <div class="key-slot key-slot--empty" id="11"></div>
+        </div>
+    </div>
+
+    <div id="beat-up-dance" hidden>
+        <div id="result-beat-up">
+            <div id="pic-beat-up" class="judgement-badge judgement-badge--ready">Sẵn sàng</div>
+        </div>
+
+        <div class="bars-beat-up">
+            <div class="layout">
+                <p class="col col-main">
+                    <span id="left-up-beat-up" class="beat-up-glyph" style="width: 80px; height: 80px; margin: -25px; font-size: 2.4rem;">↖</span>
+                    <div class="position-space-beat-up" style="margin-left: 460px; height: 62px; opacity: 40%"></div>
+                <p class="col col-complementary" role="complementary">
+                    <span id="right-up-beat-up" class="beat-up-glyph" style="width: 80px; height: 80px; margin: -25px -25px -25px 450px; font-size: 2.4rem;">↗</span>
+                    <div class="position-space-beat-up" style="margin-left: 640px; height: 62px; opacity: 40%"></div>
+            </div>
+        </div>
+
+        <div class="bars-beat-up">
+            <div class="layout">
+                <p class="col col-main">
+                    <span id="left-beat-up" class="beat-up-glyph" style="width: 50px; height: 50px; margin: -10px; font-size: 1.6rem;">←</span>
+                    <div class="position-space-beat-up" style="margin-left: 460px; height: 62px; opacity: 40%"></div>
+                <p class="col col-complementary" role="complementary">
+                    <span id="right-beat-up" class="beat-up-glyph" style="width: 50px; height: 50px; margin: -8px -25px -25px 470px; font-size: 1.6rem;">→</span>
+                    <div class="position-space-beat-up" style="margin-left: 640px; height: 62px; opacity: 40%"></div>
+            </div>
+        </div>
+
+        <div class="bars-beat-up">
+            <div class="layout">
+                <p class="col col-main">
+                    <span id="left-down-beat-up" class="beat-up-glyph" style="width: 80px; height: 80px; margin: -25px; font-size: 2.4rem;">↙</span>
+                    <div class="position-space-beat-up" style="margin-left: 460px; height: 62px; opacity: 40%"></div>
+                <p class="col col-complementary" role="complementary">
+                    <span id="right-down-beat-up" class="beat-up-glyph" style="width: 80px; height: 80px; margin: -25px -25px -25px 450px; font-size: 2.4rem;">↘</span>
+                    <div class="position-space-beat-up" style="margin-left: 640px; height: 62px; opacity: 40%"></div>
+            </div>
+        </div>
+
+        <div class="container-beat-up">
+            <div class="position-space-beat-up" id="position-space-beat-up"></div>
+            <div class="box" id="box-beat-up"></div>
+        </div>
+    </div>
+
+    <div class="touch-controls" id="touch-controls">
+        <div class="npad">
+            <button type="button" class="npad-btn npad-btn--7" data-code="Numpad7" data-modes="8k,beat-up" aria-label="Trái-Lên">↖</button>
+            <button type="button" class="npad-btn npad-btn--8" data-code="Numpad8" data-modes="4k,8k" aria-label="Lên">↑</button>
+            <button type="button" class="npad-btn npad-btn--9" data-code="Numpad9" data-modes="8k,beat-up" aria-label="Phải-Lên">↗</button>
+            <button type="button" class="npad-btn npad-btn--4" data-code="Numpad4" data-modes="4k,8k,beat-up" aria-label="Trái">←</button>
+            <button type="button" class="npad-btn npad-btn--5" data-code="Space" data-modes="4k,8k,beat-up" aria-label="Nhịp">●</button>
+            <button type="button" class="npad-btn npad-btn--6" data-code="Numpad6" data-modes="4k,8k,beat-up" aria-label="Phải">→</button>
+            <button type="button" class="npad-btn npad-btn--1" data-code="Numpad1" data-modes="8k,beat-up" aria-label="Trái-Xuống">↙</button>
+            <button type="button" class="npad-btn npad-btn--2" data-code="Numpad2" data-modes="4k,8k" aria-label="Xuống">↓</button>
+            <button type="button" class="npad-btn npad-btn--3" data-code="Numpad3" data-modes="8k,beat-up" aria-label="Phải-Xuống">↘</button>
+        </div>
+        <div class="touch-controls__side">
+            <button type="button" class="side-btn" id="touch-pause-btn" aria-label="Tạm dừng">⏸</button>
+            <button type="button" class="side-btn" data-code="NumpadDecimal" data-modes="4k,8k" aria-label="Đảo phím">⇄</button>
+        </div>
+    </div>
+
+    <a class="coffee-badge" id="play-coffee-badge" href="https://paypal.me/Newslette247" target="_blank" rel="noopener">
+        <span class="emoji">☕</span> Thích trò chơi? Mời tôi cà phê
+    </a>
+</div>
+
+<div class="mini-contact">
+    <a class="mini-contact__link" href="mailto:nguyenvantuan2391996@gmail.com" aria-label="Email" title="Email">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M2 4h20v16H2V4zm2 2.24V6l8 5.99L20 6v.24l-8 6-8-6zM20 18V8.51l-8 6-8-6V18h16z"/></svg>
+    </a>
+    <a class="mini-contact__link" href="https://www.linkedin.com/in/tuan-nguyen-van-555315156" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.85 0-2.14 1.45-2.14 2.94v5.66H9.5V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45z"/></svg>
+    </a>
+    <a class="mini-contact__link" href="https://www.facebook.com/tuanelnino9/" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z"/></svg>
+    </a>
+</div>
+
+<script src="../js/constants.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/game-setup.js"></script>
+<script src="../js/game-4k-8k.js"></script>
+<script src="../js/game-beat-up.js"></script>
+</body>
+</html>

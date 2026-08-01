@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Cờ Vua</title>
+    <link rel="stylesheet" href="../css/popup.css">
+</head>
+<body>
+    <div class="home-shell">
+        <div class="home-hero">
+            <div class="home-hero__top">
+                <span class="home-hero__eyebrow">Board game</span>
+                <a class="coffee-badge" href="https://paypal.me/Newslette247" target="_blank" rel="noopener">
+                    <span class="emoji">☕</span> Buy me a coffee
+                </a>
+            </div>
+            <h1 class="home-hero__title">CỜ VUA</h1>
+            <p class="home-hero__subtitle">2 người trên cùng máy, hoặc đấu với AI (Minimax + cắt tỉa Alpha-Beta)</p>
+        </div>
+
+        <div class="resume-card" id="resume-card" hidden>
+            <div class="resume-card__text">
+                <strong>Có ván đang chơi dở</strong>
+                <span id="resume-desc"></span>
+            </div>
+            <button type="button" class="button button--ghost" id="btn-resume">Chơi tiếp</button>
+        </div>
+
+        <div class="mode-grid">
+            <div class="mode-card mode-card--active" data-mode="human">
+                <i class="mode-card__icon">🧑‍🤝‍🧑</i>
+                <div class="mode-card__title">2 người</div>
+                <div class="mode-card__desc">Thay phiên đánh trên cùng một máy</div>
+            </div>
+            <div class="mode-card" data-mode="ai">
+                <i class="mode-card__icon">🤖</i>
+                <div class="mode-card__title">Đấu với máy</div>
+                <div class="mode-card__desc">Bạn cầm Trắng, AI cầm Đen</div>
+            </div>
+        </div>
+
+        <button type="button" class="button" id="btn-play">Bắt đầu ván mới</button>
+
+        <div class="stats-bar">
+            <div class="stats-chip"><span class="stats-chip__num" id="stat-win">0</span>Thắng</div>
+            <div class="stats-chip"><span class="stats-chip__num" id="stat-loss">0</span>Thua</div>
+            <div class="stats-chip"><span class="stats-chip__num" id="stat-draw">0</span>Hòa</div>
+        </div>
+        <div class="stats-hint">(Thống kê tính cho các ván đấu với máy)</div>
+
+        <footer class="app-footer">
+            <div class="footer-meta">
+                <span>© 2026 Chess Game Extension</span>
+                <span class="footer-dot">&middot;</span>
+                <a class="footer-email-link" href="mailto:nguyenvantuan2391996@gmail.com">nguyenvantuan2391996@gmail.com</a>
+            </div>
+            <div class="footer-socials">
+                <a class="footer-social-link" href="mailto:nguyenvantuan2391996@gmail.com" aria-label="Email" title="Email">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M2 4h20v16H2V4zm2 2.24V6l8 5.99L20 6v.24l-8 6-8-6zM20 18V8.51l-8 6-8-6V18h16z"/></svg>
+                </a>
+                <a class="footer-social-link" href="https://www.linkedin.com/in/tuan-nguyen-van-555315156" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.85 0-2.14 1.45-2.14 2.94v5.66H9.5V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45z"/></svg>
+                </a>
+                <a class="footer-social-link" href="https://www.facebook.com/tuanelnino9/" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z"/></svg>
+                </a>
+            </div>
+        </footer>
+    </div>
+
+    <script src="../js/popup.js"></script>
+</body>
+</html>

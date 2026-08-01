@@ -1,0 +1,22 @@
+{
+  "name": "Flappy Bird Extension",
+  "description": "Play Flappy Bird right in your browser: tap or hit Space to flap through the pipes, or watch a Q-learning AI teach itself to play. Best score is saved automatically.",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "images/icon16.png",
+      "32": "images/icon32.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "32": "images/icon32.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "permissions": [],
+  "manifest_version": 3
+}

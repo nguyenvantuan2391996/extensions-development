@@ -1,0 +1,22 @@
+{
+  "name": "Audition Dance Extension",
+  "description": "The extension supports playing an Audition-style rhythm dance game right from your toolbar - 4K, 8K, and Beat-up modes, using only music you pick from your own computer.",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "images/icon16.png",
+      "32": "images/icon32.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "32": "images/icon32.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "permissions": [],
+  "manifest_version": 3
+}
