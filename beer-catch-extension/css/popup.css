@@ -1,0 +1,199 @@
+:root {
+    --bg-deep: #0b0a1f;
+    --accent-a: #ff3d9a;
+    --accent-b: #7c5cff;
+    --accent-c: #ffcf4d;
+    --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b) 55%, var(--accent-c));
+    --text-main: #f5f4fb;
+    --text-dim: rgba(245, 244, 251, 0.65);
+    --card-bg: rgba(255, 255, 255, 0.06);
+    --card-border: rgba(255, 255, 255, 0.14);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    width: 300px;
+    background: var(--bg-deep);
+    background-image:
+        radial-gradient(20rem 16rem at 10% 0%, rgba(255, 61, 154, 0.25), transparent 60%),
+        radial-gradient(16rem 14rem at 100% 0%, rgba(124, 92, 255, 0.22), transparent 60%);
+    color: var(--text-main);
+    margin: 0;
+    font-family: 'Poppins', 'Segoe UI', sans-serif;
+}
+
+.home-shell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.25rem 1rem 1.5rem;
+}
+
+.home-hero {
+    width: 100%;
+}
+
+.home-hero__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.home-hero__eyebrow {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.coffee-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: linear-gradient(135deg, #ffd28f, #ffab40);
+    color: #6b3d00;
+    font-size: 0.66rem;
+    font-weight: 700;
+    padding: 0.32rem 0.6rem;
+    border-radius: 980px;
+    text-decoration: none;
+    box-shadow: 0 3px 10px rgba(255, 171, 64, 0.45);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    white-space: nowrap;
+}
+
+.coffee-badge:hover {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 5px 14px rgba(255, 171, 64, 0.55);
+}
+
+.coffee-badge:active {
+    transform: scale(0.96);
+}
+
+.home-hero__title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin: 0 0 0.4rem;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: 0.03em;
+}
+
+.home-hero__subtitle {
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    line-height: 1.4;
+    margin: 0 0 1rem;
+}
+
+.best-score {
+    width: 100%;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 0.85rem;
+    padding: 0.55rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+#best-score-value {
+    color: var(--accent-c);
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    background: var(--accent-gradient);
+    color: #1a1330;
+    text-decoration: none;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 0.65rem 1rem;
+    border: none;
+    border-radius: 0.8rem;
+    cursor: pointer;
+    box-shadow: 0 16px 30px -15px rgba(255, 61, 154, 0.5);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button:hover {
+    transform: translateY(-2px);
+}
+
+.app-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem 0.6rem;
+    width: 100%;
+    padding-top: 0.7rem;
+    margin-top: 0.9rem;
+    border-top: 1px solid var(--card-border);
+    font-size: 0.62rem;
+    color: var(--text-dim);
+}
+
+.footer-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.footer-dot {
+    opacity: 0.5;
+}
+
+.footer-email-link {
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.footer-email-link:hover {
+    color: var(--accent-c);
+    text-decoration: underline;
+}
+
+.footer-socials {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    flex-shrink: 0;
+}
+
+.footer-social-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    color: var(--text-dim);
+    background: transparent;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.footer-social-link:hover {
+    color: var(--accent-c);
+    background: rgba(255, 207, 77, 0.14);
+    transform: translateY(-1px);
+}
