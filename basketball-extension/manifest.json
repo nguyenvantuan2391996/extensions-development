@@ -1,0 +1,22 @@
+{
+  "name": "Basketball Extension",
+  "description": "Play Basketball in your browser: drag to aim and shoot, land a clean swish for bonus points before the 40-second timer runs out.",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "images/icon16.png",
+      "32": "images/icon32.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "32": "images/icon32.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "permissions": [],
+  "manifest_version": 3
+}
