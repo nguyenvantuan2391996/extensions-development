@@ -38,6 +38,7 @@
         </div>
         <div class="toolbar-right">
             <span class="live-indicator" title="Watching for new requests in real time"><span class="live-dot"></span>Live</span>
+            <button type="button" class="export-btn clear-btn" id="clear-btn" disabled title="Clear all captured requests">Clear</button>
             <button type="button" class="export-btn" id="export-postman-btn" disabled title="Export every request currently visible in the list below as a Postman collection (.json)">Export Postman</button>
             <button type="button" class="copy-all-btn" id="copy-all-btn" disabled title="Copy a curl command for every request currently visible in the list below">Copy All Curl</button>
             <span class="request-count" id="request-count" title="Completed requests · pending ones are still waiting for a response">0 requests</span>
@@ -47,6 +48,24 @@
     <div class="search-bar">
         <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         <input type="text" id="search-input" class="search-input" placeholder="Search by URL..." aria-label="Search by URL">
+        <select id="method-filter" class="filter-select" aria-label="Filter by method" title="Filter by HTTP method">
+            <option value="">All Methods</option>
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="PATCH">PATCH</option>
+            <option value="DELETE">DELETE</option>
+            <option value="HEAD">HEAD</option>
+        </select>
+        <select id="status-filter" class="filter-select" aria-label="Filter by status" title="Filter by response status">
+            <option value="">All Status</option>
+            <option value="2xx">2xx</option>
+            <option value="3xx">3xx</option>
+            <option value="4xx">4xx</option>
+            <option value="5xx">5xx</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+        </select>
     </div>
 
     <div class="table-wrap" id="table-wrap">

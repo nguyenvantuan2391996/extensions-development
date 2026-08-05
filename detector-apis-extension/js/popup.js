@@ -84,12 +84,17 @@ function insertDataRow(tr, tbody) {
   }
 }
 
-function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow) {
+function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, isSynthetic) {
   let tr = document.createElement("tr");
   tr.className = isNewRow ? "data-row row-new" : "data-row";
   tr.dataset.requestId = requestId;
+  tr.dataset.method = statusCode.split(" ")[1] || "";
+  tr.dataset.statusBucket = statusBucketFor(statusCode);
   tr.title = "Click to see headers and body";
-  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}" title="Copy this request as a curl command">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td>`;
+  let syntheticTag = isSynthetic
+    ? `<span class="synthetic-tag" title="Captured from the page's own JS — this call never reached the network directly (likely served from cache), so headers aren't available">cached</span>`
+    : "";
+  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}" title="Copy this request as a curl command">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}${syntheticTag}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td>`;
   return tr;
 }
 
@@ -97,9 +102,28 @@ function buildPendingRowElement(requestId, url, method) {
   let tr = document.createElement("tr");
   tr.className = "pending-row";
   tr.dataset.requestId = requestId;
+  tr.dataset.method = method || "";
+  tr.dataset.statusBucket = "pending";
   tr.title = "Waiting for a response — curl/headers/body aren't available until it completes";
   tr.innerHTML = `<td></td><td class="url-cell">${escapeHtml(url)}</td><td class="status-cell"><span class="status-badge status-pending"><span class="pending-dot"></span>${escapeHtml(method || "")} pending</span></td>`;
   return tr;
+}
+
+// "Failed"/"Canceled" (see networkErrorLabel in background.js) come through
+// as the leading token in place of a numeric code, same as a real status —
+// Number("Failed") is NaN, so it's checked for explicitly rather than
+// falling through to the numeric range checks.
+function statusBucketFor(statusCode) {
+  let firstToken = statusCode.split(" ")[0];
+  if (firstToken === "Failed" || firstToken === "Canceled") {
+    return "failed";
+  }
+  let code = Number(firstToken);
+  if (code >= 200 && code < 300) return "2xx";
+  if (code >= 300 && code < 400) return "3xx";
+  if (code >= 400 && code < 500) return "4xx";
+  if (code >= 500 && code < 600) return "5xx";
+  return "other";
 }
 
 function badgeClassForStatus(statusCode) {
@@ -113,8 +137,14 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
   let buttonID = requestId + "-curl-detector-apis";
   let statusCode = statusAndRequestID[0];
   let badgeClass = badgeClassForStatus(statusCode);
+  let isSynthetic = !!items[requestId + "-synthetic"];
 
-  let fullCurlCommand = items[buttonID] || "";
+  // Synthetic (cache-hit) rows never went through background.js's
+  // onBeforeSendHeaders, so there's no stored curl base to build on — fall
+  // back to a headers-less one from url/method alone rather than leaving
+  // Copy silently produce an empty command.
+  let fullCurlCommand =
+    items[buttonID] || buildCurlCommandBase(statusCode.split(" ")[1] || "GET", url);
   if (items[requestId + "-raw-data"]) {
     fullCurlCommand += " " + items[requestId + "-raw-data"];
   }
@@ -127,6 +157,7 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
     responseHeaders: parseHeadersJSON(items[requestId + "-response-headers"]),
     requestBody: items[requestId + "-request-body"] || "",
     responseBody: items[requestId + "-response-body"] || "",
+    networkError: statusAndRequestID[3] || "",
   };
 
   let entry = rowsByRequestId.get(requestId);
@@ -140,7 +171,7 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
 
   if (!entry) {
     let isNewRow = !isFirstRender;
-    let tr = buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow);
+    let tr = buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, isSynthetic);
     insertDataRow(tr, tbody);
     entry = { tr: tr, kind: "data", buttonID: buttonID, status: statusCode, detailTr: null };
     rowsByRequestId.set(requestId, entry);
@@ -155,6 +186,7 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
 
   if (entry.status !== statusCode) {
     entry.status = statusCode;
+    entry.tr.dataset.statusBucket = statusBucketFor(statusCode);
     let badge = entry.tr.querySelector(".status-cell .status-badge");
     badge.className = badgeClass;
     badge.textContent = statusCode;
@@ -198,7 +230,8 @@ function clearTable() {
   document.getElementById("request-count").textContent = "0 requests";
   document.getElementById("copy-all-btn").disabled = true;
   document.getElementById("export-postman-btn").disabled = true;
-  applySearchFilter();
+  document.getElementById("clear-btn").disabled = true;
+  applyFilters();
 }
 
 function refreshExpandedDetail(entry) {
@@ -237,7 +270,8 @@ async function renderTable() {
       requestId + "-response-headers",
       requestId + "-request-body",
       requestId + "-response-body",
-      requestId + "-pending"
+      requestId + "-pending",
+      requestId + "-synthetic"
     );
   }
   let items = await chrome.storage.local.get(keys);
@@ -299,6 +333,7 @@ async function renderTable() {
     (pendingCount > 0 ? ` · ${pendingCount} pending` : "");
   document.getElementById("copy-all-btn").disabled = requestCount === 0;
   document.getElementById("export-postman-btn").disabled = requestCount === 0;
+  document.getElementById("clear-btn").disabled = requestCount === 0;
 
   if (expandedRequestId) {
     let entry = rowsByRequestId.get(expandedRequestId);
@@ -307,7 +342,7 @@ async function renderTable() {
     }
   }
 
-  applySearchFilter();
+  applyFilters();
 }
 
 function toggleDetailRow(tr) {
@@ -433,6 +468,7 @@ function buildDetailRow(buttonID) {
       <div class="detail-section">
         <div class="detail-section-title">Request</div>
         <div class="detail-meta">${escapeHtml(info.method || "")} &middot; ${escapeHtml(info.status || "")}</div>
+        ${info.networkError ? `<div class="detail-subtitle">Network Error</div><div class="detail-meta detail-error">${escapeHtml(info.networkError)}</div>` : ""}
         <div class="detail-subtitle">Request Headers</div>
         ${renderHeadersTable(info.requestHeaders)}
       </div>
@@ -499,6 +535,17 @@ async function copyAllCurl() {
 document.getElementById("copy-all-btn").addEventListener("click", async function () {
   try {
     await copyAllCurl();
+  } catch (e) {
+    console.log(e);
+  }
+});
+
+// No local state mutation needed: chrome.storage.onChanged (registered on
+// load) already triggers scheduleRender() once background.js finishes
+// removing the keys, which naturally empties the table.
+document.getElementById("clear-btn").addEventListener("click", async function () {
+  try {
+    await chrome.runtime.sendMessage({ type: "DETECTOR_APIS_CLEAR_ALL" });
   } catch (e) {
     console.log(e);
   }
@@ -642,19 +689,32 @@ document.getElementById("export-postman-btn").addEventListener("click", async fu
   }
 });
 
-function applySearchFilter() {
+// Method/status filters read the dataset attributes buildDataRowElement /
+// buildPendingRowElement / upsertDataRow set on each <tr> (statusBucketFor)
+// instead of re-deriving them from cell text, so this stays a plain
+// per-row AND of three independent conditions.
+function rowMatchesFilters(row, searchTermLower, methodFilter, statusFilter) {
+  let matchesSearch = row
+    .querySelector(".url-cell")
+    .textContent.toLowerCase()
+    .includes(searchTermLower);
+  let matchesMethod = !methodFilter || row.dataset.method === methodFilter;
+  let matchesStatus = !statusFilter || row.dataset.statusBucket === statusFilter;
+  return matchesSearch && matchesMethod && matchesStatus;
+}
+
+function applyFilters() {
   let searchTerm = document.getElementById("search-input").value.trim();
   let searchTermLower = searchTerm.toLowerCase();
+  let methodFilter = document.getElementById("method-filter").value;
+  let statusFilter = document.getElementById("status-filter").value;
   let rows = document.querySelectorAll(
     "#table-result-detector-apis>tbody tr.data-row"
   );
 
   let matchCount = 0;
   for (const row of rows) {
-    let isMatch = row
-      .querySelector(".url-cell")
-      .textContent.toLowerCase()
-      .includes(searchTermLower);
+    let isMatch = rowMatchesFilters(row, searchTermLower, methodFilter, statusFilter);
     row.style.display = isMatch ? "" : "none";
     if (isMatch) {
       matchCount++;
@@ -669,10 +729,7 @@ function applySearchFilter() {
   );
   let visiblePendingCount = 0;
   for (const row of pendingRows) {
-    let isMatch = row
-      .querySelector(".url-cell")
-      .textContent.toLowerCase()
-      .includes(searchTermLower);
+    let isMatch = rowMatchesFilters(row, searchTermLower, methodFilter, statusFilter);
     row.style.display = isMatch ? "" : "none";
     if (isMatch) {
       visiblePendingCount++;
@@ -690,13 +747,17 @@ function applySearchFilter() {
   } else if (matchCount === 0 && visiblePendingCount === 0) {
     tableWrap.classList.add("is-empty");
     emptyStateIcon.textContent = "🔍";
-    emptyStateText.textContent = `No requests match "${searchTerm}".`;
+    emptyStateText.textContent = searchTerm
+      ? `No requests match "${searchTerm}".`
+      : "No requests match the selected filters.";
   } else {
     tableWrap.classList.remove("is-empty");
   }
 }
 
-document.getElementById("search-input").addEventListener("input", applySearchFilter);
+document.getElementById("search-input").addEventListener("input", applyFilters);
+document.getElementById("method-filter").addEventListener("change", applyFilters);
+document.getElementById("status-filter").addEventListener("change", applyFilters);
 
 document.getElementById("preserve-log").addEventListener("change", async function (e) {
   if (e.target.checked) {

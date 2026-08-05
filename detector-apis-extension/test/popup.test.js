@@ -86,3 +86,26 @@ test("buildPostmanRequestBody: no body returns undefined", () => {
     undefined
   );
 });
+
+test("statusBucketFor buckets numeric codes, and reads Failed/Canceled as their own bucket instead of falling through to NaN ranges", () => {
+  assert.equal(g.statusBucketFor("200 GET"), "2xx");
+  assert.equal(g.statusBucketFor("301 GET"), "3xx");
+  assert.equal(g.statusBucketFor("404 GET"), "4xx");
+  assert.equal(g.statusBucketFor("500 POST"), "5xx");
+  assert.equal(g.statusBucketFor("Failed GET"), "failed");
+  assert.equal(g.statusBucketFor("Canceled POST"), "failed");
+});
+
+// buildCurlCommandBase moved from background.js to utils.js in 1.1.1 so
+// popup.js could reuse it for synthetic (cache-hit) rows' curl fallback —
+// confirm it's still reachable from the popup sandbox after the move.
+test("buildCurlCommandBase is reachable from popup.js's sandbox after moving to utils.js", () => {
+  assert.equal(
+    g.buildCurlCommandBase("GET", "https://api.example.com/x"),
+    "curl 'https://api.example.com/x'"
+  );
+  assert.equal(
+    g.buildCurlCommandBase("DELETE", "https://api.example.com/x"),
+    "curl --request DELETE 'https://api.example.com/x'"
+  );
+});

@@ -26,6 +26,18 @@ function isExistedInArray(arr, value) {
   return false;
 }
 
+// GET is curl's implicit default, so it needs no flag; every other method
+// (including POST) must be passed explicitly via --request. Shared between
+// background.js (building the curl command as headers arrive) and popup.js
+// (fallback curl command for synthetic/cache-hit rows, which never went
+// through background.js's own onBeforeSendHeaders capture).
+function buildCurlCommandBase(method, url) {
+  if (!method || method === "GET") {
+    return "curl '" + shellEscape(url) + "'";
+  }
+  return "curl --request " + method + " '" + shellEscape(url) + "'";
+}
+
 function isDetectedContentType(contentType) {
   if (!contentType) {
     return false;

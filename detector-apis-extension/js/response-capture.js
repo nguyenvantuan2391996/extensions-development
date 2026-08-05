@@ -17,9 +17,25 @@
     );
   }
 
+  // Derives the method fetch() actually used: init.method wins, then a
+  // Request object passed as the first arg carries its own .method, else
+  // fetch's own default is GET.
+  function fetchMethod(args) {
+    let init = args[1];
+    if (init && init.method) {
+      return init.method.toUpperCase();
+    }
+    let input = args[0];
+    if (input && typeof input === "object" && input.method) {
+      return input.method.toUpperCase();
+    }
+    return "GET";
+  }
+
   const originalFetch = window.fetch;
   if (originalFetch) {
     window.fetch = function (...args) {
+      let method = fetchMethod(args);
       return originalFetch.apply(this, args).then(function (response) {
         try {
           let contentType = response.headers.get("content-type") || "";
@@ -30,6 +46,7 @@
               .then(function (bodyText) {
                 dispatchCapture({
                   url: response.url,
+                  method: method,
                   status: response.status,
                   contentType: contentType,
                   body: truncate(bodyText),
@@ -48,6 +65,7 @@
 
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
     this.__detectorApisUrl = url;
+    this.__detectorApisMethod = method;
     return originalOpen.call(this, method, url, ...rest);
   };
 
@@ -58,6 +76,7 @@
         if (contentType && (this.responseURL || this.__detectorApisUrl)) {
           dispatchCapture({
             url: this.responseURL || this.__detectorApisUrl,
+            method: (this.__detectorApisMethod || "GET").toUpperCase(),
             status: this.status,
             contentType: contentType,
             body: truncate(this.responseText),
