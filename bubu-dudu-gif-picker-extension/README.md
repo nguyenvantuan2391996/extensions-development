@@ -34,6 +34,13 @@ Whether you're spicing up a presentation, surprising a friend, or just enjoying 
 3. Adjust Size, Position, Direction, and Duration from the toolbar — changes apply instantly to the current tab.
 4. Use the **Show on this site** switch to turn Bubu Dudu off just for the site you're on, or **Random GIF each visit** to get a surprise pick every time.
 
+## What's new in 1.0.4
+- Fixed a bug where deleting (or resetting) the GIF you currently had selected left it floating on pages as a broken image — it's now cleared automatically, so the next reload just shows nothing until you pick a new one
+- GIFs hosted without a `.gif` in the URL (common on some image CDNs) are no longer rejected by "Add GIF via URL" or the right-click "Add this image as a Bubu Dudu GIF" — both now check the actual file type instead of just the URL text
+- New: "Reset to defaults" button to restore the built-in Bubu Dudu collection if you've cleared out your library
+- Export now includes your Size/Position/Direction/Duration/Random-mode settings alongside the GIF list, and importing a file with settings restores them too
+- Small accessibility fix: the "+ Add GIF" toggle now reports its open/closed state to screen readers
+
 ## What's new in 1.0.3
 - Fixed a bug where changing a setting (Size, Position, Direction, Duration) would show a "success" message even when it silently failed to apply — e.g. when the popup is opened on a page Bubu Dudu can't run on. You now get accurate feedback, including a clear inline notice on unsupported pages (like Chrome's settings pages)
 - Fixed a bug where repeatedly adjusting settings on the same page kept stacking duplicate `<style>` tags into the page instead of replacing the previous one

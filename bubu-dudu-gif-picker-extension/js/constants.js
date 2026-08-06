@@ -64,5 +64,7 @@ const HANDLE_SET_GIF_DURATION = "handle-set-gif-duration"
 const HANDLE_SET_GIF_SELECTED = "handle-set-gif-selected"
 const HANDLE_SET_DISABLED_HOSTS = "handle-set-disabled-hosts"
 const HANDLE_SET_RANDOM_MODE = "handle-set-random-mode"
+const HANDLE_CLEAR_GIF_SELECTED = "handle-clear-gif-selected"
+const HANDLE_SETTINGS_IMPORTED = "handle-settings-imported"
 
 const ADD_GIF_MENU_ID = "bubu-dudu-add-image-as-gif"

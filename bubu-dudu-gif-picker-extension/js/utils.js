@@ -82,8 +82,58 @@ async function deleteGif(event, src) {
     /* global chrome */
     const result = await chrome.storage.local.get([LIST_GIFS])
     const current_gifs = result[LIST_GIFS] || []
-    await chrome.storage.local.set({ [LIST_GIFS]: current_gifs.filter(item => item !== src) })
+    const remaining_gifs = current_gifs.filter(item => item !== src)
+    await chrome.storage.local.set({ [LIST_GIFS]: remaining_gifs })
+    await clearSelectedGifIfMissing(remaining_gifs)
     updateEmptyState()
+}
+
+// If the GIF currently shown on pages was just removed from the library
+// (deleted, or wiped out by a reset/import), clear the selection so pages
+// stop trying to render a broken image.
+async function clearSelectedGifIfMissing(remainingGifs) {
+    /* global chrome */
+    const result = await chrome.storage.local.get([GIF_SELECTED])
+    if (!result[GIF_SELECTED]) {
+        return
+    }
+
+    let selectedSrc
+    try {
+        selectedSrc = JSON.parse(result[GIF_SELECTED])[0]
+    } catch (e) {
+        return
+    }
+
+    if (remainingGifs.includes(selectedSrc)) {
+        return
+    }
+
+    await chrome.storage.local.remove(GIF_SELECTED)
+    try {
+        await sendToActiveTab({ from: POPUP_SCREEN, subject: HANDLE_CLEAR_GIF_SELECTED })
+    } catch (e) {
+        // Active tab may not support content scripts (e.g. chrome:// pages) — nothing to do.
+    }
+}
+
+// Checks whether a URL points at a GIF. Cheap extension check first; falls
+// back to asking the server for the real content-type so GIFs served without
+// a ".gif" extension (common on image CDNs) aren't rejected.
+async function isGifUrl(url) {
+    if (/\.gif(\?.*)?$/i.test(url)) {
+        return true
+    }
+
+    try {
+        let res = await fetch(url, { method: "HEAD" })
+        if (!res.headers.get("content-type")) {
+            res = await fetch(url, { method: "GET" })
+        }
+        return (res.headers.get("content-type") || "").startsWith("image/gif")
+    } catch (e) {
+        return false
+    }
 }
 
 async function alert(alert_type, message) {

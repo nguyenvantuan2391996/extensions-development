@@ -1,4 +1,4 @@
-importScripts("constants.js");
+importScripts("constants.js", "utils.js");
 
 chrome.runtime.onInstalled.addListener(function () {
   chrome.contextMenus.create({
@@ -14,7 +14,7 @@ chrome.contextMenus.onClicked.addListener(async function (info) {
   }
 
   const url = info.srcUrl
-  if (!url || !/\.gif(\?.*)?$/i.test(url)) {
+  if (!url || !(await isGifUrl(url))) {
     flashBadge("!", "#ff3b30")
     return
   }

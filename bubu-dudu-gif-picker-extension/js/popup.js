@@ -200,8 +200,13 @@ document.getElementById("btn-add-gif").addEventListener("click", async function 
   const urlInput = document.getElementById("gif_url")
   const url = urlInput.value.trim()
 
-  if (!/\.gif(\?.*)?$/i.test(url)) {
-    alert(ERROR_ALERT, "Please enter a valid .gif URL.")
+  if (!url) {
+    alert(ERROR_ALERT, "Please enter a GIF URL.")
+    return
+  }
+
+  if (!(await isGifUrl(url))) {
+    alert(ERROR_ALERT, "That doesn't look like a GIF. Please check the URL.")
     return
   }
 
@@ -283,9 +288,20 @@ fileInput.addEventListener('change', async function () {
 
 document.getElementById("btn-export-gifs").addEventListener("click", async function () {
   /* global chrome */
-  const result = await chrome.storage.local.get([LIST_GIFS])
-  const gifs_storage = result[LIST_GIFS] || []
-  const blob = new Blob([JSON.stringify(gifs_storage, null, 2)], { type: "application/json" })
+  const result = await chrome.storage.local.get([
+    LIST_GIFS, "gif_size", "gif_position", "gif_animation", "gif_duration", RANDOM_MODE
+  ])
+  const payload = {
+    gifs: result[LIST_GIFS] || [],
+    settings: {
+      gif_size: result.gif_size,
+      gif_position: result.gif_position,
+      gif_animation: result.gif_animation,
+      gif_duration: result.gif_duration,
+      [RANDOM_MODE]: result[RANDOM_MODE]
+    }
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url
@@ -305,8 +321,8 @@ importFileInput.addEventListener("change", async function () {
   if (!file) return
 
   try {
-    const text = await file.text()
-    const imported = JSON.parse(text)
+    const parsed = JSON.parse(await file.text())
+    const imported = Array.isArray(parsed) ? parsed : parsed.gifs
     if (!Array.isArray(imported) || !imported.every(item => typeof item === "string")) {
       throw new Error("invalid-format")
     }
@@ -318,12 +334,59 @@ importFileInput.addEventListener("change", async function () {
 
     await chrome.storage.local.set({ [LIST_GIFS]: merged })
     newOnes.forEach(src => addGifToDOM(src))
+
+    if (!Array.isArray(parsed) && parsed.settings && typeof parsed.settings === "object") {
+      await applyImportedSettings(parsed.settings)
+    }
+
     alert(SUCCESS_ALERT, `Imported ${newOnes.length} new GIF${newOnes.length === 1 ? "" : "s"}.`)
   } catch (e) {
     alert(ERROR_ALERT, "Couldn't import that file — make sure it's a GIF list exported from this extension.")
   } finally {
     importFileInput.value = ""
   }
+})
+
+async function applyImportedSettings(settings) {
+  /* global chrome */
+  const toApply = {}
+  if (settings.gif_size) toApply.gif_size = settings.gif_size
+  if (settings.gif_position) toApply.gif_position = settings.gif_position
+  if (settings.gif_animation) toApply.gif_animation = settings.gif_animation
+  if (settings.gif_duration) toApply.gif_duration = settings.gif_duration
+  if (typeof settings[RANDOM_MODE] === "boolean") toApply[RANDOM_MODE] = settings[RANDOM_MODE]
+
+  if (Object.keys(toApply).length === 0) {
+    return
+  }
+
+  await chrome.storage.local.set(toApply)
+
+  if (toApply.gif_size) document.getElementById("gif_size").value = toApply.gif_size
+  if (toApply.gif_position) document.getElementById("gif_position").value = toApply.gif_position
+  if (toApply.gif_animation) document.getElementById("gif_animation").value = toApply.gif_animation
+  if (toApply.gif_duration) document.getElementById("gif_duration").value = toApply.gif_duration
+  if (typeof toApply[RANDOM_MODE] === "boolean") document.getElementById("random_mode_toggle").checked = toApply[RANDOM_MODE]
+
+  try {
+    await sendToActiveTab({ from: POPUP_SCREEN, subject: HANDLE_SETTINGS_IMPORTED })
+  } catch (e) {
+    // Active tab may not support content scripts (e.g. chrome:// pages) — nothing to do.
+  }
+}
+
+document.getElementById("btn-reset-gifs").addEventListener("click", async function () {
+  /* global chrome */
+  if (!window.confirm("Replace your current GIF list with the default Bubu Dudu collection? This can't be undone.")) {
+    return
+  }
+
+  await chrome.storage.local.set({ [LIST_GIFS]: LIST_GIFS_DEFAULT })
+  document.getElementById("gifContainer").querySelectorAll(".gif-item").forEach(el => el.remove())
+  LIST_GIFS_DEFAULT.forEach(src => addGifToDOM(src))
+  await clearSelectedGifIfMissing(LIST_GIFS_DEFAULT)
+  await displayCheckmark()
+  alert(SUCCESS_ALERT, "Restored the default GIF collection.")
 })
 
 const toggleAddGifBtn = document.getElementById('toggle-add-gif');
@@ -333,12 +396,14 @@ function closeAddGifPanel() {
   addGifPanel.setAttribute('hidden', 'hidden')
   toggleAddGifBtn.textContent = '+ Add GIF'
   toggleAddGifBtn.classList.remove('is-open')
+  toggleAddGifBtn.setAttribute('aria-expanded', 'false')
 }
 
 function openAddGifPanel() {
   addGifPanel.removeAttribute('hidden')
   toggleAddGifBtn.textContent = 'Close'
   toggleAddGifBtn.classList.add('is-open')
+  toggleAddGifBtn.setAttribute('aria-expanded', 'true')
   document.getElementById('gif_url').focus()
 }
 
