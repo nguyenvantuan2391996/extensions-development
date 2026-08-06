@@ -13,6 +13,9 @@
             <h1>Detector APIs Extension</h1>
             <p>See every API call your browser makes</p>
         </div>
+        <button type="button" class="open-tab-btn" id="open-tab-btn" title="Open in a full tab, so it stays open instead of closing when you click elsewhere">
+            <span class="emoji">⧉</span> Open in Tab
+        </button>
         <a class="coffee-badge" href="https://paypal.me/Newslette247" target="_blank" rel="noopener">
             <span class="emoji">☕</span> Buy me a coffee
         </a>
@@ -47,7 +50,7 @@
 
     <div class="search-bar">
         <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="search-input" class="search-input" placeholder="Search by URL..." aria-label="Search by URL">
+        <input type="text" id="search-input" class="search-input" placeholder="Search by URL or body..." aria-label="Search by URL or body">
         <select id="method-filter" class="filter-select" aria-label="Filter by method" title="Filter by HTTP method">
             <option value="">All Methods</option>
             <option value="GET">GET</option>
@@ -73,8 +76,9 @@
             <thead>
             <tr>
                 <th class="col-curl" title="Copy this request as a curl command">Curl</th>
-                <th class="col-url" title="Click a row to see its full request/response headers and body">URL</th>
-                <th class="col-status" title="HTTP method and response status code">Status</th>
+                <th class="col-url sortable" data-sort-column="url" title="Click a row to see its full request/response headers and body. Click here to sort by URL.">URL<span class="sort-indicator"></span></th>
+                <th class="col-status sortable" data-sort-column="status" title="HTTP method and response status code. Click to sort.">Status<span class="sort-indicator"></span></th>
+                <th class="col-time sortable" data-sort-column="time" title="Time from request start to response/failure. Click to sort.">Time<span class="sort-indicator"></span></th>
             </tr>
             </thead>
             <tbody>

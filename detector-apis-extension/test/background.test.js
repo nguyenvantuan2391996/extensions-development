@@ -83,11 +83,7 @@ function createFakeChrome() {
 function buildBackgroundSandbox() {
   const { chrome, dump, failNextSet, badgeText, setActiveTab } =
     createFakeChrome();
-  // A fresh vm context has no Node/browser globals beyond language
-  // built-ins (Promise, etc.) — setTimeout is a host API, not part of the JS
-  // language, so it has to be injected explicitly for handleResponseBodyCapture's
-  // synthetic-fallback delay to work under test.
-  const sandbox = { chrome, importScripts: () => {}, setTimeout };
+  const sandbox = { chrome, importScripts: () => {} };
   loadScripts(["js/constants.js", "js/utils.js"], { sandbox });
   loadScripts(["js/background.js"], { sandbox });
   return { sandbox, dump, failNextSet, badgeText, setActiveTab };
@@ -222,7 +218,7 @@ test("untrackPendingBodyMatch removes a queued requestId so it's never claimed",
   assert.equal(sandbox.claimPendingBodyMatch("https://api.example.com/graphql"), "req-b");
 });
 
-test("handleResponseBodyCapture stores the body under the claimed requestId when a match was registered", async () => {
+test("handleResponseBodyCapture stores the body under the claimed requestId, only when a match was registered", async () => {
   const { sandbox, dump } = buildBackgroundSandbox();
 
   sandbox.registerPendingBodyMatch("https://api.example.com/data", "req-1");
@@ -232,57 +228,18 @@ test("handleResponseBodyCapture stores the body under the claimed requestId when
     body: '{"ok":true}',
   });
 
+  // this url was never registered as a pending match (e.g. a non-XHR/fetch
+  // resource that response-capture.js never hooks), so there's nothing to
+  // claim and nothing gets stored — regardless of content-type.
+  await sandbox.handleResponseBodyCapture({
+    url: "https://cdn.example.com/logo.png",
+    contentType: "image/png",
+    body: "binary-ish",
+  });
+
   const state = dump();
   assert.equal(state["req-1-response-body"], '{"ok":true}');
-});
-
-test("handleResponseBodyCapture falls back to a synthetic entry when no chrome.webRequest match ever registers (cache-hit case)", async () => {
-  const { sandbox, dump } = buildBackgroundSandbox();
-
-  await sandbox.handleResponseBodyCapture(
-    {
-      url: "https://api.example.com/cached",
-      method: "GET",
-      status: 200,
-      contentType: "application/json",
-      body: '{"cached":true}',
-    },
-    777
-  );
-
-  const state = dump();
-  const order = state[sandbox.REQUEST_ORDER_KEY];
-  assert.equal(order.length, 1);
-  const syntheticId = order[0];
-  assert.match(syntheticId, /^synthetic-/);
-  assert.equal(state[syntheticId + "-url"], "https://api.example.com/cached");
-  assert.equal(state[syntheticId + "-tab-id"], 777);
-  assert.equal(state[syntheticId], "200 GET||application/json");
-  assert.equal(state[syntheticId + "-response-body"], '{"cached":true}');
-  assert.equal(state[syntheticId + "-synthetic"], true);
-});
-
-test("createSyntheticEntry writes the same key set a normal completed request would, plus the -synthetic flag", async () => {
-  const { sandbox, dump } = buildBackgroundSandbox();
-
-  await sandbox.createSyntheticEntry(
-    {
-      url: "https://api.example.com/x",
-      method: "POST",
-      status: 204,
-      contentType: "",
-      body: "",
-    },
-    42
-  );
-
-  const state = dump();
-  const order = state[sandbox.REQUEST_ORDER_KEY];
-  assert.equal(order.length, 1);
-  const id = order[0];
-  assert.equal(state[id + "-tab-id"], 42);
-  assert.equal(state[id], "204 POST||");
-  assert.equal(state[id + "-synthetic"], true);
+  assert.equal(state["https://cdn.example.com/logo.png-response-body"], undefined);
 });
 
 test("isTrackableRequest rejects CORS preflight OPTIONS requests but keeps other XHR/fetch methods", () => {
@@ -388,7 +345,7 @@ test("clearTabRequests removes only the requests belonging to the given tab", as
   assert.equal(order[0], "req-2");
 });
 
-test("clearAllRequests removes every tracked request (including synthetic ones) and resets the badge", async () => {
+test("clearAllRequests removes every tracked request and resets the badge", async () => {
   const { sandbox, dump, badgeText } = buildBackgroundSandbox();
 
   await sandbox.chrome.storage.local.set({
@@ -396,10 +353,6 @@ test("clearAllRequests removes every tracked request (including synthetic ones) 
     "req-1-url": "https://a.example.com",
   });
   await sandbox.trackAndEvict("req-1");
-  await sandbox.createSyntheticEntry(
-    { url: "https://b.example.com", method: "GET", status: 200, contentType: "" },
-    20
-  );
 
   await sandbox.clearAllRequests();
 
@@ -419,16 +372,20 @@ test("networkErrorLabel: ERR_ABORTED reads as Canceled, everything else as Faile
   assert.equal(sandbox.networkErrorLabel("net::ERR_FAILED"), "Failed");
 });
 
-test("handleRequestError writes a Failed/Canceled row (with the raw error preserved) and counts it in the badge, instead of the request just vanishing", async () => {
+test("handleRequestError writes a Failed/Canceled row (with the raw error preserved), computes its duration, and counts it in the badge, instead of the request just vanishing", async () => {
   const { sandbox, dump, badgeText } = buildBackgroundSandbox();
 
-  await sandbox.chrome.storage.local.set({ "req-1-pending": "GET" });
+  await sandbox.chrome.storage.local.set({
+    "req-1-pending": "GET",
+    "req-1-start-time": 1000,
+  });
   await sandbox.trackAndEvict("req-1");
   await sandbox.handleRequestError({
     requestId: "req-1",
     type: "xmlhttprequest",
     method: "GET",
     error: "net::ERR_CONNECTION_REFUSED",
+    timeStamp: 1250,
   });
 
   const state = dump();
@@ -437,7 +394,16 @@ test("handleRequestError writes a Failed/Canceled row (with the raw error preser
     state["req-1"],
     "Failed GET|||net::ERR_CONNECTION_REFUSED"
   );
+  assert.equal(state["req-1-duration"], 250);
   assert.equal(badgeText(), "1");
+});
+
+test("computeDuration reads back the stashed start-time and rounds the delta; null when no start-time was ever recorded", async () => {
+  const { sandbox } = buildBackgroundSandbox();
+
+  await sandbox.chrome.storage.local.set({ "req-1-start-time": 1000 });
+  assert.equal(await sandbox.computeDuration("req-1", 1300), 300);
+  assert.equal(await sandbox.computeDuration("req-missing", 5000), null);
 });
 
 test("handleRequestError ignores non-trackable requests, same as the other webRequest listeners", async () => {

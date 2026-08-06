@@ -53,6 +53,10 @@ chrome.webRequest.onBeforeRequest.addListener(
       [details.requestId + "-url"]: details.url,
       [details.requestId + "-tab-id"]: details.tabId,
       [details.requestId + "-pending"]: details.method,
+      // webRequest's own timeStamp on every event for this request, used to
+      // compute how long it took once it completes/fails (onHeadersReceived
+      // / handleRequestError below).
+      [details.requestId + "-start-time"]: details.timeStamp,
     });
   },
   { urls: ["<all_urls>"] }
@@ -66,6 +70,19 @@ chrome.webRequest.onBeforeRequest.addListener(
 // detail panel.
 function networkErrorLabel(error) {
   return error === "net::ERR_ABORTED" ? "Canceled" : "Failed";
+}
+
+// webRequest gives every event its own timeStamp; onBeforeRequest stashes
+// the first one under `<requestId>-start-time` so onHeadersReceived and
+// handleRequestError (onErrorOccurred) can both compute how long the
+// request took once it completes or fails.
+async function computeDuration(requestId, endTimeStamp) {
+  const { [requestId + "-start-time"]: startTime } = await chrome.storage.local.get(
+    requestId + "-start-time"
+  );
+  return typeof startTime === "number"
+    ? Math.round(endTimeStamp - startTime)
+    : null;
 }
 
 // A request that never got a response used to just vanish (pending row
@@ -83,6 +100,7 @@ async function handleRequestError(details) {
   }
   untrackPendingBodyMatch(details.requestId);
   await chrome.storage.local.remove(details.requestId + "-pending");
+  const duration = await computeDuration(details.requestId, details.timeStamp);
 
   await safeStorageSet({
     [details.requestId]:
@@ -92,6 +110,7 @@ async function handleRequestError(details) {
       "||" +
       "|" +
       (details.error || ""),
+    [details.requestId + "-duration"]: duration,
   });
   await updateBadgeCount();
 }
@@ -176,7 +195,8 @@ function requestKeySuffixes(requestId) {
     requestId + "-request-body",
     requestId + "-response-body",
     requestId + "-pending",
-    requestId + "-synthetic",
+    requestId + "-start-time",
+    requestId + "-duration",
   ];
 }
 
@@ -233,11 +253,14 @@ chrome.webRequest.onHeadersReceived.addListener(
       getValueHeaderByKey(X_REQUEST_ID_DETECTOR_API, headers) + "|";
     infoRequest += contentType;
 
+    const duration = await computeDuration(details.requestId, details.timeStamp);
+
     await safeStorageSet({
       [details.requestId]: infoRequest,
       [details.requestId + "-response-headers"]: JSON.stringify(
         headers || []
       ),
+      [details.requestId + "-duration"]: duration,
     });
     await chrome.storage.local.remove(details.requestId + "-pending");
 
@@ -327,8 +350,18 @@ function getValueHeaderByKey(key, headers) {
   return "";
 }
 
-// buildCurlCommandBase now lives in utils.js (shared with popup.js's
-// synthetic-row curl fallback below); background.js already imports it.
+// GET is curl's implicit default, so it needs no flag; every other method
+// (including POST) must be passed explicitly via --request. POST used to look
+// like it worked without this because attaching --data-raw/--data makes curl
+// infer POST on its own — but that only covered POST requests that actually
+// had a body. DELETE, PATCH, HEAD, OPTIONS, and body-less POST requests all
+// silently ran as GET when the exported curl command was executed.
+function buildCurlCommandBase(method, url) {
+  if (!method || method === "GET") {
+    return "curl '" + shellEscape(url) + "'";
+  }
+  return "curl --request " + method + " '" + shellEscape(url) + "'";
+}
 
 chrome.webRequest.onBeforeSendHeaders.addListener(
   async function (details) {
@@ -437,12 +470,9 @@ chrome.webRequest.onBeforeRequest.addListener(
 // Response bodies are captured in the page's own JS context (via
 // js/response-capture.js hooking fetch/XHR, since chrome.webRequest cannot
 // read response bodies) and relayed here through js/response-bridge.js.
-// `sender.tab.id` (only present for messages from a content script, which is
-// the only kind this listener ever receives) lets the cache-hit fallback in
-// handleResponseBodyCapture tag synthetic rows with the right tab.
-chrome.runtime.onMessage.addListener(function (message, sender) {
+chrome.runtime.onMessage.addListener(function (message) {
   if (message && message.type === "DETECTOR_APIS_RESPONSE_BODY") {
-    handleResponseBodyCapture(message, sender.tab && sender.tab.id);
+    handleResponseBodyCapture(message);
   } else if (message && message.type === "DETECTOR_APIS_CLEAR_ALL") {
     clearAllRequests();
   }
@@ -469,65 +499,14 @@ function clearAllRequests() {
   });
 }
 
-function delay(ms) {
-  return new Promise(function (resolve) {
-    setTimeout(resolve, ms);
-  });
-}
-
-async function handleResponseBodyCapture(message, tabId) {
-  let requestId = claimPendingBodyMatch(message.url);
-  if (requestId) {
-    await safeStorageSet({
-      [requestId + "-response-body"]: truncateBody(message.body || ""),
-    });
+async function handleResponseBodyCapture(message) {
+  const requestId = claimPendingBodyMatch(message.url);
+  if (!requestId) {
     return;
   }
-
-  // No chrome.webRequest-tracked request is waiting for this url yet.
-  // That's expected for a genuine cache hit (the browser served the
-  // response without touching the network, so chrome.webRequest never fired
-  // at all) — but it can also just be a race where onHeadersReceived's own
-  // registerPendingBodyMatch call for a *real* in-flight request to the same
-  // url hasn't run yet. Give it SYNTHETIC_FALLBACK_DELAY_MS to land before
-  // assuming cache.
-  await delay(SYNTHETIC_FALLBACK_DELAY_MS);
-  requestId = claimPendingBodyMatch(message.url);
-  if (requestId) {
-    await safeStorageSet({
-      [requestId + "-response-body"]: truncateBody(message.body || ""),
-    });
-    return;
-  }
-
-  await createSyntheticEntry(message, tabId);
-}
-
-// Best-effort row for a fetch/XHR call the page made that chrome.webRequest
-// never saw (see handleResponseBodyCapture above) — almost always a full
-// cache hit. Limited fidelity by construction: no request/response headers,
-// no request body, since none of that is visible from the page's own JS
-// context — the popup tags these via the "-synthetic" key instead of
-// silently mixing them in with fully-captured rows. Residual race: if a real
-// registration lands *after* the fallback delay above, this creates a
-// duplicate row (one real, one synthetic) for the same logical request —
-// bounded and visible, not silently wrong data, the same tradeoff already
-// accepted for the per-url FIFO body-match system this sits next to.
-async function createSyntheticEntry(message, tabId) {
-  const requestId =
-    "synthetic-" + Date.now() + "-" + Math.random().toString(36).slice(2);
-  const method = message.method || "GET";
-
-  await trackAndEvict(requestId);
   await safeStorageSet({
-    [requestId + "-url"]: message.url,
-    [requestId + "-tab-id"]: tabId,
-    [requestId]:
-      message.status + " " + method + "|" + "" + "|" + (message.contentType || ""),
     [requestId + "-response-body"]: truncateBody(message.body || ""),
-    [requestId + "-synthetic"]: true,
   });
-  await updateBadgeCount();
 }
 
 // Clears a tab's own tracked requests when it starts a fresh navigation (and

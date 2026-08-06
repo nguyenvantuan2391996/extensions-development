@@ -13,7 +13,6 @@ document.addEventListener(
         .sendMessage({
           type: "DETECTOR_APIS_RESPONSE_BODY",
           url: detail.url,
-          method: detail.method,
           status: detail.status,
           contentType: detail.contentType,
           body: detail.body,

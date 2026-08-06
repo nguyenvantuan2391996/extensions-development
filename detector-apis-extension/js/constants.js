@@ -32,14 +32,11 @@ const SHOW_ALL_TABS_KEY = "show_all_tabs_key"
 const MAX_TRACKED_REQUESTS = 150;
 const REQUEST_ORDER_KEY = "__detector_apis_request_order__";
 
-// How long handleResponseBodyCapture waits for a late chrome.webRequest
-// registration (registerPendingBodyMatch) before assuming a page-context
-// fetch/XHR capture with no matching requestId is a genuine cache hit
-// (served without touching the network at all, so chrome.webRequest never
-// saw it) rather than just a slow race against a real in-flight request.
-const SYNTHETIC_FALLBACK_DELAY_MS = 300;
-
 // caps how much of a single request body we persist (matches the cap
 // response-capture.js already applies to captured response bodies), so one
 // oversized upload can't itself balloon storage usage.
 const MAX_BODY_LENGTH = 200000;
+
+// popup.js's column-sort: sentinel for non-numeric status tokens
+// ("Failed"/"Canceled") so they sort after every real status code ascending.
+const NON_NUMERIC_STATUS_SORT_VALUE = 9999;

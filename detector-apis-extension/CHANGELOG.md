@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.2 - 2026-08-06
+
+### Added
+- **"Open in Tab"** button to undock the popup into a normal browser tab (`chrome.tabs.create` + closes the small popup behind it), which stays open instead of closing on blur — useful for extended debugging sessions. Hidden automatically once already running as a tab.
+- **Request duration.** Every row now shows how long the request took (e.g. `128ms`, `2.5s`), including failed/canceled ones. Computed from `chrome.webRequest`'s own per-event timestamps, no extra API needed.
+- **Search now also matches request/response body**, not just the URL.
+- **Sortable columns.** Click URL/Status/Time column headers to sort (ascending → descending → back to natural arrival order); pending rows always stay at the bottom, unsorted.
+
+### Removed
+- **The "cached row" fallback capture added in 1.1.1.** Live-tested it further this round (disk-cache-hit reloads, concurrent duplicate `fetch()` calls) and it never triggered — `chrome.webRequest` tracks cache-served responses fine on current Chrome/Chromium, so the premise didn't hold up under more scrutiny. Removed the retry/synthetic-row logic (`createSyntheticEntry`, the 300ms delay, the `-synthetic` tag) rather than keep ~150 lines of defensive code for a scenario that's never been observed to happen.
+
 ## 1.1.1 - 2026-08-05
 
 ### Added

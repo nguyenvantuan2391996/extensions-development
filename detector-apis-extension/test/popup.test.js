@@ -96,16 +96,18 @@ test("statusBucketFor buckets numeric codes, and reads Failed/Canceled as their 
   assert.equal(g.statusBucketFor("Canceled POST"), "failed");
 });
 
-// buildCurlCommandBase moved from background.js to utils.js in 1.1.1 so
-// popup.js could reuse it for synthetic (cache-hit) rows' curl fallback —
-// confirm it's still reachable from the popup sandbox after the move.
-test("buildCurlCommandBase is reachable from popup.js's sandbox after moving to utils.js", () => {
-  assert.equal(
-    g.buildCurlCommandBase("GET", "https://api.example.com/x"),
-    "curl 'https://api.example.com/x'"
-  );
-  assert.equal(
-    g.buildCurlCommandBase("DELETE", "https://api.example.com/x"),
-    "curl --request DELETE 'https://api.example.com/x'"
-  );
+test("statusCodeSortValue parses the leading numeric code, and sentinels Failed/Canceled to sort last ascending", () => {
+  assert.equal(g.statusCodeSortValue("200 GET"), 200);
+  assert.equal(g.statusCodeSortValue("404 GET"), 404);
+  assert.equal(g.statusCodeSortValue("Failed GET"), g.NON_NUMERIC_STATUS_SORT_VALUE);
+  assert.equal(g.statusCodeSortValue("Canceled POST"), g.NON_NUMERIC_STATUS_SORT_VALUE);
+});
+
+test("formatDuration: plain ms under a second, seconds with 1 decimal past it", () => {
+  assert.equal(g.formatDuration(128), "128ms");
+  assert.equal(g.formatDuration(999), "999ms");
+  assert.equal(g.formatDuration(1000), "1.0s");
+  assert.equal(g.formatDuration(2500), "2.5s");
+  assert.equal(g.formatDuration(undefined), "");
+  assert.equal(g.formatDuration(NaN), "");
 });
