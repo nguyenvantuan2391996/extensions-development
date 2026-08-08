@@ -1,7 +1,7 @@
 {
   "name": "Password Generator Extension",
   "description": "The extension supports generating random password strongest.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "action": {
     "default_popup": "src/popup.html",
     "default_icon": "images/password-generator-extension.png"
@@ -9,17 +9,15 @@
   "icons": {
     "128": "images/password-generator-extension.png"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "js/constants.js"
-      ],
-      "run_at": "document_start"
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "mac": "Command+Shift+U"
+      },
+      "description": "Open Password Generator"
     }
-  ],
+  },
   "host_permissions": [],
   "permissions": [
     "storage"

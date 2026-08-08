@@ -124,6 +124,36 @@
       padding: 16px;
     }
 
+    /* ---------- Segmented control (mode switch) ---------- */
+    .segmented {
+      display: flex;
+      background: var(--input-bg);
+      border-radius: 10px;
+      padding: 3px;
+      margin-bottom: 14px;
+    }
+
+    .segment {
+      flex: 1;
+      text-align: center;
+      padding: 7px 10px;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .segment.active {
+      background: var(--card-bg);
+      color: var(--text-primary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
     /* ---------- Password field ---------- */
     .password-field {
       position: relative;
@@ -268,8 +298,62 @@
       opacity: 0.8;
     }
 
-    /* ---------- Length field ---------- */
-    #length {
+    .field-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 18px 0 8px;
+    }
+
+    .field-row .section-label {
+      margin: 0;
+    }
+
+    .field-value {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      background: var(--input-bg);
+      padding: 2px 8px;
+      border-radius: 6px;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    /* ---------- Range sliders ---------- */
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+      margin: 4px 0;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border: none;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    /* ---------- Text-like inputs ---------- */
+    .text-input {
       width: 100%;
       font-family: inherit;
       font-size: 14px;
@@ -282,9 +366,19 @@
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
-    #length:focus {
+    .text-input:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    select.text-input {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236e6e73'><path d='M7 10l5 5 5-5z'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 16px;
+      padding-right: 32px;
     }
 
     /* ---------- Toggle list (Apple Settings style) ---------- */
@@ -328,6 +422,11 @@
 
     .toggle-grid .toggle-row:nth-child(odd) {
       border-right: 1px solid var(--border);
+    }
+
+    .toggle-grid .toggle-row:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+      border-right: none;
     }
 
     .switch {
@@ -376,6 +475,49 @@
 
     .switch input:checked + .slider:before {
       transform: translateX(16px);
+    }
+
+    /* ---------- History ---------- */
+    .history-card {
+      margin-top: 12px;
+      padding: 12px 16px 16px;
+    }
+
+    .history-card .section-label {
+      margin: 0 0 8px;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .history-item {
+      display: block;
+      width: 100%;
+      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      font-size: 12px;
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text-primary);
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .history-item:hover {
+      border-color: var(--accent);
+    }
+
+    .history-item.copied {
+      border-color: var(--success);
+      color: var(--success);
     }
 
     /* ---------- Footer ---------- */
@@ -452,6 +594,12 @@
   </header>
 
   <div class="card">
+    <div class="segmented" role="tablist">
+      <button type="button" class="segment active" data-mode="password" id="mode-password">Password</button>
+      <button type="button" class="segment" data-mode="passphrase" id="mode-passphrase">Passphrase</button>
+    </div>
+    <input type="hidden" id="mode" value="password" />
+
     <div class="password-field">
       <input id="password" type="text" readonly />
       <button id="copy" type="button" title="Copy to clipboard">📋</button>
@@ -463,58 +611,122 @@
     <p class="warning-text" id="warning-text" hidden>Select at least 1 character type</p>
 
     <form id="generator-form">
-      <button type="submit" id="generate">Generate Password</button>
+      <button type="submit" id="generate">Generate</button>
 
-      <div class="section-label">Length <span class="hint">(6–64)</span></div>
-      <label for="length" style="display:none">Password length</label>
-      <input id="length" type="number" min="6" max="64" value="16" />
+      <div id="password-options">
+        <div class="field-row">
+          <div class="section-label">Length <span class="hint">(6–64)</span></div>
+          <span class="field-value" id="length-value">16</span>
+        </div>
+        <label for="length-range" style="display:none">Password length slider</label>
+        <input id="length-range" type="range" min="6" max="64" value="16" />
+        <label for="length" style="display:none">Password length</label>
+        <input id="length" type="number" min="6" max="64" value="16" class="text-input" style="margin-top:8px" />
 
-      <div class="section-label">Character Types</div>
-      <div class="toggle-list toggle-grid">
-        <label class="toggle-row">
-          <span class="label-text">Lowercase (a-z)</span>
-          <span class="switch">
-            <input id="include-lower" type="checkbox" checked />
-            <span class="slider"></span>
-          </span>
-        </label>
-        <label class="toggle-row">
-          <span class="label-text">Uppercase (A-Z)</span>
-          <span class="switch">
-            <input id="include-upper" type="checkbox" checked />
-            <span class="slider"></span>
-          </span>
-        </label>
-        <label class="toggle-row">
-          <span class="label-text">Numbers (0-9)</span>
-          <span class="switch">
-            <input id="include-number" type="checkbox" checked />
-            <span class="slider"></span>
-          </span>
-        </label>
-        <label class="toggle-row">
-          <span class="label-text">Symbols (!@#$%^&amp;*()+)</span>
-          <span class="switch">
-            <input id="include-symbol" type="checkbox" checked />
-            <span class="slider"></span>
-          </span>
-        </label>
-        <label class="toggle-row">
-          <span class="label-text">Other symbols (~`[];?,)</span>
-          <span class="switch">
-            <input id="include-other" type="checkbox" />
-            <span class="slider"></span>
-          </span>
-        </label>
-        <label class="toggle-row">
-          <span class="label-text">Exclude duplicates</span>
-          <span class="switch">
-            <input id="exclude-duplicates" type="checkbox" />
-            <span class="slider"></span>
-          </span>
-        </label>
+        <div class="section-label">Character Types</div>
+        <div class="toggle-list toggle-grid">
+          <label class="toggle-row">
+            <span class="label-text">Lowercase (a-z)</span>
+            <span class="switch">
+              <input id="include-lower" type="checkbox" checked />
+              <span class="slider"></span>
+            </span>
+          </label>
+          <label class="toggle-row">
+            <span class="label-text">Uppercase (A-Z)</span>
+            <span class="switch">
+              <input id="include-upper" type="checkbox" checked />
+              <span class="slider"></span>
+            </span>
+          </label>
+          <label class="toggle-row">
+            <span class="label-text">Numbers (0-9)</span>
+            <span class="switch">
+              <input id="include-number" type="checkbox" checked />
+              <span class="slider"></span>
+            </span>
+          </label>
+          <label class="toggle-row">
+            <span class="label-text">Symbols (!@#$%^&amp;*()+)</span>
+            <span class="switch">
+              <input id="include-symbol" type="checkbox" checked />
+              <span class="slider"></span>
+            </span>
+          </label>
+          <label class="toggle-row">
+            <span class="label-text">Other symbols (~`[];?,)</span>
+            <span class="switch">
+              <input id="include-other" type="checkbox" />
+              <span class="slider"></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="section-label">Options</div>
+        <div class="toggle-list">
+          <label class="toggle-row">
+            <span class="label-text">Exclude duplicates</span>
+            <span class="switch">
+              <input id="exclude-duplicates" type="checkbox" />
+              <span class="slider"></span>
+            </span>
+          </label>
+          <label class="toggle-row">
+            <span class="label-text">Exclude ambiguous (I, l, 1, O, 0, o)</span>
+            <span class="switch">
+              <input id="exclude-ambiguous" type="checkbox" />
+              <span class="slider"></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="section-label">Exclude specific characters <span class="hint">(optional)</span></div>
+        <label for="custom-exclude" style="display:none">Exclude specific characters</label>
+        <input id="custom-exclude" type="text" class="text-input" placeholder="e.g. { } &quot; '" />
+      </div>
+
+      <div id="passphrase-options" hidden>
+        <div class="field-row">
+          <div class="section-label">Word Count</div>
+          <span class="field-value" id="words-value">6</span>
+        </div>
+        <label for="passphrase-words" style="display:none">Number of words</label>
+        <input id="passphrase-words" type="range" min="3" max="10" value="6" />
+
+        <div class="section-label">Separator</div>
+        <label for="passphrase-separator" style="display:none">Word separator</label>
+        <select id="passphrase-separator" class="text-input">
+          <option value="-" selected>Hyphen ( - )</option>
+          <option value="_">Underscore ( _ )</option>
+          <option value=".">Dot ( . )</option>
+          <option value=" ">Space</option>
+          <option value="">None</option>
+        </select>
+
+        <div class="section-label">Options</div>
+        <div class="toggle-list">
+          <label class="toggle-row">
+            <span class="label-text">Capitalize words</span>
+            <span class="switch">
+              <input id="passphrase-capitalize" type="checkbox" checked />
+              <span class="slider"></span>
+            </span>
+          </label>
+          <label class="toggle-row">
+            <span class="label-text">Include a number</span>
+            <span class="switch">
+              <input id="passphrase-number" type="checkbox" checked />
+              <span class="slider"></span>
+            </span>
+          </label>
+        </div>
       </div>
     </form>
+  </div>
+
+  <div class="card history-card" id="history-card" hidden>
+    <div class="section-label">Recent <span class="hint">(this session · click to copy)</span></div>
+    <div class="history-list" id="history-list"></div>
   </div>
 
   <footer class="app-footer">
