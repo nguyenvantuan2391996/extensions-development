@@ -35,6 +35,14 @@ chrome.runtime.onMessage.addListener(async function(msg) {
         await handleWebsiteLoaded()
     }
 
+    if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_CLEAR_GIF_SELECTED) {
+        await handleWebsiteLoaded()
+    }
+
+    if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SETTINGS_IMPORTED) {
+        await handleWebsiteLoaded()
+    }
+
     if (msg.from === BACKGROUND_SCREEN && msg.subject === HANDLE_MAIN_WEBSITE_LOADED) {
         await handleWebsiteLoaded()
     }

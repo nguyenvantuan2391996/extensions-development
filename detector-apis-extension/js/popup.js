@@ -15,6 +15,12 @@ let activeTabId = null;
 // like the log got wiped. Users who want the DevTools-style per-tab view can
 // switch it off; the choice is remembered across popup opens.
 let showAllTabs = true;
+// Active table sort: null column means natural (arrival) order, matching
+// the original insertDataRow-driven placement. Only data rows are sorted —
+// pending rows have no meaningful status/time yet, so they're left in
+// arrival order after the sorted ones.
+let sortColumn = null;
+let sortDir = "asc";
 
 window.addEventListener("load", async (event) => {
   activeTabId = await getActiveTabId();
@@ -22,6 +28,7 @@ window.addEventListener("load", async (event) => {
   document.getElementById("all-tabs-toggle").checked = showAllTabs;
 
   await updateSwitchValue()
+  await setupOpenInTab();
   await renderTable();
 
   chrome.storage.onChanged.addListener(function (changes, areaName) {
@@ -31,6 +38,33 @@ window.addEventListener("load", async (event) => {
     scheduleRender();
   });
 });
+
+// chrome.tabs.getCurrent() resolves to a Tab object when this page is a
+// normal tab, and to undefined when it's a non-tab context — which for
+// src/popup.html only ever means the actual toolbar action popup (the only
+// other way to load this file). This is the reliable check: `chrome.windows
+// .getCurrent().type` was tried first and turned out NOT to reliably read
+// "popup" for the real toolbar popup, which made every popup open think it
+// was already a full-page tab — forcing `body.is-full-page`'s `width: 100%;
+// height: 100vh` onto the popup's auto-sizing window, which Chrome then
+// collapsed down to a tiny size instead of the intended fixed 800x550.
+async function setupOpenInTab() {
+  const currentTab = await chrome.tabs.getCurrent();
+  const openTabBtn = document.getElementById("open-tab-btn");
+
+  if (currentTab) {
+    // Already a normal tab (opened via "Open in Tab", or navigated to
+    // directly) — widen the layout, hide the now-redundant button.
+    document.body.classList.add("is-full-page");
+    openTabBtn.style.display = "none";
+    return;
+  }
+
+  openTabBtn.addEventListener("click", async function () {
+    await chrome.tabs.create({ url: chrome.runtime.getURL("src/popup.html") });
+    window.close();
+  });
+}
 
 function getActiveTabId() {
   return new Promise(function (resolve) {
@@ -84,12 +118,31 @@ function insertDataRow(tr, tbody) {
   }
 }
 
-function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow) {
+// Formats a millisecond duration for the Time column/detail panel: plain ms
+// under a second, otherwise seconds to 1 decimal place.
+function formatDuration(ms) {
+  if (typeof ms !== "number" || Number.isNaN(ms)) {
+    return "";
+  }
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
+function statusCodeSortValue(statusCode) {
+  let code = Number(statusCode.split(" ")[0]);
+  return Number.isNaN(code) ? NON_NUMERIC_STATUS_SORT_VALUE : code;
+}
+
+function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, durationMs) {
   let tr = document.createElement("tr");
   tr.className = isNewRow ? "data-row row-new" : "data-row";
   tr.dataset.requestId = requestId;
+  tr.dataset.method = statusCode.split(" ")[1] || "";
+  tr.dataset.statusBucket = statusBucketFor(statusCode);
+  tr.dataset.statusCode = statusCodeSortValue(statusCode);
+  tr.dataset.durationMs = typeof durationMs === "number" ? durationMs : "";
+  tr.dataset.url = url;
   tr.title = "Click to see headers and body";
-  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}" title="Copy this request as a curl command">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td>`;
+  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}" title="Copy this request as a curl command">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td><td class="time-cell">${escapeHtml(formatDuration(durationMs))}</td>`;
   return tr;
 }
 
@@ -97,9 +150,29 @@ function buildPendingRowElement(requestId, url, method) {
   let tr = document.createElement("tr");
   tr.className = "pending-row";
   tr.dataset.requestId = requestId;
+  tr.dataset.method = method || "";
+  tr.dataset.statusBucket = "pending";
+  tr.dataset.durationMs = "";
   tr.title = "Waiting for a response — curl/headers/body aren't available until it completes";
-  tr.innerHTML = `<td></td><td class="url-cell">${escapeHtml(url)}</td><td class="status-cell"><span class="status-badge status-pending"><span class="pending-dot"></span>${escapeHtml(method || "")} pending</span></td>`;
+  tr.innerHTML = `<td></td><td class="url-cell">${escapeHtml(url)}</td><td class="status-cell"><span class="status-badge status-pending"><span class="pending-dot"></span>${escapeHtml(method || "")} pending</span></td><td class="time-cell"></td>`;
   return tr;
+}
+
+// "Failed"/"Canceled" (see networkErrorLabel in background.js) come through
+// as the leading token in place of a numeric code, same as a real status —
+// Number("Failed") is NaN, so it's checked for explicitly rather than
+// falling through to the numeric range checks.
+function statusBucketFor(statusCode) {
+  let firstToken = statusCode.split(" ")[0];
+  if (firstToken === "Failed" || firstToken === "Canceled") {
+    return "failed";
+  }
+  let code = Number(firstToken);
+  if (code >= 200 && code < 300) return "2xx";
+  if (code >= 300 && code < 400) return "3xx";
+  if (code >= 400 && code < 500) return "4xx";
+  if (code >= 500 && code < 600) return "5xx";
+  return "other";
 }
 
 function badgeClassForStatus(statusCode) {
@@ -113,6 +186,7 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
   let buttonID = requestId + "-curl-detector-apis";
   let statusCode = statusAndRequestID[0];
   let badgeClass = badgeClassForStatus(statusCode);
+  let durationMs = items[requestId + "-duration"];
 
   let fullCurlCommand = items[buttonID] || "";
   if (items[requestId + "-raw-data"]) {
@@ -123,10 +197,12 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
     url: url,
     method: statusCode.split(" ")[1] || "",
     status: statusCode.split(" ")[0] || "",
+    duration: formatDuration(durationMs),
     requestHeaders: parseHeadersJSON(items[requestId + "-request-headers"]),
     responseHeaders: parseHeadersJSON(items[requestId + "-response-headers"]),
     requestBody: items[requestId + "-request-body"] || "",
     responseBody: items[requestId + "-response-body"] || "",
+    networkError: statusAndRequestID[3] || "",
   };
 
   let entry = rowsByRequestId.get(requestId);
@@ -140,7 +216,7 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
 
   if (!entry) {
     let isNewRow = !isFirstRender;
-    let tr = buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow);
+    let tr = buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, durationMs);
     insertDataRow(tr, tbody);
     entry = { tr: tr, kind: "data", buttonID: buttonID, status: statusCode, detailTr: null };
     rowsByRequestId.set(requestId, entry);
@@ -155,9 +231,13 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
 
   if (entry.status !== statusCode) {
     entry.status = statusCode;
+    entry.tr.dataset.statusBucket = statusBucketFor(statusCode);
+    entry.tr.dataset.statusCode = statusCodeSortValue(statusCode);
+    entry.tr.dataset.durationMs = typeof durationMs === "number" ? durationMs : "";
     let badge = entry.tr.querySelector(".status-cell .status-badge");
     badge.className = badgeClass;
     badge.textContent = statusCode;
+    entry.tr.querySelector(".time-cell").textContent = formatDuration(durationMs);
   }
 }
 
@@ -198,7 +278,8 @@ function clearTable() {
   document.getElementById("request-count").textContent = "0 requests";
   document.getElementById("copy-all-btn").disabled = true;
   document.getElementById("export-postman-btn").disabled = true;
-  applySearchFilter();
+  document.getElementById("clear-btn").disabled = true;
+  applyFilters();
 }
 
 function refreshExpandedDetail(entry) {
@@ -237,7 +318,8 @@ async function renderTable() {
       requestId + "-response-headers",
       requestId + "-request-body",
       requestId + "-response-body",
-      requestId + "-pending"
+      requestId + "-pending",
+      requestId + "-duration"
     );
   }
   let items = await chrome.storage.local.get(keys);
@@ -299,6 +381,7 @@ async function renderTable() {
     (pendingCount > 0 ? ` · ${pendingCount} pending` : "");
   document.getElementById("copy-all-btn").disabled = requestCount === 0;
   document.getElementById("export-postman-btn").disabled = requestCount === 0;
+  document.getElementById("clear-btn").disabled = requestCount === 0;
 
   if (expandedRequestId) {
     let entry = rowsByRequestId.get(expandedRequestId);
@@ -307,7 +390,8 @@ async function renderTable() {
     }
   }
 
-  applySearchFilter();
+  applySort();
+  applyFilters();
 }
 
 function toggleDetailRow(tr) {
@@ -427,12 +511,13 @@ function buildDetailRow(buttonID) {
   tr.className = "detail-row";
 
   let td = document.createElement("td");
-  td.colSpan = 3;
+  td.colSpan = 4;
   td.innerHTML = `
     <div class="detail-panel">
       <div class="detail-section">
         <div class="detail-section-title">Request</div>
-        <div class="detail-meta">${escapeHtml(info.method || "")} &middot; ${escapeHtml(info.status || "")}</div>
+        <div class="detail-meta">${escapeHtml(info.method || "")} &middot; ${escapeHtml(info.status || "")}${info.duration ? " &middot; " + escapeHtml(info.duration) : ""}</div>
+        ${info.networkError ? `<div class="detail-subtitle">Network Error</div><div class="detail-meta detail-error">${escapeHtml(info.networkError)}</div>` : ""}
         <div class="detail-subtitle">Request Headers</div>
         ${renderHeadersTable(info.requestHeaders)}
       </div>
@@ -499,6 +584,17 @@ async function copyAllCurl() {
 document.getElementById("copy-all-btn").addEventListener("click", async function () {
   try {
     await copyAllCurl();
+  } catch (e) {
+    console.log(e);
+  }
+});
+
+// No local state mutation needed: chrome.storage.onChanged (registered on
+// load) already triggers scheduleRender() once background.js finishes
+// removing the keys, which naturally empties the table.
+document.getElementById("clear-btn").addEventListener("click", async function () {
+  try {
+    await chrome.runtime.sendMessage({ type: "DETECTOR_APIS_CLEAR_ALL" });
   } catch (e) {
     console.log(e);
   }
@@ -642,19 +738,41 @@ document.getElementById("export-postman-btn").addEventListener("click", async fu
   }
 });
 
-function applySearchFilter() {
+// Method/status filters read the dataset attributes buildDataRowElement /
+// buildPendingRowElement / upsertDataRow set on each <tr> (statusBucketFor)
+// instead of re-deriving them from cell text, so this stays a plain
+// per-row AND of three independent conditions.
+// Matches the URL text always; for data rows (pending rows have no captured
+// body yet) also matches against the request/response body already held in
+// detailsByButtonId, so searching isn't limited to what's visible in the URL
+// column.
+function rowMatchesFilters(row, searchTermLower, methodFilter, statusFilter) {
+  let matchesUrl = row
+    .querySelector(".url-cell")
+    .textContent.toLowerCase()
+    .includes(searchTermLower);
+  let info = detailsByButtonId[row.dataset.requestId + "-curl-detector-apis"];
+  let matchesBody =
+    !!info &&
+    ((info.requestBody && info.requestBody.toLowerCase().includes(searchTermLower)) ||
+      (info.responseBody && info.responseBody.toLowerCase().includes(searchTermLower)));
+  let matchesMethod = !methodFilter || row.dataset.method === methodFilter;
+  let matchesStatus = !statusFilter || row.dataset.statusBucket === statusFilter;
+  return (matchesUrl || matchesBody) && matchesMethod && matchesStatus;
+}
+
+function applyFilters() {
   let searchTerm = document.getElementById("search-input").value.trim();
   let searchTermLower = searchTerm.toLowerCase();
+  let methodFilter = document.getElementById("method-filter").value;
+  let statusFilter = document.getElementById("status-filter").value;
   let rows = document.querySelectorAll(
     "#table-result-detector-apis>tbody tr.data-row"
   );
 
   let matchCount = 0;
   for (const row of rows) {
-    let isMatch = row
-      .querySelector(".url-cell")
-      .textContent.toLowerCase()
-      .includes(searchTermLower);
+    let isMatch = rowMatchesFilters(row, searchTermLower, methodFilter, statusFilter);
     row.style.display = isMatch ? "" : "none";
     if (isMatch) {
       matchCount++;
@@ -669,10 +787,7 @@ function applySearchFilter() {
   );
   let visiblePendingCount = 0;
   for (const row of pendingRows) {
-    let isMatch = row
-      .querySelector(".url-cell")
-      .textContent.toLowerCase()
-      .includes(searchTermLower);
+    let isMatch = rowMatchesFilters(row, searchTermLower, methodFilter, statusFilter);
     row.style.display = isMatch ? "" : "none";
     if (isMatch) {
       visiblePendingCount++;
@@ -690,13 +805,85 @@ function applySearchFilter() {
   } else if (matchCount === 0 && visiblePendingCount === 0) {
     tableWrap.classList.add("is-empty");
     emptyStateIcon.textContent = "🔍";
-    emptyStateText.textContent = `No requests match "${searchTerm}".`;
+    emptyStateText.textContent = searchTerm
+      ? `No requests match "${searchTerm}".`
+      : "No requests match the selected filters.";
   } else {
     tableWrap.classList.remove("is-empty");
   }
 }
 
-document.getElementById("search-input").addEventListener("input", applySearchFilter);
+document.getElementById("search-input").addEventListener("input", applyFilters);
+document.getElementById("method-filter").addEventListener("change", applyFilters);
+document.getElementById("status-filter").addEventListener("change", applyFilters);
+
+function sortValueFor(column, row) {
+  if (column === "url") {
+    return row.dataset.url.toLowerCase();
+  }
+  if (column === "status") {
+    return Number(row.dataset.statusCode);
+  }
+  // "time": no duration yet reads as -1 so those rows sort first ascending
+  // (fastest-looking), consistent with "nothing recorded" being the
+  // smallest possible value rather than an arbitrary large one.
+  return row.dataset.durationMs === "" ? -1 : Number(row.dataset.durationMs);
+}
+
+// Reorders the existing .data-row elements in place (no rebuild) according
+// to the active sort; pending rows are left untouched, already trailing
+// after the data rows per insertDataRow's own invariant. A no-op when
+// sortColumn is null, leaving rows in their natural arrival order.
+function applySort() {
+  updateSortIndicators();
+  if (!sortColumn) {
+    return;
+  }
+
+  let tbody = getTbody();
+  let rows = Array.from(tbody.querySelectorAll("tr.data-row"));
+  rows.sort((a, b) => {
+    let va = sortValueFor(sortColumn, a);
+    let vb = sortValueFor(sortColumn, b);
+    let cmp = va < vb ? -1 : va > vb ? 1 : 0;
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  let anchor = firstPendingRow(tbody);
+  for (const row of rows) {
+    tbody.insertBefore(row, anchor);
+  }
+}
+
+function updateSortIndicators() {
+  document.querySelectorAll("th.sortable .sort-indicator").forEach(function (el) {
+    el.textContent = "";
+  });
+  if (!sortColumn) {
+    return;
+  }
+  let th = document.querySelector(`th.sortable[data-sort-column="${sortColumn}"]`);
+  if (th) {
+    th.querySelector(".sort-indicator").textContent = sortDir === "asc" ? " ▲" : " ▼";
+  }
+}
+
+// 3-state cycle per header: ascending -> descending -> off (natural order).
+// Clicking a different header always starts fresh at ascending.
+document.querySelectorAll("th.sortable").forEach(function (th) {
+  th.addEventListener("click", function () {
+    let column = th.dataset.sortColumn;
+    if (sortColumn !== column) {
+      sortColumn = column;
+      sortDir = "asc";
+    } else if (sortDir === "asc") {
+      sortDir = "desc";
+    } else {
+      sortColumn = null;
+    }
+    applySort();
+  });
+});
 
 document.getElementById("preserve-log").addEventListener("change", async function (e) {
   if (e.target.checked) {

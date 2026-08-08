@@ -709,7 +709,7 @@
                     <span class="switch-slider"></span>
                 </label>
             </div>
-            <button type="button" id="toggle-add-gif" class="toolbar-spacer">+ Add GIF</button>
+            <button type="button" id="toggle-add-gif" class="toolbar-spacer" aria-expanded="false">+ Add GIF</button>
         </div>
 
         <div class="add-gif-panel" id="add-gif-panel" hidden="hidden">
@@ -719,6 +719,7 @@
             <button type="button" id="btn-export-gifs">Export list</button>
             <button type="button" id="btn-import-gifs">Import list</button>
             <input type="file" accept="application/json,.json" id="import_file" hidden="hidden">
+            <button type="button" id="btn-reset-gifs">Reset to defaults</button>
         </div>
     </div>
 

@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.1.2 - 2026-08-06
+
+### Added
+- **"Open in Tab"** button to undock the popup into a normal browser tab (`chrome.tabs.create` + closes the small popup behind it), which stays open instead of closing on blur — useful for extended debugging sessions. Hidden automatically once already running as a tab.
+- **Request duration.** Every row now shows how long the request took (e.g. `128ms`, `2.5s`), including failed/canceled ones. Computed from `chrome.webRequest`'s own per-event timestamps, no extra API needed.
+- **Search now also matches request/response body**, not just the URL.
+- **Sortable columns.** Click URL/Status/Time column headers to sort (ascending → descending → back to natural arrival order); pending rows always stay at the bottom, unsorted.
+
+### Removed
+- **The "cached row" fallback capture added in 1.1.1.** Live-tested it further this round (disk-cache-hit reloads, concurrent duplicate `fetch()` calls) and it never triggered — `chrome.webRequest` tracks cache-served responses fine on current Chrome/Chromium, so the premise didn't hold up under more scrutiny. Removed the retry/synthetic-row logic (`createSyntheticEntry`, the 300ms delay, the `-synthetic` tag) rather than keep ~150 lines of defensive code for a scenario that's never been observed to happen.
+
+## 1.1.1 - 2026-08-05
+
+### Added
+- **Failed/canceled requests now show up instead of silently vanishing.** A request that errors out at the network level (CORS block, DNS failure, connection refused, page-initiated cancel) used to flash as "pending" and then disappear with no trace. It now gets a real row tagged "Failed" or "Canceled" (the latter for `net::ERR_ABORTED` specifically), counted in the badge like any other completed request, with the raw Chrome error string available in the row's detail panel.
+- **Manual "Clear" button** in the toolbar to wipe the captured log on demand — previously the only way to clear it was navigating with Preserve log off.
+- **Method and status filters** in the search bar, alongside the existing URL search. Status buckets are 2xx/3xx/4xx/5xx/Pending/Failed; all three filters (search text, method, status) combine with AND. Copy All Curl and Export Postman already only acted on visible rows, so they automatically respect these filters too.
+- **Defensive fallback capture for requests `chrome.webRequest` never sees.** `response-capture.js`'s page-context `fetch`/XHR hook is now also used as a backstop: if no `chrome.webRequest`-tracked request claims a captured response within 300ms, it's recorded as a "cached" row instead of being silently dropped (no request/response headers are available for these, since none of that is visible from page-context JS). Live testing found `chrome.webRequest` actually does track disk-cache-served responses on current Chrome/Chromium, so this path is not expected to trigger in normal browsing — it's a safety net for cases we haven't identified yet, not a fix for a reproduced symptom.
+
+### Fixed
+- **Race condition in `chrome.storage.local`'s `REQUEST_ORDER_KEY` bookkeeping could silently drop a request from the list** (pre-existing since the 1.0.9 requestId-based rewrite, found via live testing while verifying the above). `trackAndEvict`/`clearTabRequests`/`clearAllRequests` all do an unguarded read-modify-write of the same shared order array; two firing close together (e.g. a page making two requests in the same tick, or a request completing right as a navigation clears the tab) could race, with whichever wrote last silently discarding the other's change. The request's own data (headers/body/status) was still captured correctly under its own keys — it just never appeared in the popup and was never cleaned up by eviction. All three now go through a shared in-memory lock (`withRequestOrderLock` in `js/background.js`) so each read-through-write runs to completion before the next one starts.
+
+### Changed
+- `buildCurlCommandBase` moved from `js/background.js` to `js/utils.js` so `js/popup.js` can reuse it (needed for the cached-row curl fallback above).
+
 ## 1.1.0 - 2026-07-21
 
 ### Fixed

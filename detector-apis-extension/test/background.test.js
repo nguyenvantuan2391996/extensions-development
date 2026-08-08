@@ -126,6 +126,45 @@ test("trackAndEvict appends requestIds in the order they're seen", async () => {
   assert.equal(order[2], "req-3");
 });
 
+test("trackAndEvict serializes concurrent calls instead of losing one to a read-modify-write race (regression: two requestIds starting in the same tick used to silently drop one from REQUEST_ORDER_KEY, even though its own data was written fine)", async () => {
+  const { sandbox, dump } = buildBackgroundSandbox();
+
+  // Deliberately not awaited individually — both start before either
+  // finishes, exercising the exact interleaving that used to lose an update.
+  await Promise.all([
+    sandbox.trackAndEvict("concurrent-a"),
+    sandbox.trackAndEvict("concurrent-b"),
+    sandbox.trackAndEvict("concurrent-c"),
+  ]);
+
+  const order = dump()[sandbox.REQUEST_ORDER_KEY];
+  assert.equal(order.length, 3);
+  assert.deepEqual(
+    [...order].sort(),
+    ["concurrent-a", "concurrent-b", "concurrent-c"]
+  );
+});
+
+test("clearTabRequests and trackAndEvict share the same lock, so a request tracked mid-clear isn't lost either", async () => {
+  const { sandbox, dump } = buildBackgroundSandbox();
+
+  await sandbox.chrome.storage.local.set({
+    "old-req-tab-id": 10,
+    "old-req-url": "https://a.example.com",
+  });
+  await sandbox.trackAndEvict("old-req");
+
+  await sandbox.chrome.storage.local.set({ "new-req-tab-id": 20 });
+  await Promise.all([
+    sandbox.clearTabRequests(10),
+    sandbox.trackAndEvict("new-req"),
+  ]);
+
+  const order = dump()[sandbox.REQUEST_ORDER_KEY];
+  assert.deepEqual([...order].sort(), ["new-req"]);
+  assert.equal(dump()["old-req-url"], undefined);
+});
+
 test("trackAndEvict evicts the oldest requestId (and all its keys) once MAX_TRACKED_REQUESTS is exceeded", async () => {
   const { sandbox, dump } = buildBackgroundSandbox();
   const max = sandbox.MAX_TRACKED_REQUESTS;
@@ -304,4 +343,78 @@ test("clearTabRequests removes only the requests belonging to the given tab", as
   const order = state[sandbox.REQUEST_ORDER_KEY];
   assert.equal(order.length, 1);
   assert.equal(order[0], "req-2");
+});
+
+test("clearAllRequests removes every tracked request and resets the badge", async () => {
+  const { sandbox, dump, badgeText } = buildBackgroundSandbox();
+
+  await sandbox.chrome.storage.local.set({
+    "req-1-tab-id": 10,
+    "req-1-url": "https://a.example.com",
+  });
+  await sandbox.trackAndEvict("req-1");
+
+  await sandbox.clearAllRequests();
+
+  const state = dump();
+  assert.equal(state["req-1-url"], undefined);
+  assert.equal(state[sandbox.REQUEST_ORDER_KEY], undefined);
+  assert.equal(badgeText(), "");
+});
+
+test("networkErrorLabel: ERR_ABORTED reads as Canceled, everything else as Failed", () => {
+  const { sandbox } = buildBackgroundSandbox();
+  assert.equal(sandbox.networkErrorLabel("net::ERR_ABORTED"), "Canceled");
+  assert.equal(
+    sandbox.networkErrorLabel("net::ERR_CONNECTION_REFUSED"),
+    "Failed"
+  );
+  assert.equal(sandbox.networkErrorLabel("net::ERR_FAILED"), "Failed");
+});
+
+test("handleRequestError writes a Failed/Canceled row (with the raw error preserved), computes its duration, and counts it in the badge, instead of the request just vanishing", async () => {
+  const { sandbox, dump, badgeText } = buildBackgroundSandbox();
+
+  await sandbox.chrome.storage.local.set({
+    "req-1-pending": "GET",
+    "req-1-start-time": 1000,
+  });
+  await sandbox.trackAndEvict("req-1");
+  await sandbox.handleRequestError({
+    requestId: "req-1",
+    type: "xmlhttprequest",
+    method: "GET",
+    error: "net::ERR_CONNECTION_REFUSED",
+    timeStamp: 1250,
+  });
+
+  const state = dump();
+  assert.equal(state["req-1-pending"], undefined);
+  assert.equal(
+    state["req-1"],
+    "Failed GET|||net::ERR_CONNECTION_REFUSED"
+  );
+  assert.equal(state["req-1-duration"], 250);
+  assert.equal(badgeText(), "1");
+});
+
+test("computeDuration reads back the stashed start-time and rounds the delta; null when no start-time was ever recorded", async () => {
+  const { sandbox } = buildBackgroundSandbox();
+
+  await sandbox.chrome.storage.local.set({ "req-1-start-time": 1000 });
+  assert.equal(await sandbox.computeDuration("req-1", 1300), 300);
+  assert.equal(await sandbox.computeDuration("req-missing", 5000), null);
+});
+
+test("handleRequestError ignores non-trackable requests, same as the other webRequest listeners", async () => {
+  const { sandbox, dump } = buildBackgroundSandbox();
+
+  await sandbox.handleRequestError({
+    requestId: "req-2",
+    type: "image",
+    method: "GET",
+    error: "net::ERR_FAILED",
+  });
+
+  assert.equal(dump()["req-2"], undefined);
 });

@@ -53,21 +53,95 @@ chrome.webRequest.onBeforeRequest.addListener(
       [details.requestId + "-url"]: details.url,
       [details.requestId + "-tab-id"]: details.tabId,
       [details.requestId + "-pending"]: details.method,
+      // webRequest's own timeStamp on every event for this request, used to
+      // compute how long it took once it completes/fails (onHeadersReceived
+      // / handleRequestError below).
+      [details.requestId + "-start-time"]: details.timeStamp,
     });
   },
   { urls: ["<all_urls>"] }
 );
 
-chrome.webRequest.onErrorOccurred.addListener(
-  async function (details) {
-    if (!isTrackableRequest(details)) {
-      return;
-    }
-    untrackPendingBodyMatch(details.requestId);
-    await chrome.storage.local.remove(details.requestId + "-pending");
-  },
-  { urls: ["<all_urls>"] }
-);
+// net::ERR_ABORTED is what Chrome reports for a request the page itself
+// cancelled (e.g. AbortController, navigating away mid-request) — everything
+// else here is a genuine network-level failure (CORS block, DNS failure,
+// connection refused, ...). Not attempting a full error-code taxonomy beyond
+// this one distinction; the raw `error` string is still preserved for the
+// detail panel.
+function networkErrorLabel(error) {
+  return error === "net::ERR_ABORTED" ? "Canceled" : "Failed";
+}
+
+// webRequest gives every event its own timeStamp; onBeforeRequest stashes
+// the first one under `<requestId>-start-time` so onHeadersReceived and
+// handleRequestError (onErrorOccurred) can both compute how long the
+// request took once it completes or fails.
+async function computeDuration(requestId, endTimeStamp) {
+  const { [requestId + "-start-time"]: startTime } = await chrome.storage.local.get(
+    requestId + "-start-time"
+  );
+  return typeof startTime === "number"
+    ? Math.round(endTimeStamp - startTime)
+    : null;
+}
+
+// A request that never got a response used to just vanish (pending row
+// removed, nothing left behind) — indistinguishable from "never happened".
+// Write a row using the same 3-segment format completed requests use
+// (statusAndRequestID splits on "|", indices 0-2 are status+method /
+// x-request-id / content-type) plus a 4th segment for the raw error string,
+// which existing `.split("|")` call sites simply ignore.
+// `Number("Failed"/"Canceled")` is NaN, so badgeClassForStatus's existing
+// 2xx check already renders this as a danger badge with no popup-side
+// change needed.
+async function handleRequestError(details) {
+  if (!isTrackableRequest(details)) {
+    return;
+  }
+  untrackPendingBodyMatch(details.requestId);
+  await chrome.storage.local.remove(details.requestId + "-pending");
+  const duration = await computeDuration(details.requestId, details.timeStamp);
+
+  await safeStorageSet({
+    [details.requestId]:
+      networkErrorLabel(details.error) +
+      " " +
+      details.method +
+      "||" +
+      "|" +
+      (details.error || ""),
+    [details.requestId + "-duration"]: duration,
+  });
+  await updateBadgeCount();
+}
+
+chrome.webRequest.onErrorOccurred.addListener(handleRequestError, {
+  urls: ["<all_urls>"],
+});
+
+// trackAndEvict/clearTabRequests/clearAllRequests all read REQUEST_ORDER_KEY,
+// compute a new array, and write it back — a read-modify-write with no
+// atomicity guarantee from chrome.storage.local. Two of these firing close
+// together (e.g. a page making two requests in the same tick, or a request
+// completing right as a navigation clears the tab) can race: both read the
+// same pre-update array, and whichever writes last silently discards the
+// other's change. The "lost" request's own data (headers/body/status) still
+// gets written correctly under its own keys — it just never appears in the
+// order array, so it neither renders in the popup nor ever gets evicted.
+// Serializing every mutation of REQUEST_ORDER_KEY through this queue makes
+// each one run to completion (its full read-through-write) before the next
+// starts, which is sufficient to fix it since the service worker is
+// single-threaded — the race only happens because `await` lets unrelated
+// listeners interleave between one function's read and its write.
+let requestOrderQueue = Promise.resolve();
+function withRequestOrderLock(fn) {
+  const result = requestOrderQueue.then(fn, fn);
+  requestOrderQueue = result.then(
+    () => {},
+    () => {}
+  );
+  return result;
+}
 
 // Keeps chrome.storage.local bounded to the most-recently-seen
 // MAX_TRACKED_REQUESTS requests, evicting the oldest ones (and all of their
@@ -76,34 +150,36 @@ chrome.webRequest.onErrorOccurred.addListener(
 // url-keyed version, a requestId is only ever seen once (Chrome doesn't
 // refire onBeforeRequest for the same request on redirect), so there's no
 // need to dedupe/move-to-end here.
-async function trackAndEvict(requestId) {
-  const { [REQUEST_ORDER_KEY]: storedOrder } = await chrome.storage.local.get(
-    REQUEST_ORDER_KEY
-  );
-  let order = storedOrder || [];
-  order.push(requestId);
+function trackAndEvict(requestId) {
+  return withRequestOrderLock(async () => {
+    const { [REQUEST_ORDER_KEY]: storedOrder } = await chrome.storage.local.get(
+      REQUEST_ORDER_KEY
+    );
+    let order = storedOrder || [];
+    order.push(requestId);
 
-  let keysToRemove = [];
+    let keysToRemove = [];
 
-  if (order.length > MAX_TRACKED_REQUESTS) {
-    const evictedIds = order.slice(0, order.length - MAX_TRACKED_REQUESTS);
-    order = order.slice(order.length - MAX_TRACKED_REQUESTS);
+    if (order.length > MAX_TRACKED_REQUESTS) {
+      const evictedIds = order.slice(0, order.length - MAX_TRACKED_REQUESTS);
+      order = order.slice(order.length - MAX_TRACKED_REQUESTS);
 
-    for (const evictedId of evictedIds) {
-      untrackPendingBodyMatch(evictedId);
-      keysToRemove.push(...requestKeySuffixes(evictedId));
+      for (const evictedId of evictedIds) {
+        untrackPendingBodyMatch(evictedId);
+        keysToRemove.push(...requestKeySuffixes(evictedId));
+      }
     }
-  }
 
-  if (keysToRemove.length > 0) {
-    await chrome.storage.local.remove(keysToRemove);
-    // Eviction can remove already-completed (and already-counted) requests.
-    // Without this, the badge would stay stale — showing a higher count than
-    // what's actually left in storage — until the next response happens to
-    // arrive and trigger updateBadgeCount() on its own.
-    await updateBadgeCount();
-  }
-  await safeStorageSet({ [REQUEST_ORDER_KEY]: order });
+    if (keysToRemove.length > 0) {
+      await chrome.storage.local.remove(keysToRemove);
+      // Eviction can remove already-completed (and already-counted) requests.
+      // Without this, the badge would stay stale — showing a higher count than
+      // what's actually left in storage — until the next response happens to
+      // arrive and trigger updateBadgeCount() on its own.
+      await updateBadgeCount();
+    }
+    await safeStorageSet({ [REQUEST_ORDER_KEY]: order });
+  });
 }
 
 // All the storage keys associated with one tracked requestId.
@@ -119,6 +195,8 @@ function requestKeySuffixes(requestId) {
     requestId + "-request-body",
     requestId + "-response-body",
     requestId + "-pending",
+    requestId + "-start-time",
+    requestId + "-duration",
   ];
 }
 
@@ -175,11 +253,14 @@ chrome.webRequest.onHeadersReceived.addListener(
       getValueHeaderByKey(X_REQUEST_ID_DETECTOR_API, headers) + "|";
     infoRequest += contentType;
 
+    const duration = await computeDuration(details.requestId, details.timeStamp);
+
     await safeStorageSet({
       [details.requestId]: infoRequest,
       [details.requestId + "-response-headers"]: JSON.stringify(
         headers || []
       ),
+      [details.requestId + "-duration"]: duration,
     });
     await chrome.storage.local.remove(details.requestId + "-pending");
 
@@ -202,7 +283,9 @@ chrome.webRequest.onHeadersReceived.addListener(
   ["responseHeaders", "extraHeaders"]
 );
 
-// Counts tracked requests that have completed (got a response). Reads only
+// Counts tracked requests that have completed — either got a response or
+// failed/canceled outright (see onErrorOccurred above; both write the
+// requestId's main key, this just reads whatever's there). Reads only
 // REQUEST_ORDER_KEY plus the (bounded, <= MAX_TRACKED_REQUESTS) requestIds it
 // lists, instead of chrome.storage.local.get(null) + a nested scan over every
 // key, which used to cost O((total stored keys)^2) on every response
@@ -390,8 +473,31 @@ chrome.webRequest.onBeforeRequest.addListener(
 chrome.runtime.onMessage.addListener(function (message) {
   if (message && message.type === "DETECTOR_APIS_RESPONSE_BODY") {
     handleResponseBodyCapture(message);
+  } else if (message && message.type === "DETECTOR_APIS_CLEAR_ALL") {
+    clearAllRequests();
   }
 });
+
+// Wipes every tracked request regardless of tab, for the popup's manual
+// Clear button — unlike clearTabRequests (navigation-triggered, scoped to
+// one tab), this always clears everything the user can currently see.
+function clearAllRequests() {
+  return withRequestOrderLock(async () => {
+    const { [REQUEST_ORDER_KEY]: storedOrder } = await chrome.storage.local.get(
+      REQUEST_ORDER_KEY
+    );
+    const order = storedOrder || [];
+
+    let keysToRemove = [REQUEST_ORDER_KEY];
+    for (const requestId of order) {
+      untrackPendingBodyMatch(requestId);
+      keysToRemove.push(...requestKeySuffixes(requestId));
+    }
+
+    await chrome.storage.local.remove(keysToRemove);
+    await chrome.action.setBadgeText({ text: "" });
+  });
+}
 
 async function handleResponseBodyCapture(message) {
   const requestId = claimPendingBodyMatch(message.url);
@@ -428,35 +534,37 @@ chrome.tabs.onUpdated.addListener(handleTabNavigation);
 // Clears only the tracked requests that belong to the given tab, instead of
 // chrome.storage.local.clear()'ing everything — so navigating one tab (with
 // Preserve log off) doesn't wipe requests captured from other open tabs.
-async function clearTabRequests(tabId) {
-  const { [REQUEST_ORDER_KEY]: storedOrder } = await chrome.storage.local.get(
-    REQUEST_ORDER_KEY
-  );
-  const order = storedOrder || [];
-  if (order.length === 0) {
-    await chrome.action.setBadgeText({ text: "" });
-    return;
-  }
-
-  const tabIdItems = await chrome.storage.local.get(
-    order.map((requestId) => requestId + "-tab-id")
-  );
-
-  let keysToRemove = [];
-  let remainingOrder = [];
-
-  for (const requestId of order) {
-    if (tabIdItems[requestId + "-tab-id"] === tabId) {
-      untrackPendingBodyMatch(requestId);
-      keysToRemove.push(...requestKeySuffixes(requestId));
-    } else {
-      remainingOrder.push(requestId);
+function clearTabRequests(tabId) {
+  return withRequestOrderLock(async () => {
+    const { [REQUEST_ORDER_KEY]: storedOrder } = await chrome.storage.local.get(
+      REQUEST_ORDER_KEY
+    );
+    const order = storedOrder || [];
+    if (order.length === 0) {
+      await chrome.action.setBadgeText({ text: "" });
+      return;
     }
-  }
 
-  if (keysToRemove.length > 0) {
-    await chrome.storage.local.remove(keysToRemove);
-  }
-  await safeStorageSet({ [REQUEST_ORDER_KEY]: remainingOrder });
-  await updateBadgeCount();
+    const tabIdItems = await chrome.storage.local.get(
+      order.map((requestId) => requestId + "-tab-id")
+    );
+
+    let keysToRemove = [];
+    let remainingOrder = [];
+
+    for (const requestId of order) {
+      if (tabIdItems[requestId + "-tab-id"] === tabId) {
+        untrackPendingBodyMatch(requestId);
+        keysToRemove.push(...requestKeySuffixes(requestId));
+      } else {
+        remainingOrder.push(requestId);
+      }
+    }
+
+    if (keysToRemove.length > 0) {
+      await chrome.storage.local.remove(keysToRemove);
+    }
+    await safeStorageSet({ [REQUEST_ORDER_KEY]: remainingOrder });
+    await updateBadgeCount();
+  });
 }

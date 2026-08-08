@@ -86,3 +86,28 @@ test("buildPostmanRequestBody: no body returns undefined", () => {
     undefined
   );
 });
+
+test("statusBucketFor buckets numeric codes, and reads Failed/Canceled as their own bucket instead of falling through to NaN ranges", () => {
+  assert.equal(g.statusBucketFor("200 GET"), "2xx");
+  assert.equal(g.statusBucketFor("301 GET"), "3xx");
+  assert.equal(g.statusBucketFor("404 GET"), "4xx");
+  assert.equal(g.statusBucketFor("500 POST"), "5xx");
+  assert.equal(g.statusBucketFor("Failed GET"), "failed");
+  assert.equal(g.statusBucketFor("Canceled POST"), "failed");
+});
+
+test("statusCodeSortValue parses the leading numeric code, and sentinels Failed/Canceled to sort last ascending", () => {
+  assert.equal(g.statusCodeSortValue("200 GET"), 200);
+  assert.equal(g.statusCodeSortValue("404 GET"), 404);
+  assert.equal(g.statusCodeSortValue("Failed GET"), g.NON_NUMERIC_STATUS_SORT_VALUE);
+  assert.equal(g.statusCodeSortValue("Canceled POST"), g.NON_NUMERIC_STATUS_SORT_VALUE);
+});
+
+test("formatDuration: plain ms under a second, seconds with 1 decimal past it", () => {
+  assert.equal(g.formatDuration(128), "128ms");
+  assert.equal(g.formatDuration(999), "999ms");
+  assert.equal(g.formatDuration(1000), "1.0s");
+  assert.equal(g.formatDuration(2500), "2.5s");
+  assert.equal(g.formatDuration(undefined), "");
+  assert.equal(g.formatDuration(NaN), "");
+});

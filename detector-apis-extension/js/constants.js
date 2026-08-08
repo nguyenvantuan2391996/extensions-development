@@ -36,3 +36,7 @@ const REQUEST_ORDER_KEY = "__detector_apis_request_order__";
 // response-capture.js already applies to captured response bodies), so one
 // oversized upload can't itself balloon storage usage.
 const MAX_BODY_LENGTH = 200000;
+
+// popup.js's column-sort: sentinel for non-numeric status tokens
+// ("Failed"/"Canceled") so they sort after every real status code ascending.
+const NON_NUMERIC_STATUS_SORT_VALUE = 9999;
