@@ -49,3 +49,21 @@ const NON_NUMERIC_STATUS_SORT_VALUE = 9999;
 // popup opens, as one combined object (same small-preference-key pattern as
 // PRESERVE_LOG_KEY/SHOW_ALL_TABS_KEY above).
 const POPUP_UI_STATE_KEY = "popup_ui_state_key";
+
+// Header names (lowercase) whose values are credentials/secrets — masked by
+// default. See isSensitiveHeaderName in js/utils.js.
+const SENSITIVE_HEADER_NAMES = [
+  "authorization",
+  "cookie",
+  "set-cookie",
+  "proxy-authorization",
+  "x-api-key",
+  "x-auth-token",
+];
+const REDACTED_PLACEHOLDER = "[REDACTED]";
+// popup view preference: off by default (the safe choice for a tool whose
+// whole point is capturing/copying/exporting request data).
+const REVEAL_SENSITIVE_KEY = "reveal_sensitive_key";
+
+// popup.js's Time column: requests slower than this get a ".slow" highlight.
+const SLOW_REQUEST_THRESHOLD_MS = 1000;

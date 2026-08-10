@@ -19,9 +19,20 @@
 
     <div class="options-panel">
         <div class="options-field">
-            <label for="max-tracked-requests">Max tracked requests</label>
+            <label class="options-field-label" for="max-tracked-requests">Max tracked requests</label>
             <p class="options-field-hint">How many recent requests to keep before the oldest ones are evicted to make room. Higher values use more storage. Default: 150.</p>
             <input type="number" id="max-tracked-requests" min="20" max="1000" step="1">
+        </div>
+
+        <div class="options-field">
+            <div class="options-switch-row">
+                <label class="switch" for="reveal-sensitive-toggle">
+                    <input type="checkbox" id="reveal-sensitive-toggle">
+                    <span class="slider"></span>
+                </label>
+                <label for="reveal-sensitive-toggle" class="options-field-label">Show sensitive header values</label>
+            </div>
+            <p class="options-field-hint">Off by default: masks Authorization/Cookie/API-key header values everywhere in the popup (detail panel, copied curl/fetch, Postman/HAR export) so they don't end up pasted somewhere by accident.</p>
         </div>
     </div>
 </div>

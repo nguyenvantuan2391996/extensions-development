@@ -221,6 +221,8 @@ body.is-full-page {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    row-gap: 8px;
     min-height: 48px;
     padding: 8px 14px;
     background: var(--card-bg);
@@ -233,6 +235,8 @@ body.is-full-page {
 .toolbar-left {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    row-gap: 8px;
     gap: 10px;
 }
 
@@ -250,13 +254,48 @@ body.is-full-page {
 .toolbar-right {
     display: flex;
     align-items: center;
-    gap: 12px;
+    flex-wrap: wrap;
+    row-gap: 8px;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
 .request-count {
     font-size: 13px;
     font-weight: 500;
     color: var(--text-secondary);
+}
+
+.menu-btn {
+    border: 1px solid var(--border);
+    background: var(--surface-bg);
+    color: var(--text-primary);
+    padding: 5px 14px;
+    border-radius: 980px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s ease, opacity .15s ease;
+}
+
+.menu-btn:hover {
+    background: var(--btn-secondary-hover-bg);
+}
+
+.menu-btn:active {
+    background: var(--btn-secondary-active-bg);
+}
+
+.menu-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.menu-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .copy-all-btn {
@@ -290,35 +329,25 @@ body.is-full-page {
     box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
-.export-btn {
-    border: 1px solid var(--border);
-    background: var(--surface-bg);
-    color: var(--text-primary);
-    padding: 5px 14px;
-    border-radius: 980px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background .15s ease, opacity .15s ease;
+.menu-btn,
+.copy-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.export-btn:hover {
-    background: var(--btn-secondary-hover-bg);
+/* Small popup (fixed 800x550, the default) stays icon-only — the title
+   attribute on each button supplies the tooltip. Once undocked into a full
+   tab (body.is-full-page, see js/popup.js's setupOpenInTab) there's enough
+   room to show the text label too, so nothing is permanently hidden behind
+   an icon with no explanation — just narrower until there's space. */
+body:not(.is-full-page) .btn-label {
+    display: none;
 }
 
-.export-btn:active {
-    background: var(--btn-secondary-active-bg);
-}
-
-.export-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.export-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--focus-ring);
+.btn-icon {
+    font-size: 14px;
+    line-height: 1;
 }
 
 .clear-btn:not(:disabled):hover {
@@ -586,6 +615,23 @@ input:checked + .slider:before {
     white-space: nowrap;
 }
 
+.time-cell.slow {
+    color: var(--danger-text);
+    font-weight: 600;
+}
+
+.gql-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--pending-bg);
+    color: var(--pending-text);
+    vertical-align: middle;
+}
+
 .url-cell {
     word-break: break-all;
 }
@@ -620,8 +666,27 @@ input:checked + .slider:before {
 }
 
 .detail-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     font-size: 13px;
     font-weight: 600;
+}
+
+.replay-btn {
+    border: 1px solid var(--border);
+    background: var(--surface-bg);
+    color: var(--text-primary);
+    padding: 3px 10px;
+    border-radius: 980px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.replay-btn:hover {
+    background: var(--btn-secondary-hover-bg);
 }
 
 .detail-meta {
@@ -801,11 +866,29 @@ input:checked + .slider:before {
     max-width: 480px;
 }
 
-.options-field label {
+.options-field {
+    margin-bottom: 22px;
+}
+
+.options-field:last-child {
+    margin-bottom: 0;
+}
+
+.options-field-label {
     display: block;
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 6px;
+}
+
+.options-switch-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.options-switch-row .options-field-label {
+    margin-bottom: 0;
 }
 
 .options-field-hint {

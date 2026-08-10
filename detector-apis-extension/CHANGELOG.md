@@ -1,13 +1,22 @@
 # Changelog
 
-## 1.1.3 - 2026-08-06
+## 1.1.3 - 2026-08-10
 
 ### Added
 - **Response size column**, next to Time — from the `Content-Length` header when present, otherwise the actual captured body's byte length. Sortable like the other columns.
 - **Duplicate-call highlighting.** A request whose URL was called more than once now shows a small "×N" badge, making repeated/polling calls easy to spot at a glance.
 - **"Copy as fetch"** alongside curl — a format selector next to Copy All switches what every Copy button produces, a ready-to-paste `fetch(url, options)` JS snippet built with `JSON.stringify` (no hand-rolled escaping needed, unlike curl's shell-quoting).
 - **Filters, sort, and copy format now persist** across popup close/reopen (search text, method/status filters, sort column+direction, curl/fetch choice) — previously reset every time.
-- **Options page** (gear icon in the footer) to configure how many recent requests are kept before the oldest get evicted (default 150, was previously hardcoded).
+- **Options page** (gear icon in the footer) to configure how many recent requests are kept before the oldest get evicted (default 150, was previously hardcoded), and to reveal sensitive header values (see below).
+- **Sensitive header values are masked by default** — `Authorization`, `Cookie`, `Set-Cookie`, and API-key-style headers show as `[REDACTED]` in the detail panel, copied curl/fetch commands, and Postman/HAR exports. The Options page's "Show sensitive header values" toggle reveals real values when you actually need them.
+- **GraphQL operation names.** GraphQL clients POST every operation to one endpoint, so every row used to look identical — a request whose body has an `operationName` field now shows it as a badge next to the URL.
+- **Slow requests are highlighted** — the Time column turns red/bold past 1 second.
+- **Replay a captured request** from the detail panel (↻ Replay) — resends the exact method/headers/body; since the extension already has broad host permissions this isn't blocked by page-level CORS, and the replay shows up as a new row on its own.
+- **Export HAR**, alongside Postman, for opening captured traffic in other tools.
+
+### Changed
+- **Toolbar buttons are now icon-only in the small popup**, with a tooltip explaining each one, and switch to full icon+text once undocked into a full tab (via "Open in Tab") where there's room — keeps the popup from feeling crowded without hiding anything behind an unlabeled menu.
+- Curl commands are now built on demand in `js/popup.js` (same on-the-fly approach `buildFetchSnippet` already used), instead of being pre-assembled and stored by `js/background.js` — needed so sensitive header values can be redacted header-by-header rather than against an already-escaped string.
 
 ## 1.1.2 - 2026-08-06
 

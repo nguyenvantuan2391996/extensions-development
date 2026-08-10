@@ -151,3 +151,56 @@ test("buildFetchSnippet: includes headers/body only when present, and JSON.strin
   assert.doesNotMatch(minimal, /"body"/);
   assert.match(minimal, /"method": "GET"/);
 });
+
+test("isSensitiveHeaderName matches known credential headers case-insensitively, and nothing else", () => {
+  assert.equal(g.isSensitiveHeaderName("Authorization"), true);
+  assert.equal(g.isSensitiveHeaderName("cookie"), true);
+  assert.equal(g.isSensitiveHeaderName("X-API-Key"), true);
+  assert.equal(g.isSensitiveHeaderName("Content-Type"), false);
+  assert.equal(g.isSensitiveHeaderName("Accept"), false);
+});
+
+test("buildFetchSnippet and buildCurlSnippet redact sensitive header values unless reveal is true", () => {
+  let info = {
+    url: "https://api.example.com/x",
+    method: "GET",
+    requestHeaders: [
+      { name: "Authorization", value: "Bearer secret-token" },
+      { name: "Accept", value: "application/json" },
+    ],
+  };
+
+  let hiddenFetch = g.buildFetchSnippet(info, false);
+  assert.doesNotMatch(hiddenFetch, /secret-token/);
+  assert.match(hiddenFetch, /\[REDACTED\]/);
+  assert.match(hiddenFetch, /application\/json/);
+
+  let revealedFetch = g.buildFetchSnippet(info, true);
+  assert.match(revealedFetch, /secret-token/);
+
+  let hiddenCurl = g.buildCurlSnippet(info, false);
+  assert.doesNotMatch(hiddenCurl, /secret-token/);
+  assert.match(hiddenCurl, /\[REDACTED\]/);
+
+  let revealedCurl = g.buildCurlSnippet(info, true);
+  assert.match(revealedCurl, /secret-token/);
+});
+
+test("extractGraphqlOperationName reads operationName from a JSON body, and tolerates non-GraphQL/invalid bodies", () => {
+  assert.equal(
+    g.extractGraphqlOperationName('{"operationName":"GetUser","query":"..."}'),
+    "GetUser"
+  );
+  assert.equal(g.extractGraphqlOperationName('{"a":1}'), null);
+  assert.equal(g.extractGraphqlOperationName("not json"), null);
+  assert.equal(g.extractGraphqlOperationName(""), null);
+  assert.equal(g.extractGraphqlOperationName(null), null);
+});
+
+test("isSlowRequest flags durations over the threshold, and tolerates missing/NaN values", () => {
+  assert.equal(g.isSlowRequest(g.SLOW_REQUEST_THRESHOLD_MS + 1), true);
+  assert.equal(g.isSlowRequest(g.SLOW_REQUEST_THRESHOLD_MS), false);
+  assert.equal(g.isSlowRequest(100), false);
+  assert.equal(g.isSlowRequest(undefined), false);
+  assert.equal(g.isSlowRequest(NaN), false);
+});

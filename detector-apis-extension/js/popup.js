@@ -1,5 +1,4 @@
   let totalRequestCount = 0;
-let curlByButtonId = {};
 let detailsByButtonId = {};
 // requestId -> { tr, kind: "data" | "pending", buttonID, status, detailTr }
 let rowsByRequestId = new Map();
@@ -21,11 +20,16 @@ let showAllTabs = true;
 // arrival order after the sorted ones.
 let sortColumn = null;
 let sortDir = "asc";
+// Off by default — see REVEAL_SENSITIVE_KEY in js/constants.js. Read by
+// every place a header value is displayed or copied (renderHeadersTable,
+// buildCurlSnippet/buildFetchSnippet, Postman/HAR export).
+let revealSensitive = false;
 
 window.addEventListener("load", async (event) => {
   activeTabId = await getActiveTabId();
   showAllTabs = await getShowAllTabsPreference();
   document.getElementById("all-tabs-toggle").checked = showAllTabs;
+  revealSensitive = await getRevealSensitivePreference();
 
   await updateSwitchValue()
   await setupOpenInTab();
@@ -84,6 +88,15 @@ function getShowAllTabsPreference() {
   });
 }
 
+function getRevealSensitivePreference() {
+  return new Promise(function (resolve) {
+    chrome.storage.local.get([REVEAL_SENSITIVE_KEY], function (items) {
+      resolve(items[REVEAL_SENSITIVE_KEY] === true);
+    });
+  });
+}
+
+
 // Restores the search text/method+status filters/sort/copy-format from the
 // previous popup session — called before the first renderTable() so its own
 // applySort()/applyFilters() calls apply the restored state immediately
@@ -97,8 +110,7 @@ async function loadUIState() {
   document.getElementById("method-filter").value = state.method || "";
   document.getElementById("status-filter").value = state.status || "";
   document.getElementById("copy-format").value = state.copyFormat || "curl";
-  document.getElementById("copy-all-btn").textContent =
-    state.copyFormat === "fetch" ? "Copy All Fetch" : "Copy All Curl";
+  setCopyAllLabel(state.copyFormat === "fetch" ? "Copy All Fetch" : "Copy All Curl");
   sortColumn = state.sortColumn || null;
   sortDir = state.sortDir || "asc";
 }
@@ -175,7 +187,30 @@ function statusCodeSortValue(statusCode) {
   return Number.isNaN(code) ? NON_NUMERIC_STATUS_SORT_VALUE : code;
 }
 
-function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, durationMs, sizeBytes) {
+// GraphQL clients (Apollo/Relay/urql) all POST every operation to one
+// endpoint with a JSON body shaped { operationName, query, variables } —
+// without this, every row for a GraphQL API looks identical. Only reads the
+// operationName field every major client already sends; not a general
+// GraphQL query parser.
+function extractGraphqlOperationName(requestBody) {
+  if (!requestBody) {
+    return null;
+  }
+  try {
+    let parsed = JSON.parse(requestBody);
+    return typeof parsed.operationName === "string" && parsed.operationName
+      ? parsed.operationName
+      : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function isSlowRequest(durationMs) {
+  return typeof durationMs === "number" && durationMs > SLOW_REQUEST_THRESHOLD_MS;
+}
+
+function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, durationMs, sizeBytes, graphqlOperation) {
   let tr = document.createElement("tr");
   tr.className = isNewRow ? "data-row row-new" : "data-row";
   tr.dataset.requestId = requestId;
@@ -186,7 +221,11 @@ function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, i
   tr.dataset.sizeBytes = typeof sizeBytes === "number" ? sizeBytes : "";
   tr.dataset.url = url;
   tr.title = "Click to see headers and body";
-  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}" title="Copy this request (curl/fetch — see the format selector in the toolbar)">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td><td class="time-cell">${escapeHtml(formatDuration(durationMs))}</td><td class="size-cell">${escapeHtml(formatSize(sizeBytes))}</td>`;
+  let gqlBadge = graphqlOperation
+    ? `<span class="gql-badge" title="GraphQL operation name">${escapeHtml(graphqlOperation)}</span>`
+    : "";
+  let timeClass = "time-cell" + (isSlowRequest(durationMs) ? " slow" : "");
+  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}" title="Copy this request (curl/fetch — see the format selector in the toolbar)">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}${gqlBadge}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td><td class="${timeClass}">${escapeHtml(formatDuration(durationMs))}</td><td class="size-cell">${escapeHtml(formatSize(sizeBytes))}</td>`;
   return tr;
 }
 
@@ -233,12 +272,9 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
   let badgeClass = badgeClassForStatus(statusCode);
   let durationMs = items[requestId + "-duration"];
   let sizeBytes = items[requestId + "-size"];
+  let requestBody = items[requestId + "-request-body"] || "";
+  let graphqlOperation = extractGraphqlOperationName(requestBody);
 
-  let fullCurlCommand = items[buttonID] || "";
-  if (items[requestId + "-raw-data"]) {
-    fullCurlCommand += " " + items[requestId + "-raw-data"];
-  }
-  curlByButtonId[buttonID] = fullCurlCommand;
   detailsByButtonId[buttonID] = {
     url: url,
     method: statusCode.split(" ")[1] || "",
@@ -247,7 +283,7 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
     size: formatSize(sizeBytes),
     requestHeaders: parseHeadersJSON(items[requestId + "-request-headers"]),
     responseHeaders: parseHeadersJSON(items[requestId + "-response-headers"]),
-    requestBody: items[requestId + "-request-body"] || "",
+    requestBody: requestBody,
     responseBody: items[requestId + "-response-body"] || "",
     networkError: statusAndRequestID[3] || "",
   };
@@ -263,7 +299,7 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
 
   if (!entry) {
     let isNewRow = !isFirstRender;
-    let tr = buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, durationMs, sizeBytes);
+    let tr = buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, durationMs, sizeBytes, graphqlOperation);
     insertDataRow(tr, tbody);
     entry = { tr: tr, kind: "data", buttonID: buttonID, status: statusCode, detailTr: null };
     rowsByRequestId.set(requestId, entry);
@@ -285,7 +321,9 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
     let badge = entry.tr.querySelector(".status-cell .status-badge");
     badge.className = badgeClass;
     badge.textContent = statusCode;
-    entry.tr.querySelector(".time-cell").textContent = formatDuration(durationMs);
+    let timeCell = entry.tr.querySelector(".time-cell");
+    timeCell.textContent = formatDuration(durationMs);
+    timeCell.classList.toggle("slow", isSlowRequest(durationMs));
     entry.tr.querySelector(".size-cell").textContent = formatSize(sizeBytes);
   }
 }
@@ -309,7 +347,6 @@ function removeRow(requestId, entry) {
   }
   rowsByRequestId.delete(requestId);
   if (entry.buttonID) {
-    delete curlByButtonId[entry.buttonID];
     delete detailsByButtonId[entry.buttonID];
   }
 }
@@ -317,7 +354,6 @@ function removeRow(requestId, entry) {
 function clearTable() {
   getTbody().innerHTML = "";
   rowsByRequestId.clear();
-  curlByButtonId = {};
   detailsByButtonId = {};
   expandedRequestId = null;
   totalRequestCount = 0;
@@ -326,7 +362,7 @@ function clearTable() {
   document.getElementById("table-wrap").classList.add("is-empty");
   document.getElementById("request-count").textContent = "0 requests";
   document.getElementById("copy-all-btn").disabled = true;
-  document.getElementById("export-postman-btn").disabled = true;
+  document.getElementById("export-btn").disabled = true;
   document.getElementById("clear-btn").disabled = true;
   applyFilters();
 }
@@ -430,7 +466,7 @@ async function renderTable() {
     `${requestCount} ${requestCount === 1 ? "request" : "requests"}` +
     (pendingCount > 0 ? ` · ${pendingCount} pending` : "");
   document.getElementById("copy-all-btn").disabled = requestCount === 0;
-  document.getElementById("export-postman-btn").disabled = requestCount === 0;
+  document.getElementById("export-btn").disabled = requestCount === 0;
   document.getElementById("clear-btn").disabled = requestCount === 0;
 
   if (expandedRequestId) {
@@ -490,6 +526,15 @@ getTbody().addEventListener("click", function (e) {
     return;
   }
 
+  let replayBtn = e.target.closest(".replay-btn");
+  if (replayBtn) {
+    e.stopPropagation();
+    replayRequest(replayBtn.dataset.buttonId).catch(function (err) {
+      console.log(err);
+    });
+    return;
+  }
+
   let dataRow = e.target.closest("tr.data-row");
   if (dataRow) {
     toggleDetailRow(dataRow);
@@ -500,15 +545,27 @@ function getCopyFormat() {
   return document.getElementById("copy-format").value;
 }
 
+// Only the .btn-label span's text — Copy All has an icon span (.btn-icon)
+// alongside it that setting the button's own textContent would wipe out.
+function setCopyAllLabel(text) {
+  document.querySelector("#copy-all-btn .btn-label").textContent = text;
+}
+
+// Applies the "Show sensitive values" toggle to one header's value —
+// shared by every place a header value gets shown or copied.
+function redactedHeaderValue(name, value, reveal) {
+  return reveal || !isSensitiveHeaderName(name) ? value : REDACTED_PLACEHOLDER;
+}
+
 // JSON.stringify already handles every escaping case (quotes, newlines,
 // unicode) that curl's shell-quoting (shellEscape in js/utils.js) has to do
 // by hand — using it for both the url and the options object sidesteps
 // hand-rolled JS-string escaping entirely.
-function buildFetchSnippet(info) {
+function buildFetchSnippet(info, reveal) {
   let options = { method: info.method || "GET" };
   let headers = {};
   (info.requestHeaders || []).forEach(function (h) {
-    headers[h.name] = h.value;
+    headers[h.name] = redactedHeaderValue(h.name, h.value, reveal);
   });
   if (Object.keys(headers).length > 0) {
     options.headers = headers;
@@ -519,16 +576,65 @@ function buildFetchSnippet(info) {
   return `fetch(${JSON.stringify(info.url)}, ${JSON.stringify(options, null, 2)});`;
 }
 
-// curl commands are pre-built per row (curlByButtonId, assembled as headers
-// arrive); fetch snippets are cheap enough to build on demand from the same
-// detailsByButtonId data every row already carries, so there's no need for
-// a second parallel per-row storage map.
-function commandForButtonId(buttonID) {
-  if (getCopyFormat() === "fetch") {
-    let info = detailsByButtonId[buttonID];
-    return info ? buildFetchSnippet(info) : "";
+// Built on demand from the same detailsByButtonId data every row already
+// carries (method/url/requestHeaders/requestBody) — background.js only
+// persists structured -request-headers now, not a pre-assembled curl
+// string, so redaction can be applied header-by-header here instead of
+// against an already shell-escaped blob.
+function buildCurlSnippet(info, reveal) {
+  let command = buildCurlCommandBase(info.method, info.url);
+  (info.requestHeaders || []).forEach(function (h) {
+    let value = redactedHeaderValue(h.name, h.value, reveal);
+    command += " -H '" + shellEscape(h.name) + ": " + shellEscape(value) + "'";
+  });
+  if (info.requestBody) {
+    command += " --data-raw '" + shellEscape(info.requestBody) + "'";
   }
-  return curlByButtonId[buttonID] || "";
+  return command;
+}
+
+function commandForButtonId(buttonID) {
+  let info = detailsByButtonId[buttonID];
+  if (!info) {
+    return "";
+  }
+  return getCopyFormat() === "fetch"
+    ? buildFetchSnippet(info, revealSensitive)
+    : buildCurlSnippet(info, revealSensitive);
+}
+
+// Re-sends a captured request exactly as it was: fetch() calls made from
+// the extension's own popup page aren't subject to page-level CORS the way
+// a normal webpage's would be, since this extension already declares
+// host_permissions for every origin — so this reaches the real endpoint
+// regardless of where it was originally captured. The replay is itself a
+// normal fetch() the browser makes, so it flows through the extension's
+// existing chrome.webRequest pipeline and just shows up as a new row; no
+// special-cased "replay result" UI is needed here.
+async function replayRequest(buttonID) {
+  let info = detailsByButtonId[buttonID];
+  if (!info) {
+    return;
+  }
+  let headers = {};
+  (info.requestHeaders || []).forEach(function (h) {
+    headers[h.name] = h.value;
+  });
+  try {
+    // credentials: "include" lets the browser attach real cookies for the
+    // target origin itself — fetch() silently drops forbidden request
+    // headers like Cookie/Host if they're set manually, so this is the
+    // correct way to get them onto the replayed request, not a workaround.
+    await fetch(info.url, {
+      method: info.method || "GET",
+      headers: headers,
+      body: info.requestBody || undefined,
+      credentials: "include",
+    });
+    await displayAlert("alert-success", "Replayed — check the list above for the new request", 2000);
+  } catch (e) {
+    await displayAlert("alert-success", "Replay failed: " + e.message, 2000);
+  }
 }
 
 async function copyCurl(id) {
@@ -571,7 +677,8 @@ function renderHeadersTable(headers) {
   }
   let rows = headers
     .map(function (h) {
-      return `<tr><td class="kv-key">${escapeHtml(h.name)}</td><td class="kv-value">${escapeHtml(h.value)}</td></tr>`;
+      let value = redactedHeaderValue(h.name, h.value, revealSensitive);
+      return `<tr><td class="kv-key">${escapeHtml(h.name)}</td><td class="kv-value">${escapeHtml(value)}</td></tr>`;
     })
     .join("");
   return `<table class="kv-table"><tbody>${rows}</tbody></table>`;
@@ -600,7 +707,10 @@ function buildDetailRow(buttonID) {
   td.innerHTML = `
     <div class="detail-panel">
       <div class="detail-section">
-        <div class="detail-section-title">Request</div>
+        <div class="detail-section-title">
+          Request
+          <button type="button" class="replay-btn" data-button-id="${buttonID}" title="Send this request again with the same method/headers/body — the extension's host permissions mean this isn't blocked by CORS the way a normal page's fetch() would be. The replay shows up as a new row.">&#8635; Replay</button>
+        </div>
         <div class="detail-meta">${escapeHtml(info.method || "")} &middot; ${escapeHtml(info.status || "")}${info.duration ? " &middot; " + escapeHtml(info.duration) : ""}${info.size ? " &middot; " + escapeHtml(info.size) : ""}</div>
         ${info.networkError ? `<div class="detail-subtitle">Network Error</div><div class="detail-meta detail-error">${escapeHtml(info.networkError)}</div>` : ""}
         <div class="detail-subtitle">Request Headers</div>
@@ -624,19 +734,28 @@ function buildDetailRow(buttonID) {
   return tr;
 }
 
-async function copyAllCurl() {
+// The buttonID of every currently-visible (not filtered-out) data row, in
+// display order — shared by Copy All and both export formats, which all
+// need to act on exactly what the user can currently see in the table.
+function visibleButtonIds() {
   let rows = document.querySelectorAll(
     "#table-result-detector-apis>tbody tr.data-row"
   );
-
-  let commandList = [];
+  let ids = [];
   for (const row of rows) {
     if (row.style.display === "none") {
       continue;
     }
-    let buttonID = row
-      .getElementsByTagName("td")[0]
-      .getElementsByTagName("button")[0].id;
+    ids.push(
+      row.getElementsByTagName("td")[0].getElementsByTagName("button")[0].id
+    );
+  }
+  return ids;
+}
+
+async function copyAllCurl() {
+  let commandList = [];
+  for (const buttonID of visibleButtonIds()) {
     let command = commandForButtonId(buttonID);
     if (command) {
       commandList.push(command);
@@ -675,8 +794,7 @@ document.getElementById("copy-all-btn").addEventListener("click", async function
 });
 
 document.getElementById("copy-format").addEventListener("change", function () {
-  document.getElementById("copy-all-btn").textContent =
-    getCopyFormat() === "fetch" ? "Copy All Fetch" : "Copy All Curl";
+  setCopyAllLabel(getCopyFormat() === "fetch" ? "Copy All Fetch" : "Copy All Curl");
   saveUIState();
 });
 
@@ -736,25 +854,37 @@ function buildPostmanRequestBody(info, contentType) {
   };
 }
 
+function redactedHeaders(headers, reveal) {
+  return (headers || []).map(function (h) {
+    return { name: h.name, value: redactedHeaderValue(h.name, h.value, reveal) };
+  });
+}
+
+function downloadJSON(data, filename) {
+  let blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
+  let url = URL.createObjectURL(blob);
+  let link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function visibleRequestInfos() {
+  return visibleButtonIds()
+    .map(function (buttonID) {
+      return detailsByButtonId[buttonID];
+    })
+    .filter(Boolean);
+}
+
 async function exportPostmanCollection() {
-  let rows = document.querySelectorAll(
-    "#table-result-detector-apis>tbody tr.data-row"
-  );
-
-  let postmanItems = [];
-  for (const row of rows) {
-    if (row.style.display === "none") {
-      continue;
-    }
-    let buttonID = row
-      .getElementsByTagName("td")[0]
-      .getElementsByTagName("button")[0].id;
-    let info = detailsByButtonId[buttonID];
-    if (!info) {
-      continue;
-    }
-
-    let requestHeaders = info.requestHeaders || [];
+  let postmanItems = visibleRequestInfos().map(function (info) {
+    let requestHeaders = redactedHeaders(info.requestHeaders, revealSensitive);
     let contentType = findHeaderValue(requestHeaders, CONTENT_TYPE).toLowerCase();
     let postmanRequest = {
       method: info.method || "GET",
@@ -772,19 +902,15 @@ async function exportPostmanCollection() {
         originalRequest: postmanRequest,
         status: info.status || "",
         code: Number(info.status) || 0,
-        header: (info.responseHeaders || []).map(function (h) {
+        header: redactedHeaders(info.responseHeaders, revealSensitive).map(function (h) {
           return { key: h.name, value: h.value };
         }),
         body: info.responseBody,
       });
     }
 
-    postmanItems.push({
-      name: info.url,
-      request: postmanRequest,
-      response: responses,
-    });
-  }
+    return { name: info.url, request: postmanRequest, response: responses };
+  });
 
   if (postmanItems.length === 0) {
     try {
@@ -795,25 +921,16 @@ async function exportPostmanCollection() {
     return;
   }
 
-  let collection = {
-    info: {
-      name: "Detector APIs Extension Export",
-      schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+  downloadJSON(
+    {
+      info: {
+        name: "Detector APIs Extension Export",
+        schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+      },
+      item: postmanItems,
     },
-    item: postmanItems,
-  };
-
-  let blob = new Blob([JSON.stringify(collection, null, 2)], {
-    type: "application/json",
-  });
-  let url = URL.createObjectURL(blob);
-  let link = document.createElement("a");
-  link.href = url;
-  link.download = `detector-apis-export-${Date.now()}.postman_collection.json`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+    `detector-apis-export-${Date.now()}.postman_collection.json`
+  );
 
   try {
     await displayAlert(
@@ -826,9 +943,88 @@ async function exportPostmanCollection() {
   }
 }
 
-document.getElementById("export-postman-btn").addEventListener("click", async function () {
+// Standard HAR 1.2 shape (http://www.softwareishard.com/blog/har-12-spec/).
+// creator is read from the manifest instead of hardcoded so it can't drift
+// out of sync with the actual installed version.
+async function exportHarCollection() {
+  let entries = visibleRequestInfos().map(function (info) {
+    let requestHeaders = redactedHeaders(info.requestHeaders, revealSensitive);
+    let responseHeaders = redactedHeaders(info.responseHeaders, revealSensitive);
+    let statusCode = parseInt(info.status, 10) || 0;
+    return {
+      startedDateTime: new Date().toISOString(),
+      time: parseFloat(info.duration) || 0,
+      request: {
+        method: info.method || "GET",
+        url: info.url,
+        httpVersion: "HTTP/1.1",
+        headers: requestHeaders.map(function (h) {
+          return { name: h.name, value: h.value };
+        }),
+        queryString: [],
+        postData: info.requestBody
+          ? { mimeType: findHeaderValue(requestHeaders, CONTENT_TYPE) || "text/plain", text: info.requestBody }
+          : undefined,
+        headersSize: -1,
+        bodySize: info.requestBody ? info.requestBody.length : 0,
+      },
+      response: {
+        status: statusCode,
+        statusText: info.status || "",
+        httpVersion: "HTTP/1.1",
+        headers: responseHeaders.map(function (h) {
+          return { name: h.name, value: h.value };
+        }),
+        content: {
+          size: info.responseBody ? info.responseBody.length : 0,
+          mimeType: findHeaderValue(responseHeaders, CONTENT_TYPE) || "text/plain",
+          text: info.responseBody || "",
+        },
+        redirectURL: "",
+        headersSize: -1,
+        bodySize: info.responseBody ? info.responseBody.length : 0,
+      },
+      cache: {},
+      timings: { send: 0, wait: parseFloat(info.duration) || 0, receive: 0 },
+    };
+  });
+
+  if (entries.length === 0) {
+    try {
+      await displayAlert("alert-success", "No requests to export!", 2000);
+    } catch (e) {
+      console.log(e);
+    }
+    return;
+  }
+
+  let manifest = chrome.runtime.getManifest();
+  downloadJSON(
+    {
+      log: {
+        version: "1.2",
+        creator: { name: manifest.name, version: manifest.version },
+        entries: entries,
+      },
+    },
+    `detector-apis-export-${Date.now()}.har`
+  );
+
   try {
-    await exportPostmanCollection();
+    await displayAlert("alert-success", `Exported ${entries.length} request(s) to HAR!`, 2000);
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+document.getElementById("export-btn").addEventListener("click", async function () {
+  try {
+    let format = document.getElementById("export-format").value;
+    if (format === "har") {
+      await exportHarCollection();
+    } else {
+      await exportPostmanCollection();
+    }
   } catch (e) {
     console.log(e);
   }

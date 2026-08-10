@@ -376,12 +376,10 @@ function getValueHeaderByKey(key, headers) {
 // infer POST on its own — but that only covered POST requests that actually
 // had a body. DELETE, PATCH, HEAD, OPTIONS, and body-less POST requests all
 // silently ran as GET when the exported curl command was executed.
-function buildCurlCommandBase(method, url) {
-  if (!method || method === "GET") {
-    return "curl '" + shellEscape(url) + "'";
-  }
-  return "curl --request " + method + " '" + shellEscape(url) + "'";
-}
+// buildCurlCommandBase itself now lives in js/utils.js: popup.js builds the
+// full curl command on demand from the stored -request-headers (needed so
+// it can redact sensitive header values at copy time — see buildCurlSnippet
+// in js/popup.js), so this listener only needs to persist the headers.
 
 chrome.webRequest.onBeforeSendHeaders.addListener(
   async function (details) {
@@ -389,19 +387,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
       return;
     }
 
-    let curlCommand = buildCurlCommandBase(details.method, details.url);
-
-    details.requestHeaders.forEach(function (header) {
-      curlCommand +=
-        " -H '" +
-        shellEscape(header.name) +
-        ": " +
-        shellEscape(header.value) +
-        "'";
-    });
-
     await safeStorageSet({
-      [details.requestId + "-curl-detector-apis"]: curlCommand,
       [details.requestId + "-request-headers"]: JSON.stringify(
         details.requestHeaders || []
       ),
@@ -411,76 +397,44 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
   ["requestHeaders", "extraHeaders"]
 );
 
+// Captures the request body for methods that can carry one. Only the plain
+// decoded string is persisted (-request-body) — popup.js's on-demand curl
+// snippet builder (buildCurlSnippet) and buildFetchSnippet both format it
+// themselves (as --data-raw / a fetch() body respectively) from this same
+// value, instead of this listener pre-formatting a curl-specific fragment.
 chrome.webRequest.onBeforeRequest.addListener(
   async function (details) {
     if (!isTrackableRequest(details)) {
       return;
     }
-
-    // POST
-    if (details.method === "POST") {
-      const requestBody = details.requestBody;
-      if (requestBody && requestBody.raw && requestBody.raw[0]) {
-        const uint8Array = new Uint8Array(requestBody.raw[0].bytes);
-        const textDecoder = new TextDecoder("utf-8");
-        const decodedString = truncateBody(textDecoder.decode(uint8Array));
-
-        await safeStorageSet({
-          [details.requestId + "-raw-data"]:
-            "--data-raw '" + shellEscape(decodedString) + "'",
-          [details.requestId + "-request-body"]: decodedString,
-        });
-      }
-
-      // form data
-      if (requestBody && requestBody.formData) {
-        let rawDataBody = "";
-        for (const key in requestBody.formData) {
-          if (requestBody.formData.hasOwnProperty(key)) {
-            rawDataBody += `${key}=${requestBody.formData[key][0]}&`;
-          }
-        }
-        rawDataBody = truncateBody(rawDataBody);
-
-        await safeStorageSet({
-          [details.requestId + "-raw-data"]:
-            "--data-raw '" + shellEscape(rawDataBody) + "'",
-          [details.requestId + "-request-body"]: rawDataBody,
-        });
-      }
+    if (details.method !== "POST" && details.method !== "PUT") {
+      return;
     }
 
-    // PUT
-    if (details.method === "PUT") {
-      const requestBody = details.requestBody;
-      if (requestBody && requestBody.raw && requestBody.raw[0]) {
-        const uint8Array = new Uint8Array(requestBody.raw[0].bytes);
-        const textDecoder = new TextDecoder("utf-8");
-        const decodedString = truncateBody(textDecoder.decode(uint8Array));
+    const requestBody = details.requestBody;
+    if (requestBody && requestBody.raw && requestBody.raw[0]) {
+      const uint8Array = new Uint8Array(requestBody.raw[0].bytes);
+      const textDecoder = new TextDecoder("utf-8");
+      const decodedString = truncateBody(textDecoder.decode(uint8Array));
 
-        await safeStorageSet({
-          [details.requestId + "-raw-data"]:
-            "--data '" + shellEscape(decodedString) + "'",
-          [details.requestId + "-request-body"]: decodedString,
-        });
-      }
+      await safeStorageSet({
+        [details.requestId + "-request-body"]: decodedString,
+      });
+    }
 
-      // form data
-      if (requestBody && requestBody.formData) {
-        let rawDataBody = "";
-        for (const key in requestBody.formData) {
-          if (requestBody.formData.hasOwnProperty(key)) {
-            rawDataBody += `${key}=${requestBody.formData[key][0]}&`;
-          }
+    // form data
+    if (requestBody && requestBody.formData) {
+      let rawDataBody = "";
+      for (const key in requestBody.formData) {
+        if (requestBody.formData.hasOwnProperty(key)) {
+          rawDataBody += `${key}=${requestBody.formData[key][0]}&`;
         }
-        rawDataBody = truncateBody(rawDataBody);
-
-        await safeStorageSet({
-          [details.requestId + "-raw-data"]:
-            "--data '" + shellEscape(rawDataBody) + "'",
-          [details.requestId + "-request-body"]: rawDataBody,
-        });
       }
+      rawDataBody = truncateBody(rawDataBody);
+
+      await safeStorageSet({
+        [details.requestId + "-request-body"]: rawDataBody,
+      });
     }
   },
   { urls: ["<all_urls>"] },

@@ -14,6 +14,17 @@ window.addEventListener("load", async () => {
     await chrome.storage.local.set({ [MAX_TRACKED_REQUESTS_KEY]: value });
     await displayAlert("Saved!");
   });
+
+  let revealToggle = document.getElementById("reveal-sensitive-toggle");
+  let { [REVEAL_SENSITIVE_KEY]: revealSensitive } = await chrome.storage.local.get(
+    REVEAL_SENSITIVE_KEY
+  );
+  revealToggle.checked = revealSensitive === true;
+
+  revealToggle.addEventListener("change", async function () {
+    await chrome.storage.local.set({ [REVEAL_SENSITIVE_KEY]: revealToggle.checked });
+    await displayAlert("Saved!");
+  });
 });
 
 function clamp(value) {
