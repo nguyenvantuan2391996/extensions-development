@@ -1,4 +1,4 @@
-let totalRequestCount = 0;
+  let totalRequestCount = 0;
 let curlByButtonId = {};
 let detailsByButtonId = {};
 // requestId -> { tr, kind: "data" | "pending", buttonID, status, detailTr }
