@@ -43,7 +43,11 @@
             <span class="live-indicator" title="Watching for new requests in real time"><span class="live-dot"></span>Live</span>
             <button type="button" class="export-btn clear-btn" id="clear-btn" disabled title="Clear all captured requests">Clear</button>
             <button type="button" class="export-btn" id="export-postman-btn" disabled title="Export every request currently visible in the list below as a Postman collection (.json)">Export Postman</button>
-            <button type="button" class="copy-all-btn" id="copy-all-btn" disabled title="Copy a curl command for every request currently visible in the list below">Copy All Curl</button>
+            <select id="copy-format" class="filter-select" aria-label="Copy format" title="Format used by the Copy buttons">
+                <option value="curl">curl</option>
+                <option value="fetch">fetch</option>
+            </select>
+            <button type="button" class="copy-all-btn" id="copy-all-btn" disabled title="Copy a command for every request currently visible in the list below">Copy All Curl</button>
             <span class="request-count" id="request-count" title="Completed requests · pending ones are still waiting for a response">0 requests</span>
         </div>
     </div>
@@ -75,10 +79,11 @@
         <table class="result-table" id="table-result-detector-apis">
             <thead>
             <tr>
-                <th class="col-curl" title="Copy this request as a curl command">Curl</th>
+                <th class="col-curl" title="Copy this request (curl/fetch — see the format selector in the toolbar)">Copy</th>
                 <th class="col-url sortable" data-sort-column="url" title="Click a row to see its full request/response headers and body. Click here to sort by URL.">URL<span class="sort-indicator"></span></th>
                 <th class="col-status sortable" data-sort-column="status" title="HTTP method and response status code. Click to sort.">Status<span class="sort-indicator"></span></th>
                 <th class="col-time sortable" data-sort-column="time" title="Time from request start to response/failure. Click to sort.">Time<span class="sort-indicator"></span></th>
+                <th class="col-size sortable" data-sort-column="size" title="Response body size. Click to sort.">Size<span class="sort-indicator"></span></th>
             </tr>
             </thead>
             <tbody>
@@ -95,6 +100,8 @@
             <span class="footer-copyright">© 2026 Detector APIs Extension</span>
             <span class="footer-dot">&middot;</span>
             <a class="footer-email-link" href="mailto:nguyenvantuan2391996@gmail.com">nguyenvantuan2391996@gmail.com</a>
+            <span class="footer-dot">&middot;</span>
+            <a class="footer-email-link" href="#" id="options-link">⚙ Options</a>
         </div>
         <div class="footer-contact">
             <span class="footer-contact-label">Feedback or found a bug?</span>

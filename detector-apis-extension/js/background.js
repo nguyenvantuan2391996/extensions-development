@@ -150,6 +150,18 @@ function withRequestOrderLock(fn) {
 // url-keyed version, a requestId is only ever seen once (Chrome doesn't
 // refire onBeforeRequest for the same request on redirect), so there's no
 // need to dedupe/move-to-end here.
+// The options page lets users override the default via
+// MAX_TRACKED_REQUESTS_KEY; falls back to the MAX_TRACKED_REQUESTS constant
+// when unset (first run, or the page's own validation never ran).
+async function getMaxTrackedRequests() {
+  const { [MAX_TRACKED_REQUESTS_KEY]: configured } = await chrome.storage.local.get(
+    MAX_TRACKED_REQUESTS_KEY
+  );
+  return typeof configured === "number" && configured > 0
+    ? configured
+    : MAX_TRACKED_REQUESTS;
+}
+
 function trackAndEvict(requestId) {
   return withRequestOrderLock(async () => {
     const { [REQUEST_ORDER_KEY]: storedOrder } = await chrome.storage.local.get(
@@ -159,10 +171,11 @@ function trackAndEvict(requestId) {
     order.push(requestId);
 
     let keysToRemove = [];
+    const maxTrackedRequests = await getMaxTrackedRequests();
 
-    if (order.length > MAX_TRACKED_REQUESTS) {
-      const evictedIds = order.slice(0, order.length - MAX_TRACKED_REQUESTS);
-      order = order.slice(order.length - MAX_TRACKED_REQUESTS);
+    if (order.length > maxTrackedRequests) {
+      const evictedIds = order.slice(0, order.length - maxTrackedRequests);
+      order = order.slice(order.length - maxTrackedRequests);
 
       for (const evictedId of evictedIds) {
         untrackPendingBodyMatch(evictedId);
@@ -197,6 +210,7 @@ function requestKeySuffixes(requestId) {
     requestId + "-pending",
     requestId + "-start-time",
     requestId + "-duration",
+    requestId + "-size",
   ];
 }
 
@@ -254,6 +268,11 @@ chrome.webRequest.onHeadersReceived.addListener(
     infoRequest += contentType;
 
     const duration = await computeDuration(details.requestId, details.timeStamp);
+    // Content-Length is often absent or wrong for chunked/compressed
+    // responses — handleResponseBodyCapture fills in a byte-accurate value
+    // from the actual captured body in that case, once it arrives.
+    const contentLength = getValueHeaderByKey(CONTENT_LENGTH, headers);
+    const size = contentLength ? parseInt(contentLength, 10) : null;
 
     await safeStorageSet({
       [details.requestId]: infoRequest,
@@ -261,6 +280,7 @@ chrome.webRequest.onHeadersReceived.addListener(
         headers || []
       ),
       [details.requestId + "-duration"]: duration,
+      [details.requestId + "-size"]: size,
     });
     await chrome.storage.local.remove(details.requestId + "-pending");
 
@@ -504,9 +524,23 @@ async function handleResponseBodyCapture(message) {
   if (!requestId) {
     return;
   }
-  await safeStorageSet({
+
+  const toSet = {
     [requestId + "-response-body"]: truncateBody(message.body || ""),
-  });
+  };
+
+  // onHeadersReceived already wrote a byte count from the Content-Length
+  // header when one was present and parseable — only fall back to counting
+  // the actual captured body (accurate, but only known once it's fully in
+  // hand) when that didn't happen.
+  const { [requestId + "-size"]: existingSize } = await chrome.storage.local.get(
+    requestId + "-size"
+  );
+  if (existingSize === null || existingSize === undefined) {
+    toSet[requestId + "-size"] = new TextEncoder().encode(message.body || "").length;
+  }
+
+  await safeStorageSet(toSet);
 }
 
 // Clears a tab's own tracked requests when it starts a fresh navigation (and

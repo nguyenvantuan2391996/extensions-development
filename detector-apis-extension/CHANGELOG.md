@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.3 - 2026-08-06
+
+### Added
+- **Response size column**, next to Time — from the `Content-Length` header when present, otherwise the actual captured body's byte length. Sortable like the other columns.
+- **Duplicate-call highlighting.** A request whose URL was called more than once now shows a small "×N" badge, making repeated/polling calls easy to spot at a glance.
+- **"Copy as fetch"** alongside curl — a format selector next to Copy All switches what every Copy button produces, a ready-to-paste `fetch(url, options)` JS snippet built with `JSON.stringify` (no hand-rolled escaping needed, unlike curl's shell-quoting).
+- **Filters, sort, and copy format now persist** across popup close/reopen (search text, method/status filters, sort column+direction, curl/fetch choice) — previously reset every time.
+- **Options page** (gear icon in the footer) to configure how many recent requests are kept before the oldest get evicted (default 150, was previously hardcoded).
+
 ## 1.1.2 - 2026-08-06
 
 ### Added

@@ -8,6 +8,7 @@ const XHR_RESOURCE_TYPE = "xmlhttprequest";
 
 const X_REQUEST_ID_DETECTOR_API = "x-request-id";
 const CONTENT_TYPE = "content-type";
+const CONTENT_LENGTH = "content-length";
 const CONTENT_TYPE_JSON = "application/json";
 const CONTENT_TYPE_FORM_URLENCODED = "application/x-www-form-urlencoded";
 const CONTENT_TYPE_GRAPHQL = "application/graphql";
@@ -28,8 +29,11 @@ const PRESERVE_LOG_KEY = "preserve_log_key"
 // tracked tab's requests are shown together.
 const SHOW_ALL_TABS_KEY = "show_all_tabs_key"
 
-// storage growth guardrails
+// storage growth guardrails. MAX_TRACKED_REQUESTS is the default; the
+// options page (src/options.html) can override it via MAX_TRACKED_REQUESTS_KEY
+// in chrome.storage.local, read by trackAndEvict in js/background.js.
 const MAX_TRACKED_REQUESTS = 150;
+const MAX_TRACKED_REQUESTS_KEY = "max_tracked_requests_key";
 const REQUEST_ORDER_KEY = "__detector_apis_request_order__";
 
 // caps how much of a single request body we persist (matches the cap
@@ -40,3 +44,8 @@ const MAX_BODY_LENGTH = 200000;
 // popup.js's column-sort: sentinel for non-numeric status tokens
 // ("Failed"/"Canceled") so they sort after every real status code ascending.
 const NON_NUMERIC_STATUS_SORT_VALUE = 9999;
+
+// Persists the search text/method+status filters/sort/copy-format across
+// popup opens, as one combined object (same small-preference-key pattern as
+// PRESERVE_LOG_KEY/SHOW_ALL_TABS_KEY above).
+const POPUP_UI_STATE_KEY = "popup_ui_state_key";

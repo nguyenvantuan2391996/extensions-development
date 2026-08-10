@@ -19,17 +19,20 @@ I will be super happy if you could help me endorse some skills or knowledge on m
 
 ## Features
 - Detects fetch/XHR API requests fired while a page loads, regardless of response content-type — CORS preflight `OPTIONS` requests are excluded so they don't drown out the real calls.
+- Failed/canceled requests (network errors, CORS blocks, DNS failures) show up as their own status instead of silently vanishing, with the raw error available in the detail panel.
+- Every request shows its response time and size, and requests whose URL was called more than once are tagged with a "×N" badge so repeated/polling calls are easy to spot.
+- Filter by HTTP method and response status (2xx/3xx/4xx/5xx/Pending/Failed), and search by URL or request/response body — all combinable, and remembered across popup opens.
+- Sort the list by URL, status, time, or size by clicking the column header.
 - "All tabs" toggle: see requests from every open tab at once, or narrow the list down to just the active tab (DevTools' per-tab Network panel style). Remembered across popup opens.
-- Click a row to expand full request headers, response headers, and request body.
-- Copy any detected request as a ready-to-use CURL command, or **Copy All** to grab every visible request at once.
+- "Open in Tab" to undock the popup into a normal browser tab that stays open instead of closing when you click elsewhere — handy for longer debugging sessions.
+- Click a row to expand full request headers, response headers, request body, and response body.
+- Copy any detected request as curl or as a JS `fetch()` snippet (switchable), or **Copy All** to grab every currently visible request at once.
 - Export the visible list as a Postman collection JSON for sharing or importing elsewhere.
-- Search/filter the list by URL.
-- Status badges (success / error / pending) for each request, with in-flight requests shown live before their response arrives.
+- Manual **Clear** button, and a **Preserve log** toggle to keep the list across page reloads (similar to DevTools Network tab).
 - Realtime updates while the popup is open — new requests appear live and briefly highlight, no need to reopen the popup.
 - Badge count on the toolbar icon shows how many requests were detected without opening the popup, respecting the "All tabs" toggle.
-- Preserve log toggle, to keep the list across page reloads (similar to DevTools Network tab).
+- Options page to configure how many recent requests are kept in storage before the oldest are evicted.
 - Automatic storage cleanup keeps long sessions from growing unbounded, even with Preserve log on.
-- Live counter of how many requests were detected.
 - Tooltips on toolbar controls, table headers, and rows explaining what they do.
 - Light and dark mode, following your system appearance.
 

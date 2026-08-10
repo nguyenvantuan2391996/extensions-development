@@ -570,11 +570,16 @@ input:checked + .slider:before {
     width: 70px;
 }
 
+.col-size {
+    width: 70px;
+}
+
 .status-cell {
     text-align: center;
 }
 
-.time-cell {
+.time-cell,
+.size-cell {
     text-align: right;
     color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
@@ -747,6 +752,18 @@ input:checked + .slider:before {
     animation: live-pulse 1.2s ease-in-out infinite;
 }
 
+.dup-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--accent-soft);
+    color: var(--accent);
+    vertical-align: middle;
+}
+
 .pending-row {
     cursor: default;
 }
@@ -774,6 +791,44 @@ input:checked + .slider:before {
 
 .table-wrap.is-empty .empty-state {
     display: flex;
+}
+
+.options-panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    max-width: 480px;
+}
+
+.options-field label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.options-field-hint {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0 0 10px;
+}
+
+.options-field input[type="number"] {
+    width: 140px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-bg);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.options-field input[type="number"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring-soft);
+    border-color: var(--accent);
 }
 
 .app-footer {

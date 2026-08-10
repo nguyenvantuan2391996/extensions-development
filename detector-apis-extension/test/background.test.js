@@ -83,7 +83,10 @@ function createFakeChrome() {
 function buildBackgroundSandbox() {
   const { chrome, dump, failNextSet, badgeText, setActiveTab } =
     createFakeChrome();
-  const sandbox = { chrome, importScripts: () => {} };
+  // TextEncoder is a host global (available in real service workers), not a
+  // JS language built-in, so a fresh vm context needs it injected explicitly
+  // — same reason `handleResponseBodyCapture`'s byte-size fallback needs it.
+  const sandbox = { chrome, importScripts: () => {}, TextEncoder };
   loadScripts(["js/constants.js", "js/utils.js"], { sandbox });
   loadScripts(["js/background.js"], { sandbox });
   return { sandbox, dump, failNextSet, badgeText, setActiveTab };
@@ -198,6 +201,32 @@ test("trackAndEvict evicts the oldest requestId (and all its keys) once MAX_TRAC
   assert.ok(!order.includes("req-0"));
 });
 
+test("getMaxTrackedRequests falls back to the MAX_TRACKED_REQUESTS default when nothing is configured, an invalid value is ignored, and a valid override wins", async () => {
+  const { sandbox } = buildBackgroundSandbox();
+
+  assert.equal(await sandbox.getMaxTrackedRequests(), sandbox.MAX_TRACKED_REQUESTS);
+
+  await sandbox.chrome.storage.local.set({ [sandbox.MAX_TRACKED_REQUESTS_KEY]: 0 });
+  assert.equal(await sandbox.getMaxTrackedRequests(), sandbox.MAX_TRACKED_REQUESTS);
+
+  await sandbox.chrome.storage.local.set({ [sandbox.MAX_TRACKED_REQUESTS_KEY]: 5 });
+  assert.equal(await sandbox.getMaxTrackedRequests(), 5);
+});
+
+test("trackAndEvict respects a configured MAX_TRACKED_REQUESTS_KEY override, evicting sooner than the 150 default", async () => {
+  const { sandbox, dump } = buildBackgroundSandbox();
+  await sandbox.chrome.storage.local.set({ [sandbox.MAX_TRACKED_REQUESTS_KEY]: 2 });
+
+  await sandbox.trackAndEvict("req-1");
+  await sandbox.trackAndEvict("req-2");
+  await sandbox.trackAndEvict("req-3");
+
+  const order = dump()[sandbox.REQUEST_ORDER_KEY];
+  assert.equal(order.length, 2);
+  assert.equal(order[0], "req-2");
+  assert.equal(order[1], "req-3");
+});
+
 test("claimPendingBodyMatch is FIFO per url and returns null once drained", () => {
   const { sandbox } = buildBackgroundSandbox();
   sandbox.registerPendingBodyMatch("https://api.example.com/graphql", "req-a");
@@ -240,6 +269,33 @@ test("handleResponseBodyCapture stores the body under the claimed requestId, onl
   const state = dump();
   assert.equal(state["req-1-response-body"], '{"ok":true}');
   assert.equal(state["https://cdn.example.com/logo.png-response-body"], undefined);
+});
+
+test("handleResponseBodyCapture only fills in -size from the body's byte length when onHeadersReceived didn't already get one from Content-Length", async () => {
+  const { sandbox, dump } = buildBackgroundSandbox();
+
+  // Content-Length was already known (onHeadersReceived ran first, the
+  // normal order) — the fallback must not clobber it, even though the
+  // header value and the actual body length disagree here on purpose.
+  sandbox.registerPendingBodyMatch("https://api.example.com/known-size", "req-1");
+  await sandbox.chrome.storage.local.set({ "req-1-size": 999 });
+  await sandbox.handleResponseBodyCapture({
+    url: "https://api.example.com/known-size",
+    body: "short",
+  });
+
+  // No Content-Length was ever recorded — falls back to the UTF-8 byte
+  // length of the captured body (not the JS string length, which would be
+  // wrong for multi-byte characters).
+  sandbox.registerPendingBodyMatch("https://api.example.com/unknown-size", "req-2");
+  await sandbox.handleResponseBodyCapture({
+    url: "https://api.example.com/unknown-size",
+    body: "é",
+  });
+
+  const state = dump();
+  assert.equal(state["req-1-size"], 999);
+  assert.equal(state["req-2-size"], 2);
 });
 
 test("isTrackableRequest rejects CORS preflight OPTIONS requests but keeps other XHR/fetch methods", () => {

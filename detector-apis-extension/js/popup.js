@@ -29,6 +29,7 @@ window.addEventListener("load", async (event) => {
 
   await updateSwitchValue()
   await setupOpenInTab();
+  await loadUIState();
   await renderTable();
 
   chrome.storage.onChanged.addListener(function (changes, areaName) {
@@ -83,6 +84,38 @@ function getShowAllTabsPreference() {
   });
 }
 
+// Restores the search text/method+status filters/sort/copy-format from the
+// previous popup session — called before the first renderTable() so its own
+// applySort()/applyFilters() calls apply the restored state immediately
+// instead of a plain reset flashing by first.
+async function loadUIState() {
+  let { [POPUP_UI_STATE_KEY]: state } = await chrome.storage.local.get(
+    POPUP_UI_STATE_KEY
+  );
+  state = state || {};
+  document.getElementById("search-input").value = state.search || "";
+  document.getElementById("method-filter").value = state.method || "";
+  document.getElementById("status-filter").value = state.status || "";
+  document.getElementById("copy-format").value = state.copyFormat || "curl";
+  document.getElementById("copy-all-btn").textContent =
+    state.copyFormat === "fetch" ? "Copy All Fetch" : "Copy All Curl";
+  sortColumn = state.sortColumn || null;
+  sortDir = state.sortDir || "asc";
+}
+
+function saveUIState() {
+  chrome.storage.local.set({
+    [POPUP_UI_STATE_KEY]: {
+      search: document.getElementById("search-input").value,
+      method: document.getElementById("method-filter").value,
+      status: document.getElementById("status-filter").value,
+      copyFormat: getCopyFormat(),
+      sortColumn: sortColumn,
+      sortDir: sortDir,
+    },
+  });
+}
+
 document.getElementById("all-tabs-toggle").addEventListener("change", async function (e) {
   showAllTabs = e.target.checked;
   await chrome.storage.local.set({ [SHOW_ALL_TABS_KEY]: showAllTabs });
@@ -127,12 +160,22 @@ function formatDuration(ms) {
   return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
+// Formats a byte count for the Size column/detail panel.
+function formatSize(bytes) {
+  if (typeof bytes !== "number" || Number.isNaN(bytes)) {
+    return "";
+  }
+  if (bytes < 1000) return `${bytes} B`;
+  if (bytes < 1000000) return `${(bytes / 1000).toFixed(1)} KB`;
+  return `${(bytes / 1000000).toFixed(1)} MB`;
+}
+
 function statusCodeSortValue(statusCode) {
   let code = Number(statusCode.split(" ")[0]);
   return Number.isNaN(code) ? NON_NUMERIC_STATUS_SORT_VALUE : code;
 }
 
-function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, durationMs) {
+function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, durationMs, sizeBytes) {
   let tr = document.createElement("tr");
   tr.className = isNewRow ? "data-row row-new" : "data-row";
   tr.dataset.requestId = requestId;
@@ -140,9 +183,10 @@ function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, i
   tr.dataset.statusBucket = statusBucketFor(statusCode);
   tr.dataset.statusCode = statusCodeSortValue(statusCode);
   tr.dataset.durationMs = typeof durationMs === "number" ? durationMs : "";
+  tr.dataset.sizeBytes = typeof sizeBytes === "number" ? sizeBytes : "";
   tr.dataset.url = url;
   tr.title = "Click to see headers and body";
-  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}" title="Copy this request as a curl command">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td><td class="time-cell">${escapeHtml(formatDuration(durationMs))}</td>`;
+  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}" title="Copy this request (curl/fetch — see the format selector in the toolbar)">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td><td class="time-cell">${escapeHtml(formatDuration(durationMs))}</td><td class="size-cell">${escapeHtml(formatSize(sizeBytes))}</td>`;
   return tr;
 }
 
@@ -153,8 +197,9 @@ function buildPendingRowElement(requestId, url, method) {
   tr.dataset.method = method || "";
   tr.dataset.statusBucket = "pending";
   tr.dataset.durationMs = "";
+  tr.dataset.sizeBytes = "";
   tr.title = "Waiting for a response — curl/headers/body aren't available until it completes";
-  tr.innerHTML = `<td></td><td class="url-cell">${escapeHtml(url)}</td><td class="status-cell"><span class="status-badge status-pending"><span class="pending-dot"></span>${escapeHtml(method || "")} pending</span></td><td class="time-cell"></td>`;
+  tr.innerHTML = `<td></td><td class="url-cell">${escapeHtml(url)}</td><td class="status-cell"><span class="status-badge status-pending"><span class="pending-dot"></span>${escapeHtml(method || "")} pending</span></td><td class="time-cell"></td><td class="size-cell"></td>`;
   return tr;
 }
 
@@ -187,6 +232,7 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
   let statusCode = statusAndRequestID[0];
   let badgeClass = badgeClassForStatus(statusCode);
   let durationMs = items[requestId + "-duration"];
+  let sizeBytes = items[requestId + "-size"];
 
   let fullCurlCommand = items[buttonID] || "";
   if (items[requestId + "-raw-data"]) {
@@ -198,6 +244,7 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
     method: statusCode.split(" ")[1] || "",
     status: statusCode.split(" ")[0] || "",
     duration: formatDuration(durationMs),
+    size: formatSize(sizeBytes),
     requestHeaders: parseHeadersJSON(items[requestId + "-request-headers"]),
     responseHeaders: parseHeadersJSON(items[requestId + "-response-headers"]),
     requestBody: items[requestId + "-request-body"] || "",
@@ -216,7 +263,7 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
 
   if (!entry) {
     let isNewRow = !isFirstRender;
-    let tr = buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, durationMs);
+    let tr = buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, isNewRow, durationMs, sizeBytes);
     insertDataRow(tr, tbody);
     entry = { tr: tr, kind: "data", buttonID: buttonID, status: statusCode, detailTr: null };
     rowsByRequestId.set(requestId, entry);
@@ -234,10 +281,12 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
     entry.tr.dataset.statusBucket = statusBucketFor(statusCode);
     entry.tr.dataset.statusCode = statusCodeSortValue(statusCode);
     entry.tr.dataset.durationMs = typeof durationMs === "number" ? durationMs : "";
+    entry.tr.dataset.sizeBytes = typeof sizeBytes === "number" ? sizeBytes : "";
     let badge = entry.tr.querySelector(".status-cell .status-badge");
     badge.className = badgeClass;
     badge.textContent = statusCode;
     entry.tr.querySelector(".time-cell").textContent = formatDuration(durationMs);
+    entry.tr.querySelector(".size-cell").textContent = formatSize(sizeBytes);
   }
 }
 
@@ -319,7 +368,8 @@ async function renderTable() {
       requestId + "-request-body",
       requestId + "-response-body",
       requestId + "-pending",
-      requestId + "-duration"
+      requestId + "-duration",
+      requestId + "-size"
     );
   }
   let items = await chrome.storage.local.get(keys);
@@ -391,6 +441,7 @@ async function renderTable() {
   }
 
   applySort();
+  updateDuplicateBadges();
   applyFilters();
 }
 
@@ -445,14 +496,48 @@ getTbody().addEventListener("click", function (e) {
   }
 });
 
+function getCopyFormat() {
+  return document.getElementById("copy-format").value;
+}
+
+// JSON.stringify already handles every escaping case (quotes, newlines,
+// unicode) that curl's shell-quoting (shellEscape in js/utils.js) has to do
+// by hand — using it for both the url and the options object sidesteps
+// hand-rolled JS-string escaping entirely.
+function buildFetchSnippet(info) {
+  let options = { method: info.method || "GET" };
+  let headers = {};
+  (info.requestHeaders || []).forEach(function (h) {
+    headers[h.name] = h.value;
+  });
+  if (Object.keys(headers).length > 0) {
+    options.headers = headers;
+  }
+  if (info.requestBody) {
+    options.body = info.requestBody;
+  }
+  return `fetch(${JSON.stringify(info.url)}, ${JSON.stringify(options, null, 2)});`;
+}
+
+// curl commands are pre-built per row (curlByButtonId, assembled as headers
+// arrive); fetch snippets are cheap enough to build on demand from the same
+// detailsByButtonId data every row already carries, so there's no need for
+// a second parallel per-row storage map.
+function commandForButtonId(buttonID) {
+  if (getCopyFormat() === "fetch") {
+    let info = detailsByButtonId[buttonID];
+    return info ? buildFetchSnippet(info) : "";
+  }
+  return curlByButtonId[buttonID] || "";
+}
+
 async function copyCurl(id) {
-  let curlCommand = curlByButtonId[id];
-  if (!curlCommand) {
+  let command = commandForButtonId(id);
+  if (!command) {
     return;
   }
-  await navigator.clipboard.writeText(curlCommand).then(async (r) => {
+  await navigator.clipboard.writeText(command).then(async () => {
     try {
-      console.log(r);
       await displayAlert("alert-success", "Copied successfully!", 2000);
     } catch (e) {
       console.log(e);
@@ -511,12 +596,12 @@ function buildDetailRow(buttonID) {
   tr.className = "detail-row";
 
   let td = document.createElement("td");
-  td.colSpan = 4;
+  td.colSpan = 5;
   td.innerHTML = `
     <div class="detail-panel">
       <div class="detail-section">
         <div class="detail-section-title">Request</div>
-        <div class="detail-meta">${escapeHtml(info.method || "")} &middot; ${escapeHtml(info.status || "")}${info.duration ? " &middot; " + escapeHtml(info.duration) : ""}</div>
+        <div class="detail-meta">${escapeHtml(info.method || "")} &middot; ${escapeHtml(info.status || "")}${info.duration ? " &middot; " + escapeHtml(info.duration) : ""}${info.size ? " &middot; " + escapeHtml(info.size) : ""}</div>
         ${info.networkError ? `<div class="detail-subtitle">Network Error</div><div class="detail-meta detail-error">${escapeHtml(info.networkError)}</div>` : ""}
         <div class="detail-subtitle">Request Headers</div>
         ${renderHeadersTable(info.requestHeaders)}
@@ -544,7 +629,7 @@ async function copyAllCurl() {
     "#table-result-detector-apis>tbody tr.data-row"
   );
 
-  let curlList = [];
+  let commandList = [];
   for (const row of rows) {
     if (row.style.display === "none") {
       continue;
@@ -552,27 +637,27 @@ async function copyAllCurl() {
     let buttonID = row
       .getElementsByTagName("td")[0]
       .getElementsByTagName("button")[0].id;
-    if (curlByButtonId[buttonID]) {
-      curlList.push(curlByButtonId[buttonID]);
+    let command = commandForButtonId(buttonID);
+    if (command) {
+      commandList.push(command);
     }
   }
 
-  if (curlList.length === 0) {
+  if (commandList.length === 0) {
     try {
-      await displayAlert("alert-success", "No curl requests to copy!", 2000);
+      await displayAlert("alert-success", "No requests to copy!", 2000);
     } catch (e) {
       console.log(e);
     }
     return;
   }
 
-  let allCurlText = curlList.join("\n\n");
-  await navigator.clipboard.writeText(allCurlText).then(async (r) => {
+  let allCommandText = commandList.join("\n\n");
+  await navigator.clipboard.writeText(allCommandText).then(async () => {
     try {
-      console.log(r);
       await displayAlert(
         "alert-success",
-        `Copied ${curlList.length} curl request(s)!`,
+        `Copied ${commandList.length} request(s)!`,
         2000
       );
     } catch (e) {
@@ -589,6 +674,12 @@ document.getElementById("copy-all-btn").addEventListener("click", async function
   }
 });
 
+document.getElementById("copy-format").addEventListener("change", function () {
+  document.getElementById("copy-all-btn").textContent =
+    getCopyFormat() === "fetch" ? "Copy All Fetch" : "Copy All Curl";
+  saveUIState();
+});
+
 // No local state mutation needed: chrome.storage.onChanged (registered on
 // load) already triggers scheduleRender() once background.js finishes
 // removing the keys, which naturally empties the table.
@@ -598,6 +689,11 @@ document.getElementById("clear-btn").addEventListener("click", async function ()
   } catch (e) {
     console.log(e);
   }
+});
+
+document.getElementById("options-link").addEventListener("click", function (e) {
+  e.preventDefault();
+  chrome.runtime.openOptionsPage();
 });
 
 function findHeaderValue(headers, name) {
@@ -813,9 +909,18 @@ function applyFilters() {
   }
 }
 
-document.getElementById("search-input").addEventListener("input", applyFilters);
-document.getElementById("method-filter").addEventListener("change", applyFilters);
-document.getElementById("status-filter").addEventListener("change", applyFilters);
+document.getElementById("search-input").addEventListener("input", function () {
+  applyFilters();
+  saveUIState();
+});
+document.getElementById("method-filter").addEventListener("change", function () {
+  applyFilters();
+  saveUIState();
+});
+document.getElementById("status-filter").addEventListener("change", function () {
+  applyFilters();
+  saveUIState();
+});
 
 function sortValueFor(column, row) {
   if (column === "url") {
@@ -823,6 +928,9 @@ function sortValueFor(column, row) {
   }
   if (column === "status") {
     return Number(row.dataset.statusCode);
+  }
+  if (column === "size") {
+    return row.dataset.sizeBytes === "" ? -1 : Number(row.dataset.sizeBytes);
   }
   // "time": no duration yet reads as -1 so those rows sort first ascending
   // (fastest-looking), consistent with "nothing recorded" being the
@@ -855,6 +963,47 @@ function applySort() {
   }
 }
 
+// Pure counting so the "does this url repeat" logic is testable without a
+// DOM: returns a Map<url, count> for a list of urls (one entry per row).
+function computeDuplicateCounts(urls) {
+  let counts = new Map();
+  for (const url of urls) {
+    counts.set(url, (counts.get(url) || 0) + 1);
+  }
+  return counts;
+}
+
+// Tags each row whose url repeats elsewhere in the currently-tracked set
+// with a "×N" badge — a structural property of the full set, so this counts
+// every .data-row regardless of what applyFilters is currently hiding, and
+// runs on every render (a row's count can change up or down as duplicates
+// arrive or get evicted/cleared).
+function updateDuplicateBadges() {
+  let rows = Array.from(document.querySelectorAll("#table-result-detector-apis>tbody tr.data-row"));
+  let counts = computeDuplicateCounts(rows.map((row) => row.dataset.url));
+
+  for (const row of rows) {
+    let count = counts.get(row.dataset.url);
+    let existingBadge = row.querySelector(".dup-badge");
+    if (count <= 1) {
+      if (existingBadge) {
+        existingBadge.remove();
+      }
+      continue;
+    }
+    let label = `×${count}`;
+    if (existingBadge) {
+      existingBadge.textContent = label;
+    } else {
+      let badge = document.createElement("span");
+      badge.className = "dup-badge";
+      badge.title = `Called ${count} times`;
+      badge.textContent = label;
+      row.querySelector(".url-cell").appendChild(badge);
+    }
+  }
+}
+
 function updateSortIndicators() {
   document.querySelectorAll("th.sortable .sort-indicator").forEach(function (el) {
     el.textContent = "";
@@ -882,6 +1031,7 @@ document.querySelectorAll("th.sortable").forEach(function (th) {
       sortColumn = null;
     }
     applySort();
+    saveUIState();
   });
 });
 

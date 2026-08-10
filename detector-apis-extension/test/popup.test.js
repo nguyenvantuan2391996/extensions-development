@@ -111,3 +111,43 @@ test("formatDuration: plain ms under a second, seconds with 1 decimal past it", 
   assert.equal(g.formatDuration(undefined), "");
   assert.equal(g.formatDuration(NaN), "");
 });
+
+test("formatSize: bytes, KB, MB thresholds", () => {
+  assert.equal(g.formatSize(0), "0 B");
+  assert.equal(g.formatSize(999), "999 B");
+  assert.equal(g.formatSize(1000), "1.0 KB");
+  assert.equal(g.formatSize(45000), "45.0 KB");
+  assert.equal(g.formatSize(2500000), "2.5 MB");
+  assert.equal(g.formatSize(undefined), "");
+  assert.equal(g.formatSize(NaN), "");
+});
+
+test("computeDuplicateCounts counts occurrences per url, including ones that only appear once", () => {
+  const counts = g.computeDuplicateCounts([
+    "https://a.example.com",
+    "https://b.example.com",
+    "https://a.example.com",
+    "https://a.example.com",
+  ]);
+  assert.equal(counts.get("https://a.example.com"), 3);
+  assert.equal(counts.get("https://b.example.com"), 1);
+  assert.equal(counts.get("https://missing.example.com"), undefined);
+});
+
+test("buildFetchSnippet: includes headers/body only when present, and JSON.stringify handles escaping", () => {
+  let snippet = g.buildFetchSnippet({
+    url: "https://api.example.com/x?q=a\"b",
+    method: "POST",
+    requestHeaders: [{ name: "Content-Type", value: "application/json" }],
+    requestBody: '{"a":"quote\\"here"}',
+  });
+  assert.match(snippet, /^fetch\(/);
+  assert.match(snippet, /"method": "POST"/);
+  assert.match(snippet, /"Content-Type": "application\/json"/);
+  assert.match(snippet, /q=a\\"b/);
+
+  let minimal = g.buildFetchSnippet({ url: "https://api.example.com/y" });
+  assert.doesNotMatch(minimal, /"headers"/);
+  assert.doesNotMatch(minimal, /"body"/);
+  assert.match(minimal, /"method": "GET"/);
+});

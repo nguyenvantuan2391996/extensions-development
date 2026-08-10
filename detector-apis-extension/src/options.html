@@ -1,0 +1,33 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Detector APIs Extension — Options</title>
+    <link rel="stylesheet" href="../css/popup.css">
+</head>
+
+<body class="is-full-page">
+<div class="app">
+    <header class="app-header">
+        <img src="../images/icon128.png" alt="Detector APIs Extension">
+        <div class="titles">
+            <h1>Detector APIs Extension</h1>
+            <p>Options</p>
+        </div>
+    </header>
+
+    <div class="toast" id="alert-success"></div>
+
+    <div class="options-panel">
+        <div class="options-field">
+            <label for="max-tracked-requests">Max tracked requests</label>
+            <p class="options-field-hint">How many recent requests to keep before the oldest ones are evicted to make room. Higher values use more storage. Default: 150.</p>
+            <input type="number" id="max-tracked-requests" min="20" max="1000" step="1">
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+<script src="../js/constants.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/options.js"></script>
