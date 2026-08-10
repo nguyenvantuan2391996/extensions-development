@@ -7,6 +7,7 @@ GIF_SELECTED = "gif_selected"
 IS_INIT = "is_init"
 DISABLED_HOSTS = "disabled_hosts"
 RANDOM_MODE = "random_mode"
+MULTI_GIF_MODE = "multi_gif_mode"
 
 TOP = "top"
 BOTTOM = "bottom"

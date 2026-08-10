@@ -34,6 +34,11 @@ Whether you're spicing up a presentation, surprising a friend, or just enjoying 
 3. Adjust Size, Position, Direction, and Duration from the toolbar — changes apply instantly to the current tab.
 4. Use the **Show on this site** switch to turn Bubu Dudu off just for the site you're on, or **Random GIF each visit** to get a surprise pick every time.
 
+## What's new in 1.0.5
+- New: search box in the picker to filter your GIF library by URL/filename — handy once you've added a lot of your own
+- New: "Show multiple" mode — toggle it on to pick several GIFs at once and have them float across the page together, staggered along the same path instead of stacking
+- New: keyboard shortcut (`Ctrl+Shift+U` / `⌘+Shift+U` on Mac, customizable in `chrome://extensions/shortcuts`) to instantly show/hide Bubu Dudu on the site you're currently on, without opening the popup
+
 ## What's new in 1.0.4
 - Fixed a bug where deleting (or resetting) the GIF you currently had selected left it floating on pages as a broken image — it's now cleared automatically, so the next reload just shows nothing until you pick a new one
 - GIFs hosted without a `.gif` in the URL (common on some image CDNs) are no longer rejected by "Add GIF via URL" or the right-click "Add this image as a Bubu Dudu GIF" — both now check the actual file type instead of just the URL text

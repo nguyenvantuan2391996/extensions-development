@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded",  async function () {
     }
 
     chrome.storage.local.get(
-      ["gif_size", "gif_position", "gif_animation", "gif_duration", DISABLED_HOSTS, RANDOM_MODE],
+      ["gif_size", "gif_position", "gif_animation", "gif_duration", DISABLED_HOSTS, RANDOM_MODE, MULTI_GIF_MODE],
       (result) => {
         if (chrome.runtime.lastError) {
           alert(ERROR_ALERT)
@@ -88,6 +88,7 @@ document.addEventListener("DOMContentLoaded",  async function () {
         const disabledHosts = result[DISABLED_HOSTS] || []
         document.getElementById("site_toggle").checked = tabSupported && !disabledHosts.includes(currentHostname)
         document.getElementById("random_mode_toggle").checked = !!result[RANDOM_MODE]
+        document.getElementById("multi_gif_toggle").checked = !!result[MULTI_GIF_MODE]
       })
 
     await displayCheckmark()
@@ -97,10 +98,25 @@ document.addEventListener("DOMContentLoaded",  async function () {
 })
 
 function updateEmptyState() {
-  const emptyHint = document.getElementById("gif-empty-hint")
-  const hasItems = document.querySelectorAll("#gifContainer .gif-item").length > 0
-  emptyHint.hidden = hasItems
+  const items = Array.from(document.querySelectorAll("#gifContainer .gif-item"))
+  const hasItems = items.length > 0
+  document.getElementById("gif-empty-hint").hidden = hasItems
+
+  const query = document.getElementById("gif_search").value.trim()
+  const visibleCount = items.filter(item => !item.hidden).length
+  document.getElementById("gif-search-empty-hint").hidden = !(hasItems && query.length > 0 && visibleCount === 0)
 }
+
+function applyGifSearchFilter() {
+  const query = document.getElementById("gif_search").value.trim().toLowerCase()
+  document.querySelectorAll("#gifContainer .gif-item").forEach(item => {
+    const src = item.querySelector("img").src.toLowerCase()
+    item.hidden = query.length > 0 && !src.includes(query)
+  })
+  updateEmptyState()
+}
+
+document.getElementById("gif_search").addEventListener("input", applyGifSearchFilter)
 
 function addGifToDOM(src, prepend = false) {
   const gifContainer = document.getElementById("gifContainer")
@@ -130,6 +146,11 @@ function addGifToDOM(src, prepend = false) {
   div.appendChild(deleteBtn)
 
   const selectThisGif = async () => {
+    if (document.getElementById("multi_gif_toggle").checked) {
+      await toggleGifSelected(div, src)
+      return
+    }
+
     document.querySelectorAll(".gif-item").forEach(item => {
       item.classList.remove("selected")
       item.setAttribute('aria-pressed', 'false')
@@ -193,6 +214,11 @@ document.getElementById("site_toggle").onchange = async function (event) {
 
 document.getElementById("random_mode_toggle").onchange = async function (event) {
   await setRandomMode(event.target.checked)
+}
+
+document.getElementById("multi_gif_toggle").onchange = async function (event) {
+  /* global chrome */
+  await chrome.storage.local.set({ [MULTI_GIF_MODE]: event.target.checked })
 }
 
 document.getElementById("btn-add-gif").addEventListener("click", async function () {

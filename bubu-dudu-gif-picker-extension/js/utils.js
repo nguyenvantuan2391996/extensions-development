@@ -35,11 +35,40 @@ async function updateCheckmark(selectedDiv, src) {
     check.innerHTML = "✔";
     selectedDiv.appendChild(check);
     await chrome.storage.local.set({ [GIF_SELECTED]: JSON.stringify([src]) })
-    await notifyActiveTab({
-        from: POPUP_SCREEN,
-        subject: HANDLE_SET_GIF_SELECTED,
-        gif_src: src
-    })
+    await notifyActiveTab({ from: POPUP_SCREEN, subject: HANDLE_SET_GIF_SELECTED })
+}
+
+// Multi-select mode: adds/removes a single GIF from the selection instead of
+// replacing it, so several GIFs can be shown on the page at once.
+async function toggleGifSelected(selectedDiv, src) {
+    /* global chrome */
+    const result = await chrome.storage.local.get([GIF_SELECTED])
+    let selected = []
+    if (result[GIF_SELECTED]) {
+        try {
+            selected = JSON.parse(result[GIF_SELECTED])
+        } catch (e) {
+            selected = []
+        }
+    }
+
+    const wasSelected = selected.includes(src)
+    selected = wasSelected ? selected.filter(s => s !== src) : [...selected, src]
+
+    selectedDiv.classList.toggle("selected", !wasSelected)
+    selectedDiv.setAttribute('aria-pressed', String(!wasSelected))
+    const check = selectedDiv.querySelector(".checkmark")
+    if (wasSelected) {
+        if (check) check.remove()
+    } else if (!check) {
+        const newCheck = document.createElement("div")
+        newCheck.className = "checkmark"
+        newCheck.innerHTML = "✔"
+        selectedDiv.appendChild(newCheck)
+    }
+
+    await chrome.storage.local.set({ [GIF_SELECTED]: JSON.stringify(selected) })
+    await notifyActiveTab({ from: POPUP_SCREEN, subject: HANDLE_SET_GIF_SELECTED })
 }
 
 async function displayCheckmark() {
@@ -48,21 +77,26 @@ async function displayCheckmark() {
     if (!result[GIF_SELECTED]) {
         return
     }
-    const selected = JSON.parse(result[GIF_SELECTED])
+
+    let selected
+    try {
+        selected = JSON.parse(result[GIF_SELECTED])
+    } catch (e) {
+        return
+    }
 
     const container = document.getElementById("gifContainer");
     const list_gifs = container.querySelectorAll(".gif-item img");
     const list_div = container.querySelectorAll(".gif-item");
 
     for (let i = 0; i < list_gifs.length; i++) {
-        if (list_gifs[i].src === selected[0]) {
+        if (selected.includes(list_gifs[i].src)) {
             const check = document.createElement("div");
             check.className = "checkmark";
             check.innerHTML = "✔";
             list_div[i].appendChild(check);
             list_div[i].classList.add("selected")
             list_div[i].setAttribute('aria-pressed', 'true')
-            break
         }
     }
 }
@@ -88,9 +122,10 @@ async function deleteGif(event, src) {
     updateEmptyState()
 }
 
-// If the GIF currently shown on pages was just removed from the library
-// (deleted, or wiped out by a reset/import), clear the selection so pages
-// stop trying to render a broken image.
+// If any GIF currently shown on pages was just removed from the library
+// (deleted, or wiped out by a reset/import), drop it from the selection so
+// pages stop trying to render a broken image. Works for both a single
+// selection and a multi-select array.
 async function clearSelectedGifIfMissing(remainingGifs) {
     /* global chrome */
     const result = await chrome.storage.local.get([GIF_SELECTED])
@@ -98,18 +133,24 @@ async function clearSelectedGifIfMissing(remainingGifs) {
         return
     }
 
-    let selectedSrc
+    let selected
     try {
-        selectedSrc = JSON.parse(result[GIF_SELECTED])[0]
+        selected = JSON.parse(result[GIF_SELECTED])
     } catch (e) {
         return
     }
 
-    if (remainingGifs.includes(selectedSrc)) {
+    const stillValid = selected.filter(src => remainingGifs.includes(src))
+    if (stillValid.length === selected.length) {
         return
     }
 
-    await chrome.storage.local.remove(GIF_SELECTED)
+    if (stillValid.length > 0) {
+        await chrome.storage.local.set({ [GIF_SELECTED]: JSON.stringify(stillValid) })
+    } else {
+        await chrome.storage.local.remove(GIF_SELECTED)
+    }
+
     try {
         await sendToActiveTab({ from: POPUP_SCREEN, subject: HANDLE_CLEAR_GIF_SELECTED })
     } catch (e) {

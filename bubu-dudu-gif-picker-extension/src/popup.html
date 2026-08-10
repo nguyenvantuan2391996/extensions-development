@@ -258,6 +258,11 @@
             margin-left: auto;
         }
 
+        #gif_search {
+            flex: 1 1 140px;
+            min-width: 100px;
+        }
+
         /* ---------- Inputs ---------- */
         input[type="text"],
         input[type="number"],
@@ -709,7 +714,15 @@
                     <span class="switch-slider"></span>
                 </label>
             </div>
-            <button type="button" id="toggle-add-gif" class="toolbar-spacer" aria-expanded="false">+ Add GIF</button>
+            <div class="field switch-field">
+                <label for="multi_gif_toggle">Show multiple</label>
+                <label class="switch">
+                    <input type="checkbox" id="multi_gif_toggle">
+                    <span class="switch-slider"></span>
+                </label>
+            </div>
+            <input type="text" id="gif_search" class="toolbar-spacer" placeholder="Search your GIFs...">
+            <button type="button" id="toggle-add-gif" aria-expanded="false">+ Add GIF</button>
         </div>
 
         <div class="add-gif-panel" id="add-gif-panel" hidden="hidden">
@@ -726,6 +739,7 @@
     <!-- GIF List -->
     <div id="gifContainer">
         <p class="empty-hint" id="gif-empty-hint" hidden="hidden">No GIFs yet — add one above with "+ Add GIF" 👆</p>
+        <p class="empty-hint" id="gif-search-empty-hint" hidden="hidden">No GIFs match your search.</p>
     </div>
 
     <footer class="app-footer">
