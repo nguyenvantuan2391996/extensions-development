@@ -238,20 +238,27 @@
             text-transform: none;
         }
 
-        #gif_size {
-            width: 68px;
+        .field-size {
+            flex: 1 1 68px;
         }
 
-        #gif_duration {
-            width: 68px;
+        .field-duration {
+            flex: 1 1 68px;
         }
 
-        #gif_position {
-            width: 90px;
+        .field-position {
+            flex: 1 1 90px;
         }
 
-        #gif_animation {
-            width: 140px;
+        .field-direction {
+            flex: 1 1 140px;
+        }
+
+        .field-size input,
+        .field-duration input,
+        .field-position select,
+        .field-direction select {
+            width: 100%;
         }
 
         .toolbar-spacer {
@@ -373,6 +380,49 @@
             background: rgba(0, 113, 227, 0.18);
         }
 
+        .panel-icon-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .pill-btn {
+            font-size: 12px;
+            font-weight: 500;
+            border: none;
+            border-radius: 980px;
+            padding: 6px 13px;
+            cursor: pointer;
+            white-space: nowrap;
+            color: var(--text-secondary);
+            background: #e5e5ea;
+            transition: background 0.15s var(--ease-standard), transform 0.2s var(--ease-spring);
+        }
+
+        .pill-btn:hover {
+            background: #dcdce1;
+            transform: translateY(-1px);
+        }
+
+        .pill-btn:active {
+            background: #d1d1d6;
+            transform: scale(0.95);
+            transition-duration: 0.1s;
+        }
+
+        .pill-btn.pill-btn-danger {
+            color: var(--danger);
+            background: rgba(255, 59, 48, 0.1);
+        }
+
+        .pill-btn.pill-btn-danger:hover {
+            background: rgba(255, 59, 48, 0.18);
+        }
+
+        .pill-btn.pill-btn-danger:active {
+            background: rgba(255, 59, 48, 0.26);
+        }
+
         /* ---------- GIF grid (fills remaining space, only scrollable area) ---------- */
         #gifContainer {
             flex: 1 1 auto;
@@ -383,13 +433,14 @@
             padding: 12px;
             overflow-y: auto;
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 12px;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 10px;
             align-content: flex-start;
         }
 
         .gif-item {
             position: relative;
+            aspect-ratio: 1 / 1;
             cursor: pointer;
             border-radius: var(--radius-md);
             overflow: hidden;
@@ -468,7 +519,8 @@
 
         #gifContainer .gif-item img {
             width: 100%;
-            height: auto;
+            height: 100%;
+            object-fit: cover;
             display: block;
         }
 
@@ -481,6 +533,16 @@
         }
 
         .empty-hint[hidden] {
+            display: none;
+        }
+
+        #btn-load-more-gifs {
+            grid-column: 1 / -1;
+            justify-self: center;
+            margin: 4px 0 6px;
+        }
+
+        #btn-load-more-gifs[hidden] {
             display: none;
         }
 
@@ -673,18 +735,18 @@
     <!-- Toolbar: display settings + collapsible add-gif panel -->
     <div class="toolbar">
         <div class="toolbar-row">
-            <div class="field">
+            <div class="field field-size">
                 <label>Size (px)</label>
                 <input id="gif_size" type="number" value="100" min="20" max="600" step="10">
             </div>
-            <div class="field">
+            <div class="field field-position">
                 <label>Position</label>
                 <select id="gif_position">
                     <option value="top" selected>Top</option>
                     <option value="bottom">Bottom</option>
                 </select>
             </div>
-            <div class="field">
+            <div class="field field-direction">
                 <label>Direction <span class="info-dot" title="Position only applies when Direction is Left → Right or Right → Left.">i</span></label>
                 <select id="gif_animation">
                     <option value="left" selected>Left → Right</option>
@@ -693,7 +755,7 @@
                     <option value="bottom">Bottom → Top</option>
                 </select>
             </div>
-            <div class="field">
+            <div class="field field-duration">
                 <label>Duration (s)</label>
                 <input id="gif_duration" type="number" value="60" min="5" max="300" step="5">
             </div>
@@ -729,10 +791,12 @@
             <input type="text" placeholder="https://example.com/cute.gif" id="gif_url">
             <button id="btn-add-gif">Add</button>
             <input type="file" accept="image/gif" id="gif_file">
-            <button type="button" id="btn-export-gifs">Export list</button>
-            <button type="button" id="btn-import-gifs">Import list</button>
-            <input type="file" accept="application/json,.json" id="import_file" hidden="hidden">
-            <button type="button" id="btn-reset-gifs">Reset to defaults</button>
+            <div class="panel-icon-actions">
+                <button type="button" id="btn-export-gifs" class="pill-btn">Export list</button>
+                <button type="button" id="btn-import-gifs" class="pill-btn">Import list</button>
+                <input type="file" accept="application/json,.json" id="import_file" hidden="hidden">
+                <button type="button" id="btn-reset-gifs" class="pill-btn pill-btn-danger">Reset to defaults</button>
+            </div>
         </div>
     </div>
 
@@ -740,6 +804,7 @@
     <div id="gifContainer">
         <p class="empty-hint" id="gif-empty-hint" hidden="hidden">No GIFs yet — add one above with "+ Add GIF" 👆</p>
         <p class="empty-hint" id="gif-search-empty-hint" hidden="hidden">No GIFs match your search.</p>
+        <button type="button" id="btn-load-more-gifs" class="pill-btn" hidden="hidden">Load more</button>
     </div>
 
     <footer class="app-footer">

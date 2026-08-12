@@ -1,4 +1,14 @@
 let currentHostname = null
+const GIF_PAGE_SIZE = 48
+let pendingGifs = []
+
+function renderMoreGifs() {
+  const nextBatch = pendingGifs.splice(0, GIF_PAGE_SIZE)
+  nextBatch.forEach(src => addGifToDOM(src))
+  document.getElementById("btn-load-more-gifs").hidden = pendingGifs.length === 0
+}
+
+document.getElementById("btn-load-more-gifs").addEventListener("click", renderMoreGifs)
 
 document.addEventListener("DOMContentLoaded",  async function () {
   /* global chrome */
@@ -47,7 +57,8 @@ document.addEventListener("DOMContentLoaded",  async function () {
   }
 
   async function renderGifs() {
-    gifs.forEach(src => addGifToDOM(src))
+    pendingGifs = [...gifs]
+    renderMoreGifs()
     if (isFirstRun) {
       await chrome.storage.local.set({ [IS_INIT]: true })
       return
@@ -113,6 +124,8 @@ function applyGifSearchFilter() {
     const src = item.querySelector("img").src.toLowerCase()
     item.hidden = query.length > 0 && !src.includes(query)
   })
+  // Loading more unfiltered GIFs while a search is active would be confusing.
+  document.getElementById("btn-load-more-gifs").hidden = query.length > 0 || pendingGifs.length === 0
   updateEmptyState()
 }
 
@@ -171,7 +184,7 @@ function addGifToDOM(src, prepend = false) {
   if (prepend) {
     gifContainer.insertBefore(div, gifContainer.firstChild)
   } else {
-    gifContainer.appendChild(div)
+    gifContainer.insertBefore(div, document.getElementById("btn-load-more-gifs"))
   }
 
   updateEmptyState()
