@@ -42,16 +42,16 @@
         <div class="toolbar-right">
             <span class="live-indicator" title="Watching for new requests in real time"><span class="live-dot"></span>Live</span>
             <button type="button" class="menu-btn clear-btn" id="clear-btn" disabled title="Clear all captured requests"><span class="btn-icon">&#128465;</span><span class="btn-label">Clear</span></button>
-            <select id="export-format" class="filter-select" aria-label="Export format" title="Format used by the Export button">
+            <select id="export-format" class="filter-select format-picker" aria-label="Export format" title="Format used by the Export button">
                 <option value="postman">Postman</option>
                 <option value="har">HAR</option>
             </select>
-            <button type="button" class="menu-btn" id="export-btn" disabled title="Export every request currently visible in the list below"><span class="btn-icon">&#11015;</span><span class="btn-label">Export</span></button>
-            <select id="copy-format" class="filter-select" aria-label="Copy format" title="Format used by the per-row Copy buttons and Copy All">
+            <button type="button" class="menu-btn" id="export-btn" disabled title="Export every request currently visible in the list below (Postman or HAR — open in a full tab, ⧉ button top right, to pick which)."><span class="btn-icon">&#11015;</span><span class="btn-label">Export</span></button>
+            <select id="copy-format" class="filter-select format-picker" aria-label="Copy format" title="Format used by the per-row Copy buttons and Copy All">
                 <option value="curl">curl</option>
                 <option value="fetch">fetch</option>
             </select>
-            <button type="button" class="copy-all-btn" id="copy-all-btn" disabled title="Copy a command for every request currently visible in the list below"><span class="btn-icon">&#128203;</span><span class="btn-label">Copy All Curl</span></button>
+            <button type="button" class="menu-btn" id="copy-all-btn" disabled title="Copy every request currently visible in the list below (curl or fetch() — open in a full tab, ⧉ button top right, to pick which)."><span class="btn-icon">&#128203;</span><span class="btn-label">Copy All Curl</span></button>
             <span class="request-count" id="request-count" title="Completed requests · pending ones are still waiting for a response">0 requests</span>
         </div>
     </div>

@@ -298,50 +298,28 @@ body.is-full-page {
     box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
-.copy-all-btn {
-    border: none;
-    background: var(--accent);
-    color: #fff;
-    padding: 6px 14px;
-    border-radius: 980px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background .15s ease, opacity .15s ease;
-}
-
-.copy-all-btn:hover {
-    background: #0077ed;
-}
-
-.copy-all-btn:active {
-    background: #0068d1;
-}
-
-.copy-all-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.copy-all-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--focus-ring);
-}
-
-.menu-btn,
-.copy-all-btn {
+.menu-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
 }
 
-/* Small popup (fixed 800x550, the default) stays icon-only — the title
-   attribute on each button supplies the tooltip. Once undocked into a full
-   tab (body.is-full-page, see js/popup.js's setupOpenInTab) there's enough
-   room to show the text label too, so nothing is permanently hidden behind
-   an icon with no explanation — just narrower until there's space. */
-body:not(.is-full-page) .btn-label {
+/* Small popup (fixed 800x550, the default) keeps action buttons (Clear/
+   Export/Copy All) icon-only — the title attribute supplies the tooltip,
+   and a bin/download/clipboard icon is recognizable enough on its own.
+   The Preserve log/All tabs *switches* keep their text label even in the
+   small popup though: a bare toggle with no label doesn't say what it
+   toggles the way an icon-only action button still does. Once undocked
+   into a full tab (body.is-full-page, see js/popup.js's setupOpenInTab)
+   there's enough room to show every button's text label too. */
+/* .format-picker (export/copy format selects): hidden in the small popup
+   entirely, not just their label — with the select gone there's no visible
+   way to change format there, so the Export/Copy All buttons' own tooltips
+   say so explicitly and point at "Open in Tab". The select's own stored
+   value doesn't reset just because it's hidden, so Export/Copy All still
+   use whatever format was last chosen from the full-tab view. */
+body:not(.is-full-page) .btn-label,
+body:not(.is-full-page) .format-picker {
     display: none;
 }
 

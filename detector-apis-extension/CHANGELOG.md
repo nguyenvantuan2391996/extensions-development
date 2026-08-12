@@ -15,7 +15,7 @@
 - **Export HAR**, alongside Postman, for opening captured traffic in other tools.
 
 ### Changed
-- **Toolbar buttons are now icon-only in the small popup**, with a tooltip explaining each one, and switch to full icon+text once undocked into a full tab (via "Open in Tab") where there's room — keeps the popup from feeling crowded without hiding anything behind an unlabeled menu.
+- **Toolbar is back to its simpler 1.1.2-era look in the small popup, and shows everything once undocked.** Clear/Export/Copy All are icon-only (tooltip explains each), and the Postman/HAR and curl/fetch format pickers are hidden entirely — Export/Copy All still work with whatever format was last chosen, and their tooltips point at "Open in Tab" for switching format. The Preserve log/All tabs *switches* keep their text label even in the small popup, since a bare toggle doesn't say what it does the way an icon-only action button still can. Undocking into a full tab shows the format pickers and every button's text label, since there's room. Keeps the popup from feeling crowded without hiding anything behind an unlabeled menu or losing the ability to change format entirely.
 - Curl commands are now built on demand in `js/popup.js` (same on-the-fly approach `buildFetchSnippet` already used), instead of being pre-assembled and stored by `js/background.js` — needed so sensitive header values can be redacted header-by-header rather than against an already-escaped string.
 
 ## 1.1.2 - 2026-08-06

@@ -225,7 +225,7 @@ function buildDataRowElement(requestId, url, buttonID, statusCode, badgeClass, i
     ? `<span class="gql-badge" title="GraphQL operation name">${escapeHtml(graphqlOperation)}</span>`
     : "";
   let timeClass = "time-cell" + (isSlowRequest(durationMs) ? " slow" : "");
-  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}" title="Copy this request (curl/fetch — see the format selector in the toolbar)">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}${gqlBadge}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td><td class="${timeClass}">${escapeHtml(formatDuration(durationMs))}</td><td class="size-cell">${escapeHtml(formatSize(sizeBytes))}</td>`;
+  tr.innerHTML = `<td><button type="button" class="copy-btn" id="${buttonID}" title="Copy this request (curl or fetch() — open in a full tab, ⧉ button top right, to pick which)">Copy</button></td><td class="url-cell"><span class="expand-arrow">&#9656;</span>${escapeHtml(url)}${gqlBadge}</td><td class="status-cell"><span class="${badgeClass}">${escapeHtml(statusCode)}</span></td><td class="${timeClass}">${escapeHtml(formatDuration(durationMs))}</td><td class="size-cell">${escapeHtml(formatSize(sizeBytes))}</td>`;
   return tr;
 }
 
