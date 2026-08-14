@@ -546,6 +546,35 @@
             display: none;
         }
 
+        .gif-loading {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 60px 12px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .gif-loading[hidden] {
+            display: none;
+        }
+
+        .gif-loading .spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: gif-spin 0.7s linear infinite;
+        }
+
+        @keyframes gif-spin {
+            to { transform: rotate(360deg); }
+        }
+
         /* ---------- Switch toggle (this site / random mode) ---------- */
         .switch-field {
             flex-direction: row;
@@ -802,6 +831,10 @@
 
     <!-- GIF List -->
     <div id="gifContainer">
+        <div class="gif-loading" id="gif-loading">
+            <div class="spinner"></div>
+            <p>Loading your GIFs…</p>
+        </div>
         <p class="empty-hint" id="gif-empty-hint" hidden="hidden">No GIFs yet — add one above with "+ Add GIF" 👆</p>
         <p class="empty-hint" id="gif-search-empty-hint" hidden="hidden">No GIFs match your search.</p>
         <button type="button" id="btn-load-more-gifs" class="pill-btn" hidden="hidden">Load more</button>

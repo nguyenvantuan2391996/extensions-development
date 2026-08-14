@@ -63,7 +63,15 @@ function createFakeChrome() {
         onBeforeSendHeaders: noopListener,
         onErrorOccurred: noopListener,
       },
-      runtime: { onMessage: noopListener },
+      runtime: {
+        onMessage: noopListener,
+        onInstalled: noopListener,
+        onStartup: noopListener,
+      },
+      alarms: {
+        create: () => {},
+        onAlarm: noopListener,
+      },
       tabs: {
         onUpdated: noopListener,
         query: () => Promise.resolve(activeTab ? [activeTab] : []),

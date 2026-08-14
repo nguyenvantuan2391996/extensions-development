@@ -57,6 +57,7 @@ document.addEventListener("DOMContentLoaded",  async function () {
   }
 
   async function renderGifs() {
+    document.getElementById("gif-loading").hidden = true
     pendingGifs = [...gifs]
     renderMoreGifs()
     if (isFirstRun) {

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed (partial mitigation, not a confirmed root-cause fix)
+- **Extension sometimes stops capturing requests after a silent Chrome Web Store auto-update**, requiring a full uninstall+reinstall (toggling the extension off/on does not recover it). Code review found no bug in `js/background.js` itself — every `chrome.webRequest` listener registers synchronously at the top of the script, so if the service worker runs at all post-update, they register. This looks like a Chromium-side MV3 service-worker lifecycle issue, not something fully fixable from extension code. Added `chrome.runtime.onInstalled`/`onStartup` logging (so the next occurrence can actually be diagnosed — did the service worker run post-update or not) and a `chrome.alarms`-based one-minute heartbeat, Chrome's own recommended mitigation for MV3 service-worker reliability, so the service worker doesn't sit fully idle. New `alarms` permission.
+
 ## 1.1.3 - 2026-08-10
 
 ### Added

@@ -55,7 +55,8 @@
     "unlimitedStorage",
     "activeTab",
     "tabs",
-    "webRequest"
+    "webRequest",
+    "alarms"
   ],
   "manifest_version": 3
 }

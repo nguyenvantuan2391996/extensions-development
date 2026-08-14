@@ -1,6 +1,46 @@
 importScripts("constants.js");
 importScripts("utils.js");
 
+// Users have reported that after a *silent* Chrome Web Store auto-update
+// (extension updates in the background while the browser stays open, no
+// restart), the extension stops capturing requests entirely — and unlike
+// the known MV3 "manual dev-mode Reload doesn't re-register listeners"
+// quirk, toggling the extension off/on does NOT recover it; only a full
+// uninstall+reinstall does. All of chrome.webRequest.*.addListener below
+// run synchronously at the top of this file, so if this script runs at
+// all post-update, they register — this smells like a Chromium-side issue
+// where the service worker itself doesn't get cleanly restarted against
+// the new version until something more forceful happens (browser restart,
+// reinstall). There's no documented API to force that from inside the
+// extension, but chrome.alarms firing on a schedule keeps this service
+// worker from sitting fully idle, which is Chrome's own recommended
+// mitigation for MV3 service-worker reliability issues in general — and
+// onInstalled/onStartup logging here means the *next* report of this can
+// actually be diagnosed (did the service worker even run post-update?)
+// instead of guessing blind again.
+const HEARTBEAT_ALARM_NAME = "detector-apis-heartbeat";
+
+chrome.runtime.onInstalled.addListener((details) => {
+  console.log("detector-apis-extension: onInstalled, reason=" + details.reason);
+  chrome.alarms.create(HEARTBEAT_ALARM_NAME, { periodInMinutes: 1 });
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  console.log("detector-apis-extension: onStartup (browser launched)");
+  chrome.alarms.create(HEARTBEAT_ALARM_NAME, { periodInMinutes: 1 });
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== HEARTBEAT_ALARM_NAME) {
+    return;
+  }
+  // Deliberately trivial — the point is forcing the service worker to wake
+  // up and run this script's top level again on a schedule, not the work
+  // done here. Also keeps the toolbar badge from staying stale if it ever
+  // desyncs from storage for any reason.
+  updateBadgeCount();
+});
+
 // chrome.storage.local.set() can reject (e.g. Resource::kQuotaBytes quota
 // exceeded). Every listener below does more work after its set() calls
 // (removing the "-pending" marker, registering a body match, updating the
