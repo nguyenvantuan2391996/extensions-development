@@ -9,6 +9,31 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 
+function showAlert(message) {
+  const alertElement = document.getElementById("alert-success");
+  alertElement.textContent = message;
+  alertElement.classList.remove("hidden");
+  setTimeout(function () {
+    alertElement.classList.add("hidden");
+  }, 1500);
+}
+
+const TOGGLE_BTN_BASE_CLASS =
+  "text-sm font-medium text-white rounded-lg py-2 px-3 transition-colors";
+const TOGGLE_BTN_ON_CLASS = `${TOGGLE_BTN_BASE_CLASS} bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700`;
+const TOGGLE_BTN_OFF_CLASS = `${TOGGLE_BTN_BASE_CLASS} bg-rose-500 hover:bg-rose-600 active:bg-rose-700`;
+
+function renderToggleButton(onOff) {
+  const btn = document.getElementById("btn-turn-on-off");
+  if (onOff === "Off") {
+    btn.textContent = "On";
+    btn.className = TOGGLE_BTN_ON_CLASS;
+  } else {
+    btn.textContent = "Off";
+    btn.className = TOGGLE_BTN_OFF_CLASS;
+  }
+}
+
 document
   .getElementById("btn-save-config")
   .addEventListener("click", async function () {
@@ -39,6 +64,8 @@ document
       }
     );
 
+    showAlert("Data saved successfully");
+
     /* global chrome */
     await chrome.tabs.query(
       { active: true, currentWindow: true },
@@ -53,18 +80,13 @@ document
   .addEventListener("click", async function () {
     /* global chrome */
     await chrome.storage.local.get(["turn_on_off"], async function (result) {
-      let onOff = result.turn_on_off ? result.turn_on_off : "On";
-      if (onOff === "Off") {
-        document.getElementById("btn-turn-on-off").textContent = "On";
-        document.getElementById("btn-turn-on-off").className =
-          "btn btn-primary mr-2";
-        onOff = "On";
-      } else {
-        document.getElementById("btn-turn-on-off").textContent = "Off";
-        document.getElementById("btn-turn-on-off").className =
-          "btn btn-danger mr-2";
-        onOff = "Off";
-      }
+      let previousOnOff = result.turn_on_off ? result.turn_on_off : "On";
+      let onOff = previousOnOff === "Off" ? "On" : "Off";
+
+      const btn = document.getElementById("btn-turn-on-off");
+      btn.textContent = onOff;
+      btn.className =
+        onOff === "On" ? TOGGLE_BTN_ON_CLASS : TOGGLE_BTN_OFF_CLASS;
 
       await chrome.tabs.query(
         {
@@ -123,6 +145,8 @@ document
       }
     );
 
+    showAlert("Data removed successfully");
+
     /* global chrome */
     await chrome.tabs.query(
       { active: true, currentWindow: true },
@@ -156,15 +180,7 @@ window.addEventListener("load", async (event) => {
       }
 
       let onOff = result.turn_on_off ? result.turn_on_off : "On";
-      if (onOff === "Off") {
-        document.getElementById("btn-turn-on-off").textContent = "On";
-        document.getElementById("btn-turn-on-off").className =
-          "btn btn-primary mr-2";
-      } else {
-        document.getElementById("btn-turn-on-off").textContent = "Off";
-        document.getElementById("btn-turn-on-off").className =
-          "btn btn-danger mr-2";
-      }
+      renderToggleButton(onOff);
     }
   );
 });

@@ -1,9 +1,4 @@
-chrome.runtime.onMessage.addListener(async function (
-  msg,
-  sender,
-  sendResponse
-) {
-  console.log(sender, sendResponse);
+chrome.runtime.onMessage.addListener(async function (msg) {
   if (
     msg.from === BACKGROUND_SCREEN &&
     msg.subject === HANDLE_MAIN_WEBSITE_LOADED
@@ -40,14 +35,12 @@ chrome.runtime.onMessage.addListener(async function (
             ? await getGifImageByRandom()
             : await getGifImageByKey(keySearch);
 
-        // create element
-        // const img = document.createElement("img");
-        // img.src = gifImageUrl;
-        // img.width = 200;
-        // img.height = 200;
-        // img.style.zIndex = "999";
-        //
-        // document.body.appendChild(img);
+        if (!gifImageUrl) {
+          console.error(
+            "Failed to fetch a GIF image, falling back to the default one"
+          );
+          gifImageUrl = DEFAULT_GIF_URL;
+        }
 
         const style = document.createElement("style");
         style.textContent = `
@@ -56,22 +49,22 @@ chrome.runtime.onMessage.addListener(async function (
       }
 
       .character {
-        position: absolute;
-        bottom: 0;
+        position: fixed;
         width: 180px;
         height: auto;
+        z-index: 999;
         animation-duration: 30s;
         animation-iteration-count: infinite;
         animation-timing-function: linear;
         pointer-events: none;
       }
 
-      @keyframes moveGoku {
+      @keyframes moveLeftToRight {
         0% { left: -200px; transform: scaleX(1); }
         50% { left: 45vw; transform: scaleX(1); }
         100% { left: 110vw; transform: scaleX(1); }
       }
-      
+
       @keyframes moveRightToLeft {
         0% { right: -200px; transform: scaleX(1); }
         50% { right: 45vw; transform: scaleX(1); }
@@ -80,32 +73,20 @@ chrome.runtime.onMessage.addListener(async function (
     `;
         document.head.appendChild(style);
 
-        const container = document.createElement("div");
+        const isTop = selectPosition.includes("top");
+        const isLeft = selectPosition.includes("left");
 
-        const goku = document.createElement("img");
-        goku.src = "https://iili.io/FSWmTTg.gif";
-        goku.alt = "Goku";
-        goku.className = "character";
-        goku.style.animationName = "moveGoku";
-        goku.style.left = "-200px";
-        goku.style.zIndex = "999";
-        goku.style.position = "fixed";
-        goku.style.bottom = "0px";
+        const character = document.createElement("img");
+        character.src = gifImageUrl;
+        character.alt = "Gif character";
+        character.className = "character";
+        character.style.animationName = isLeft
+          ? "moveRightToLeft"
+          : "moveLeftToRight";
+        character.style[isLeft ? "right" : "left"] = "-200px";
+        character.style[isTop ? "top" : "bottom"] = "0px";
 
-        container.appendChild(goku);
-
-        // const dog = document.createElement("img");
-        // dog.src = "https://i.pinimg.com/originals/18/f5/66/18f566fa5cf046c1e81fc6c61ce5dc53.gif";
-        // dog.alt = "Dog";
-        // dog.className = "character";
-        // dog.style.animationName = "moveRightToLeft";
-        // dog.style.right = "-200px";
-        // dog.style.zIndex = "999";
-        //
-        //
-        // container.appendChild(dog);
-
-        document.body.appendChild(container);
+        document.body.appendChild(character);
       }
     );
   }
@@ -132,8 +113,6 @@ chrome.runtime.onMessage.addListener(async function (
         console.log("Data select position saved successfully");
       }
     );
-
-    alert("Data saved successfully");
   }
 
   if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_ON_OFF) {
@@ -155,7 +134,5 @@ chrome.runtime.onMessage.addListener(async function (
         console.log("Data removed successfully");
       }
     );
-
-    alert("Data removed successfully");
   }
 });

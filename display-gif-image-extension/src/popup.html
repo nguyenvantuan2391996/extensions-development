@@ -2,50 +2,69 @@
 <head>
     <meta charset="UTF-8">
     <title>The extension supports for displaying the gif image when the website was loaded</title>
+    <link rel="stylesheet" href="../css/tailwind.css">
+    <link rel="stylesheet" href="../css/popup.css">
 </head>
-<link rel="stylesheet" href="../css/popup.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-alpha.6/css/bootstrap.min.css">
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+<body class="w-[340px] bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800 font-sans antialiased">
 
-<body>
+<div class="p-4">
+    <div class="flex items-center gap-2.5 mb-4">
+        <img src="../images/icon.png" alt="logo" class="w-9 h-9 rounded-xl shadow-sm ring-1 ring-slate-200">
+        <div class="leading-tight">
+            <h1 class="text-sm font-semibold text-slate-900">Gif Overlay</h1>
+            <p class="text-xs text-slate-500">Configure your gif companion</p>
+        </div>
+    </div>
 
-<div class="container">
-    <div class="input-group center-item">
-        <h3>Config Gif Image</h3>
+    <div id="alert-success" role="alert"
+         class="hidden mb-3 text-xs font-medium px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
     </div>
-    <div class="alert alert-success" role="alert" id="alert-success" style="display: none; z-index: 999999; position: fixed;margin-left: 30%">
+
+    <div class="space-y-3 bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+        <div>
+            <label for="select-type" class="block text-xs font-medium text-slate-500 mb-1">Gif source</label>
+            <select id="select-type"
+                    class="w-full text-sm rounded-lg border border-slate-300 px-2.5 py-1.5 text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+                <option id="type-random" value="type-random" selected>Random Gif</option>
+                <option id="type-search-key" value="type-search-key">Search Gif By Key</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="input-key-search" class="block text-xs font-medium text-slate-500 mb-1">Keyword</label>
+            <input type="text" id="input-key-search" placeholder="e.g. cat cute" hidden
+                   class="w-full text-sm rounded-lg border border-slate-300 px-2.5 py-1.5 text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+        </div>
+
+        <div>
+            <label for="select-position" class="block text-xs font-medium text-slate-500 mb-1">Position</label>
+            <select id="select-position"
+                    class="w-full text-sm rounded-lg border border-slate-300 px-2.5 py-1.5 text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+                <option id="type-bottom-right" value="type-bottom-right" selected>Bottom Right</option>
+                <option id="type-top-right" value="type-top-right">Top Right</option>
+                <option id="type-bottom-left" value="type-bottom-left">Bottom Left</option>
+                <option id="type-top-left" value="type-top-left">Top Left</option>
+            </select>
+        </div>
     </div>
-    <div class="input-group">
-        <label for="select-type"></label><select class="custom-select mr-2" id="select-type">
-            <option id="type-random" value="type-random" selected>Random Gif</option>
-            <option id="type-search-key" value="type-search-key">Search Gif By Key</option>
-        </select>
-        <label for="select-position"></label>
-            <select class="custom-select" id="select-position">
-            <option id="type-bottom-right" value="type-bottom-right" selected>Bottom Right</option>
-            <option id="type-top-right" value="type-top-right">Top Right</option>
-            <option id="type-bottom-left" value="type-bottom-left">Bottom Left</option>
-            <option id="type-top-left" value="type-top-left">Top Left</option>
-        </select>
-    </div>
-    <div class="mt-2">
-        <label for="input-key-search"></label><input type="text" id="input-key-search" class="form-control" value="" placeholder="Enter key search" hidden>
-    </div>
-    <div class="input-group center-item">
-        <button type="button" class="btn btn-primary mr-2" id="btn-save-config">
+
+    <div class="flex gap-2 mt-3">
+        <button type="button" id="btn-save-config"
+                class="flex-1 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-lg py-2 transition-colors">
             Save
         </button>
-        <button type="button" class="btn btn-danger mr-2" id="btn-turn-on-off">
+        <button type="button" id="btn-turn-on-off"
+                class="text-sm font-medium text-white bg-rose-500 hover:bg-rose-600 active:bg-rose-700 rounded-lg py-2 px-3 transition-colors">
             Off
         </button>
-        <button type="button" class="btn btn-danger" id="btn-clear-config">
+        <button type="button" id="btn-clear-config"
+                class="text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-lg py-2 px-3 transition-colors">
             Clear
         </button>
     </div>
 </div>
 
-</body>
-</html>
-
 <script src="../js/popup.js"></script>
 <script src="../js/constants.js"></script>
+</body>
+</html>
