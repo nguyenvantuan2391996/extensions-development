@@ -1,3 +1,5 @@
+import { generatePasswordFromOptions, generatePassphraseFromOptions } from "./core.js";
+
 const passwordField = document.getElementById("password");
 const copyBtn = document.getElementById("copy");
 const form = document.getElementById("generator-form");
@@ -22,8 +24,12 @@ const customExcludeInput = document.getElementById("custom-exclude");
 
 const historyCard = document.getElementById("history-card");
 const historyList = document.getElementById("history-list");
+const clearHistoryBtn = document.getElementById("clear-history");
+const persistHistoryCheckbox = document.getElementById("persist-history");
+const autoCopyCheckbox = document.getElementById("auto-copy");
 
 const SETTINGS_STORAGE_KEY = "passwordGeneratorSettings";
+const HISTORY_STORAGE_KEY = "passwordGeneratorHistory";
 const SETTINGS_FIELD_IDS = [
     "mode",
     "length",
@@ -34,11 +40,14 @@ const SETTINGS_FIELD_IDS = [
     "include-other",
     "exclude-duplicates",
     "exclude-ambiguous",
+    "avoid-sequential",
     "custom-exclude",
     "passphrase-words",
     "passphrase-separator",
     "passphrase-capitalize",
-    "passphrase-number"
+    "passphrase-number",
+    "auto-copy",
+    "persist-history"
 ];
 
 const STRENGTH_LEVELS = [
@@ -51,27 +60,7 @@ const HISTORY_MAX = 5;
 const historyEntries = [];
 
 const storageAvailable = typeof chrome !== "undefined" && !!chrome.storage && !!chrome.storage.sync;
-
-/* ---------- Secure randomness ---------- */
-
-function secureRandomInt(maxExclusive) {
-    const range = Math.floor(0xffffffff / maxExclusive) * maxExclusive;
-    const array = new Uint32Array(1);
-    let x;
-    do {
-        crypto.getRandomValues(array);
-        x = array[0];
-    } while (x >= range);
-    return x % maxExclusive;
-}
-
-function secureShuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = secureRandomInt(i + 1);
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-}
+const historyStorageAvailable = typeof chrome !== "undefined" && !!chrome.storage && !!chrome.storage.local;
 
 /* ---------- Settings persistence ---------- */
 
@@ -79,7 +68,7 @@ function loadSettings() {
     if (!storageAvailable) {
         syncModeUI();
         syncSliderLabels();
-        generate();
+        loadHistoryThenGenerate();
         return;
     }
     chrome.storage.sync.get(SETTINGS_STORAGE_KEY, (data) => {
@@ -97,7 +86,7 @@ function loadSettings() {
         }
         syncModeUI();
         syncSliderLabels();
-        generate();
+        loadHistoryThenGenerate();
     });
 }
 
@@ -157,11 +146,41 @@ function animateField() {
 
 /* ---------- History ---------- */
 
+function isPersistHistoryEnabled() {
+    return !!(persistHistoryCheckbox && persistHistoryCheckbox.checked);
+}
+
+function persistHistory() {
+    if (!historyStorageAvailable || !isPersistHistoryEnabled()) return;
+    chrome.storage.local.set({ [HISTORY_STORAGE_KEY]: historyEntries });
+}
+
+function clearPersistedHistory() {
+    if (!historyStorageAvailable) return;
+    chrome.storage.local.remove(HISTORY_STORAGE_KEY);
+}
+
+function loadHistoryThenGenerate() {
+    if (historyStorageAvailable && isPersistHistoryEnabled()) {
+        chrome.storage.local.get(HISTORY_STORAGE_KEY, (data) => {
+            const saved = data[HISTORY_STORAGE_KEY];
+            if (Array.isArray(saved)) {
+                historyEntries.push(...saved.slice(0, HISTORY_MAX));
+                renderHistory();
+            }
+            generate();
+        });
+    } else {
+        generate();
+    }
+}
+
 function addToHistory(value) {
     if (!value) return;
     historyEntries.unshift(value);
     if (historyEntries.length > HISTORY_MAX) historyEntries.pop();
     renderHistory();
+    persistHistory();
 }
 
 function renderHistory() {
@@ -187,120 +206,55 @@ function renderHistory() {
     });
 }
 
-/* ---------- Password generation ---------- */
+/* ---------- Copy ---------- */
 
-function buildCharPools() {
-    const excludeAmbiguous = document.getElementById("exclude-ambiguous").checked;
-    const customExclude = customExcludeInput.value || "";
-
-    const stripChars = (str) => {
-        let chars = str;
-        if (excludeAmbiguous) {
-            chars = [...chars].filter((c) => !AMBIGUOUS.includes(c)).join("");
-        }
-        if (customExclude) {
-            chars = [...chars].filter((c) => !customExclude.includes(c)).join("");
-        }
-        return chars;
-    };
-
-    const pools = [
-        document.getElementById("include-lower").checked ? stripChars(LOWER) : "",
-        document.getElementById("include-upper").checked ? stripChars(UPPER) : "",
-        document.getElementById("include-number").checked ? stripChars(NUMBER) : "",
-        document.getElementById("include-symbol").checked ? stripChars(SYMBOL) : "",
-        document.getElementById("include-other").checked ? stripChars(OTHER) : ""
-    ];
-
-    return pools.filter((p) => p.length > 0);
-}
-
-function generateRandomPassword(length, pools, excludeDuplicates) {
-    const allChars = pools.join("");
-    const result = [];
-
-    if (length >= pools.length) {
-        pools.forEach((pool) => {
-            let char;
-            let attempts = 0;
-            do {
-                char = pool[secureRandomInt(pool.length)];
-                attempts++;
-            } while (excludeDuplicates && result.includes(char) && attempts < 50);
-            result.push(char);
-        });
-    }
-
-    while (result.length < length) {
-        const char = allChars[secureRandomInt(allChars.length)];
-        if (excludeDuplicates && result.includes(char)) continue;
-        result.push(char);
-    }
-
-    return secureShuffle(result).join("");
-}
-
-function generatePassword() {
-    let length = parseInt(lengthInput.value, 10);
-    length = Math.max(6, Math.min(64, length));
-
-    const excludeDuplicates = document.getElementById("exclude-duplicates").checked;
-    const pools = buildCharPools();
-    const allChars = pools.join("");
-
-    if (!allChars) {
-        showWarning();
-        return;
-    }
-
-    hideWarning();
-
-    const effectiveLength = excludeDuplicates ? Math.min(length, allChars.length) : length;
-    const value = generateRandomPassword(effectiveLength, pools, excludeDuplicates);
-
-    passwordField.value = value;
-    renderStrengthFromBits(value.length * Math.log2(allChars.length));
-    addToHistory(value);
-    animateField();
-}
-
-/* ---------- Passphrase generation ---------- */
-
-function generatePassphrase() {
-    const wordCount = parseInt(wordsRange.value, 10);
-    const separator = document.getElementById("passphrase-separator").value;
-    const capitalize = document.getElementById("passphrase-capitalize").checked;
-    const includeNumber = document.getElementById("passphrase-number").checked;
-
-    const words = [];
-    for (let i = 0; i < wordCount; i++) {
-        let word = WORDLIST[secureRandomInt(WORDLIST.length)];
-        if (capitalize) word = word[0].toUpperCase() + word.slice(1);
-        words.push(word);
-    }
-    if (includeNumber) {
-        words.push(String(secureRandomInt(90) + 10));
-    }
-
-    const value = words.join(separator);
-    let bits = wordCount * Math.log2(WORDLIST.length);
-    if (includeNumber) bits += Math.log2(90);
-
-    hideWarning();
-    passwordField.value = value;
-    renderStrengthFromBits(bits);
-    addToHistory(value);
-    animateField();
+function copyToClipboard(value) {
+    if (!value) return;
+    navigator.clipboard.writeText(value).then(() => {
+        copyBtn.textContent = "✅";
+        setTimeout(() => (copyBtn.textContent = "📋"), 1000);
+    });
 }
 
 /* ---------- Dispatch ---------- */
 
 function generate() {
     saveSettings();
-    if (modeField.value === "passphrase") {
-        generatePassphrase();
-    } else {
-        generatePassword();
+
+    const mode = modeField.value === "passphrase" ? "passphrase" : "password";
+    const result = mode === "passphrase"
+        ? generatePassphraseFromOptions({
+            wordCount: wordsRange.value,
+            separator: document.getElementById("passphrase-separator").value,
+            capitalize: document.getElementById("passphrase-capitalize").checked,
+            includeNumber: document.getElementById("passphrase-number").checked
+        })
+        : generatePasswordFromOptions({
+            length: lengthInput.value,
+            includeLower: document.getElementById("include-lower").checked,
+            includeUpper: document.getElementById("include-upper").checked,
+            includeNumber: document.getElementById("include-number").checked,
+            includeSymbol: document.getElementById("include-symbol").checked,
+            includeOther: document.getElementById("include-other").checked,
+            excludeDuplicates: document.getElementById("exclude-duplicates").checked,
+            excludeAmbiguous: document.getElementById("exclude-ambiguous").checked,
+            avoidSequential: document.getElementById("avoid-sequential").checked,
+            customExclude: customExcludeInput.value
+        });
+
+    if (result.error) {
+        showWarning();
+        return;
+    }
+
+    hideWarning();
+    passwordField.value = result.value;
+    renderStrengthFromBits(result.bits);
+    addToHistory(result.value);
+    animateField();
+
+    if (autoCopyCheckbox && autoCopyCheckbox.checked) {
+        copyToClipboard(result.value);
     }
 }
 
@@ -314,12 +268,22 @@ form.addEventListener("submit", (e) => {
 });
 
 copyBtn.addEventListener("click", () => {
-    const pwd = passwordField.value;
-    if (!pwd) return;
-    navigator.clipboard.writeText(pwd).then(() => {
-        copyBtn.textContent = "✅";
-        setTimeout(() => (copyBtn.textContent = "📋"), 1000);
-    });
+    copyToClipboard(passwordField.value);
+});
+
+clearHistoryBtn.addEventListener("click", () => {
+    historyEntries.length = 0;
+    renderHistory();
+    clearPersistedHistory();
+});
+
+persistHistoryCheckbox.addEventListener("change", () => {
+    saveSettings();
+    if (persistHistoryCheckbox.checked) {
+        persistHistory();
+    } else {
+        clearPersistedHistory();
+    }
 });
 
 segments.forEach((btn) => {
@@ -361,9 +325,11 @@ customExcludeInput.addEventListener("input", () => {
     "include-other",
     "exclude-duplicates",
     "exclude-ambiguous",
+    "avoid-sequential",
     "passphrase-separator",
     "passphrase-capitalize",
-    "passphrase-number"
+    "passphrase-number",
+    "auto-copy"
 ].forEach((id) => {
     document.getElementById(id).addEventListener("change", generate);
 });

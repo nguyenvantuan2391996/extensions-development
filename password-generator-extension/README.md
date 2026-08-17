@@ -24,8 +24,11 @@ Generate strong, secure passwords in one click! This simple yet powerful extensi
 - 🎚️ Length slider (passwords) and word-count slider (passphrases)
 - 📊 Live strength meter (Weak / Medium / Strong) that updates as you tweak your options
 - 💾 Your chosen options are remembered across popup opens (synced via `chrome.storage.sync`)
-- 🚫 Option to exclude duplicate characters
-- 🕘 Recent history for the current session — click any past result to copy it again
+- 🚫 Option to exclude duplicate characters, or avoid sequential runs (`abc`, `123`) and repeated triples (`aaa`)
+- 🖱️ Right-click any input field on a page and choose **Generate & Fill Password** to fill it directly, using your saved settings — no popup needed
+- 🕘 Recent history — click any past result to copy it again, optionally saved across sessions on this device
+- 🗑️ One-click "Clear" to wipe recent history
+- 📋 Auto-copy the new password to your clipboard as soon as it's generated (optional)
 - ⌨️ Keyboard shortcut to open the popup instantly (`Ctrl+Shift+U` / `Cmd+Shift+U`, customizable in `chrome://extensions/shortcuts`)
 - ⚠️ Clear warning if you deselect every character type instead of generating an empty/invalid password
 - 📋 Copy password instantly with a single click
@@ -35,6 +38,14 @@ Generate strong, secure passwords in one click! This simple yet powerful extensi
 Perfect for developers, security-conscious users, or anyone needing safe, random passwords. Lightweight, no ads, and privacy-friendly.
 
 ## Changelog
+
+### 1.0.3
+- Added **Generate & Fill**: right-click any input field on a page and fill it with a freshly generated password/passphrase (uses your saved settings), via `activeTab` + a context menu — no persistent content script or broad host permissions added
+- Added "avoid sequential characters" option to skip runs like `abc`/`123` and repeated triples like `aaa`
+- Expanded the passphrase wordlist from ~120 to ~770 words for stronger passphrase entropy
+- Added optional auto-copy to clipboard as soon as a password/passphrase is generated
+- Added optional persistent history (`chrome.storage.local`, this device only) plus a one-click "Clear" button
+- Refactored password/passphrase generation into a shared module used by both the popup and the background script
 
 ### 1.0.2
 - Switched password generation from `Math.random()` to `crypto.getRandomValues()` for cryptographically secure randomness

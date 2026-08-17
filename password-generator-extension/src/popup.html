@@ -484,7 +484,27 @@
     }
 
     .history-card .section-label {
+      margin: 0;
+    }
+
+    .history-card .field-row {
       margin: 0 0 8px;
+    }
+
+    .clear-history-btn {
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      transition: color 0.15s ease;
+    }
+
+    .clear-history-btn:hover {
+      color: #ff3b30;
     }
 
     .history-list {
@@ -613,6 +633,24 @@
     <form id="generator-form">
       <button type="submit" id="generate">Generate</button>
 
+      <div class="section-label">General</div>
+      <div class="toggle-list">
+        <label class="toggle-row">
+          <span class="label-text">Auto-copy on generate</span>
+          <span class="switch">
+            <input id="auto-copy" type="checkbox" />
+            <span class="slider"></span>
+          </span>
+        </label>
+        <label class="toggle-row">
+          <span class="label-text">Save history across sessions (this device)</span>
+          <span class="switch">
+            <input id="persist-history" type="checkbox" />
+            <span class="slider"></span>
+          </span>
+        </label>
+      </div>
+
       <div id="password-options">
         <div class="field-row">
           <div class="section-label">Length <span class="hint">(6–64)</span></div>
@@ -678,6 +716,13 @@
               <span class="slider"></span>
             </span>
           </label>
+          <label class="toggle-row">
+            <span class="label-text">Avoid sequential (abc, 123, aaa)</span>
+            <span class="switch">
+              <input id="avoid-sequential" type="checkbox" />
+              <span class="slider"></span>
+            </span>
+          </label>
         </div>
 
         <div class="section-label">Exclude specific characters <span class="hint">(optional)</span></div>
@@ -725,7 +770,10 @@
   </div>
 
   <div class="card history-card" id="history-card" hidden>
-    <div class="section-label">Recent <span class="hint">(this session · click to copy)</span></div>
+    <div class="field-row">
+      <div class="section-label">Recent <span class="hint">(click to copy)</span></div>
+      <button type="button" class="clear-history-btn" id="clear-history">Clear</button>
+    </div>
     <div class="history-list" id="history-list"></div>
   </div>
 
@@ -749,7 +797,6 @@
   </footer>
 </div>
 
-<script src="../js/constants.js"></script>
-<script src="../js/popup.js"></script>
+<script type="module" src="../js/popup.js"></script>
 </body>
 </html>

@@ -1,19 +1,18 @@
-const LOWER = "abcdefghijklmnopqrstuvwxyz";
-const UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-const NUMBER = "0123456789";
-const SYMBOL = "!@#$%^&*";
-const OTHER = "~`[];?,";
-const AMBIGUOUS = "Il1O0o";
+export const LOWER = "abcdefghijklmnopqrstuvwxyz";
+export const UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+export const NUMBER = "0123456789";
+export const SYMBOL = "!@#$%^&*";
+export const OTHER = "~`[];?,";
+export const AMBIGUOUS = "Il1O0o";
 
-const WORDLIST = [
+export const WORDLIST = [
     "river", "mountain", "forest", "ocean", "valley", "canyon", "desert", "glacier", "meadow", "lagoon",
     "horizon", "cliff", "harbor", "island", "jungle", "prairie", "tundra", "delta", "dune", "grove",
     "hollow", "spruce", "willow", "maple", "birch", "cedar", "aspen", "fjord", "plateau", "savanna",
     "thunder", "breeze", "storm", "frost", "nebula", "comet", "aurora", "zenith", "equinox", "monsoon",
-    "drizzle", "cyclone", "solstice", "twilight", "dawn",
-    "tiger", "eagle", "falcon", "panda", "rabbit", "zebra", "dolphin", "whale", "koala", "raven",
-    "jackal", "otter", "badger", "heron", "lynx", "gecko", "mantis", "viper", "condor", "ferret",
-    "marmot", "walrus", "ibex", "puffin", "cricket",
+    "drizzle", "cyclone", "solstice", "twilight", "dawn", "tiger", "eagle", "falcon", "panda", "rabbit",
+    "zebra", "dolphin", "whale", "koala", "raven", "jackal", "otter", "badger", "heron", "lynx",
+    "gecko", "mantis", "viper", "condor", "ferret", "marmot", "walrus", "ibex", "puffin", "cricket",
     "guitar", "lantern", "marble", "umbrella", "velvet", "walnut", "castle", "bridge", "anchor", "kettle",
     "ledger", "compass", "mosaic", "satchel", "chisel", "bugle", "thimble", "quiver", "trellis", "parchment",
     "tapestry", "lattice", "scepter", "cauldron", "pendant", "brooch", "gazebo", "turnstile", "telescope", "kaleidoscope",
@@ -21,5 +20,68 @@ const WORDLIST = [
     "onyx", "ivory", "ebony", "azure", "violet", "saffron", "umber", "jade", "garnet", "pearl",
     "harmony", "journey", "mystery", "wonder", "whisper", "echo", "ripple", "cascade", "flicker", "glimmer",
     "kernel", "lumen", "nova", "orbit", "pixel", "quartz", "rustic", "timber", "utopia", "vapor",
-    "wander", "yield", "zephyr", "karma", "magma", "nimbus", "vertex", "quarry", "jigsaw", "unity"
+    "wander", "yield", "zephyr", "karma", "magma", "nimbus", "vertex", "quarry", "jigsaw", "unity",
+    "badge", "banjo", "basket", "beacon", "beaker", "beetle", "bison", "blanket", "bloom", "blossom",
+    "bolt", "bonfire", "bramble", "brass", "brave", "brick", "bristle", "broom", "bucket", "buckle",
+    "bumper", "bundle", "bunker", "burlap", "cabin", "cable", "cactus", "camel", "canvas", "caravan",
+    "carbon", "caribou", "carpet", "cavern", "cedarwood", "cellar", "cement", "chalice", "chalk", "chamber",
+    "charcoal", "chariot", "cherry", "chestnut", "chime", "citadel", "clarion", "clover", "cobalt", "cobble",
+    "cocoon", "collar", "comrade", "copper", "coral", "cottage", "cotton", "cove", "cradle", "crater",
+    "crescent", "crocus", "crown", "crystal", "cub", "cube", "cupola", "curator", "cushion", "cutlass",
+    "cygnet", "dagger", "daisy", "dapple", "dawnlight", "decade", "dewdrop", "diamond", "dinghy", "dobbin",
+    "dolmen", "domino", "dorm", "dragonfly", "drift", "drum", "eagerness", "earthen", "easel", "ember",
+    "emblem", "ensign", "errand", "essence", "estate", "eucalyptus", "falconry", "fable", "falter", "fanfare",
+    "farmland", "fauna", "feather", "fennel", "fern", "ferry", "festival", "fiber", "fiddle", "field",
+    "filament", "finch", "fireside", "firefly", "flagship", "flame", "flannel", "flare", "flask", "fledgling",
+    "flint", "flora", "flotilla", "flute", "foam", "foghorn", "foil", "forge", "fossil", "foxglove",
+    "frame", "frontier", "frostbite", "fumble", "furrow", "gable", "galley", "gallop", "garland", "gate",
+    "gazette", "gemstone", "geode", "geyser", "gingham", "glacierview", "glade", "gladiator", "glaze", "gleam",
+    "globe", "glow", "glyph", "goblet", "golem", "gondola", "goose", "gorge", "gossamer", "granite",
+    "gravel", "griffin", "grotto", "gryphon", "guardian", "gully", "gunwale", "gypsum", "hallow", "halo",
+    "hammer", "hamlet", "handle", "harbinger", "harness", "harvest", "hatch", "haven", "hawthorn", "hazel",
+    "headland", "hearth", "hedge", "helix", "hemlock", "heritage", "hermit", "hexagon", "hickory", "highland",
+    "hillside", "hinge", "hive", "hollowoak", "homestead", "honeycomb", "hornbeam", "hostel", "hourglass", "howler",
+    "hummingbird", "hurdle", "husk", "hyacinth", "hymn", "icicle", "ignite", "inkwell", "inlet", "inn",
+    "iris", "ironwood", "isthmus", "ivy", "jasmine", "jetty", "journeyman", "jubilee", "juniper", "kayak",
+    "kestrel", "keystone", "kiln", "kingfisher", "kite", "knight", "knoll", "koi", "labyrinth", "lacquer",
+    "lagoonview", "lambent", "lance", "larch", "larkspur", "lasso", "latch", "laurel", "lectern", "legend",
+    "lemongrass", "lentil", "lever", "library", "lichen", "lifeboat", "lighthouse", "lilac", "limestone", "linen",
+    "lintel", "loam", "lobby", "locket", "locomotive", "loom", "lotus", "lullaby", "lumberjack", "lunar",
+    "lupine", "lyre", "magnet", "magnolia", "mainland", "mallow", "mammoth", "manor", "mantle", "maroon",
+    "marshland", "marten", "marvel", "masonry", "mast", "meadowlark", "medallion", "mercury", "meridian", "metronome",
+    "midnight", "milestone", "millpond", "minaret", "mineral", "minnow", "minstrel", "mint", "mirage", "mistletoe",
+    "mockingbird", "molasses", "monarch", "mosswood", "mothball", "musket", "myrtle", "nectar", "needle", "nestling",
+    "nickel", "nightjar", "nimbostratus", "nomad", "nook", "nutmeg", "oakwood", "oasis", "obelisk", "obsidian",
+    "ochre", "octagon", "oilcloth", "okapi", "orbweaver", "oregano", "origami", "oriole", "orrery", "osprey",
+    "ostrich", "outpost", "overlook", "owlet", "oxbow", "oxide", "paddle", "paisley", "palisade", "palm",
+    "pantry", "papaya", "paprika", "parapet", "paragon", "parkland", "parsley", "partridge", "pastureland", "patchwork",
+    "pathfinder", "pavilion", "peacock", "peat", "pebble", "pelican", "peninsula", "peony", "peppermint", "periwinkle",
+    "petal", "pewter", "pheasant", "pickaxe", "pier", "pigment", "pinecone", "pinnacle", "pioneer", "plank",
+    "plaza", "plumage", "podium", "poinsettia", "polar", "pollen", "pomegranate", "poncho", "poplar", "porcelain",
+    "portico", "postcard", "prairiegrass", "pretzel", "primrose", "prism", "promontory", "pumpkin", "quaint", "quartzite",
+    "quill", "quilt", "quokka", "quicksilver", "rafter", "ragweed", "rambler", "rampart", "ranch", "rapids",
+    "raspberry", "ravine", "reef", "reindeer", "relic", "reservoir", "ribbon", "ridge", "rimstone", "riverbank",
+    "robin", "rocket", "rooster", "rosemary", "rosewood", "rowan", "rubble", "ruby", "rudder", "rustler",
+    "sable", "saddle", "sagebrush", "sailboat", "salamander", "saltmarsh", "sanctuary", "sandalwood", "sandpiper", "sapling",
+    "sarsaparilla", "satellite", "savory", "sawmill", "saxifrage", "scallop", "schooner", "sconce", "scoutmaster", "scrapbook",
+    "scroll", "seabird", "seafarer", "seaglass", "seagull", "seashell", "seaside", "seaweed", "sentinel", "sequoia",
+    "sesame", "settler", "shale", "shamrock", "shanty", "shepherd", "shimmer", "shipyard", "shoreline", "shrike",
+    "shrine", "shrub", "sickle", "signal", "signpost", "silo", "sinew", "sitka", "skiff", "skylark",
+    "slate", "sleigh", "sloop", "smokestack", "snail", "snowdrop", "songbird", "sorrel", "spearmint", "spice",
+    "spindle", "spinnaker", "spoke", "sprig", "springtime", "sprout", "spyglass", "squire", "stable", "stagecoach",
+    "stallion", "starling", "starlight", "statue", "stave", "steed", "steeple", "stern", "stirrup", "stockade",
+    "stonewall", "stork", "strait", "stronghold", "stucco", "summit", "sundial", "sunflower", "sunrise", "sunstone",
+    "swallow", "swamp", "swanlake", "sycamore", "tackle", "tailwind", "talisman", "talon", "tambourine", "tannery",
+    "teahouse", "teal", "telegraph", "temple", "tenant", "tepee", "terrace", "terrapin", "thatch", "thicket",
+    "thimbleberry", "thistle", "thoroughbred", "thresher", "thrush", "thunderhead", "tidepool", "timberland", "tinsmith", "toadstool",
+    "toboggan", "token", "tollgate", "tornado", "torrent", "totem", "toucan", "towpath", "trailblazer", "tramway",
+    "trapper", "traverse", "trawler", "treasury", "trestle", "trillium", "trinket", "trolley", "trout", "trowel",
+    "trumpet", "tundraflower", "tunic", "turbine", "turnip", "turquoise", "tussock", "tweed", "twine", "typhoon",
+    "undertow", "underwood", "unicorn", "upland", "vagabond", "vanguard", "vantage", "varnish", "vellum", "velveteen",
+    "venison", "verandah", "verdant", "vermillion", "vessel", "vestibule", "vicar", "vigil", "village", "vinegrove",
+    "vineyard", "virtuoso", "vista", "voyage", "wagon", "wallaby", "warbler", "warehouse", "waterfall", "waterwheel",
+    "wattle", "waxwing", "weathervane", "weaver", "wharf", "wheatfield", "whimbrel", "whirlwind", "whitewater", "wickerwork",
+    "wigwam", "wildflower", "willowbrook", "windmill", "windrow", "winery", "wingspan", "winnower", "winterberry", "wolverine",
+    "woodcarver", "woodland", "woodpecker", "woodsman", "woolgrower", "wraith", "wren", "yarrow", "yeoman", "yew",
+    "yonder", "zeppelin", "zestful", "zinnia"
 ];
