@@ -1,10 +1,13 @@
 let currentHostname = null
+let tabSupported = false
 const GIF_PAGE_SIZE = 48
 let pendingGifs = []
+let gifNames = {}
+let favoriteGifs = []
 
 function renderMoreGifs() {
   const nextBatch = pendingGifs.splice(0, GIF_PAGE_SIZE)
-  nextBatch.forEach(src => addGifToDOM(src))
+  nextBatch.forEach(src => addGifToDOM(src, gifNames[src]))
   document.getElementById("btn-load-more-gifs").hidden = pendingGifs.length === 0
 }
 
@@ -16,7 +19,7 @@ document.addEventListener("DOMContentLoaded",  async function () {
   const isFirstRun = !initState[IS_INIT]
 
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const tabSupported = isSupportedTabUrl(activeTab?.url)
+  tabSupported = isSupportedTabUrl(activeTab?.url)
   if (tabSupported) {
     currentHostname = new URL(activeTab.url).hostname
   } else {
@@ -48,17 +51,24 @@ document.addEventListener("DOMContentLoaded",  async function () {
     }
   }
 
-  const listState = await chrome.storage.local.get([LIST_GIFS])
+  const listState = await chrome.storage.local.get([LIST_GIFS, GIF_NAMES, FAVORITE_GIFS])
   let gifs = LIST_GIFS_DEFAULT
   if (listState[LIST_GIFS] && listState[LIST_GIFS].length > 0) {
     gifs = listState[LIST_GIFS]
   } else {
     await chrome.storage.local.set({ [LIST_GIFS]: LIST_GIFS_DEFAULT })
   }
+  gifNames = listState[GIF_NAMES] || {}
+  favoriteGifs = listState[FAVORITE_GIFS] || []
+
+  await renderPresetOptions()
 
   async function renderGifs() {
     document.getElementById("gif-loading").hidden = true
-    pendingGifs = [...gifs]
+    // Favorites sort first so pinned GIFs are always visible without scrolling.
+    const favoritesInList = gifs.filter(src => favoriteGifs.includes(src))
+    const restOfList = gifs.filter(src => !favoriteGifs.includes(src))
+    pendingGifs = [...favoritesInList, ...restOfList]
     renderMoreGifs()
     if (isFirstRun) {
       await chrome.storage.local.set({ [IS_INIT]: true })
@@ -66,7 +76,7 @@ document.addEventListener("DOMContentLoaded",  async function () {
     }
 
     chrome.storage.local.get(
-      ["gif_size", "gif_position", "gif_animation", "gif_duration", DISABLED_HOSTS, RANDOM_MODE, MULTI_GIF_MODE],
+      ["gif_size", "gif_position", "gif_animation", "gif_duration", DISABLED_HOSTS, ENABLED_HOSTS, SITE_MODE, RANDOM_MODE, MULTI_GIF_MODE],
       (result) => {
         if (chrome.runtime.lastError) {
           alert(ERROR_ALERT)
@@ -97,8 +107,11 @@ document.addEventListener("DOMContentLoaded",  async function () {
           setGifDuration(document.getElementById("gif_duration").value)
         }
 
-        const disabledHosts = result[DISABLED_HOSTS] || []
-        document.getElementById("site_toggle").checked = tabSupported && !disabledHosts.includes(currentHostname)
+        const siteMode = result[SITE_MODE] || "blocklist"
+        document.getElementById("site_mode_toggle").checked = siteMode === "allowlist"
+        document.getElementById("site_toggle").checked = tabSupported && (siteMode === "allowlist"
+          ? (result[ENABLED_HOSTS] || []).includes(currentHostname)
+          : !(result[DISABLED_HOSTS] || []).includes(currentHostname))
         document.getElementById("random_mode_toggle").checked = !!result[RANDOM_MODE]
         document.getElementById("multi_gif_toggle").checked = !!result[MULTI_GIF_MODE]
       })
@@ -123,7 +136,8 @@ function applyGifSearchFilter() {
   const query = document.getElementById("gif_search").value.trim().toLowerCase()
   document.querySelectorAll("#gifContainer .gif-item").forEach(item => {
     const src = item.querySelector("img").src.toLowerCase()
-    item.hidden = query.length > 0 && !src.includes(query)
+    const name = (item.title || "").toLowerCase()
+    item.hidden = query.length > 0 && !src.includes(query) && !name.includes(query)
   })
   // Loading more unfiltered GIFs while a search is active would be confusing.
   document.getElementById("btn-load-more-gifs").hidden = query.length > 0 || pendingGifs.length === 0
@@ -132,7 +146,7 @@ function applyGifSearchFilter() {
 
 document.getElementById("gif_search").addEventListener("input", applyGifSearchFilter)
 
-function addGifToDOM(src, prepend = false) {
+function addGifToDOM(src, name, prepend = false) {
   const gifContainer = document.getElementById("gifContainer")
 
   const div = document.createElement('div')
@@ -140,11 +154,14 @@ function addGifToDOM(src, prepend = false) {
   div.tabIndex = 0
   div.setAttribute('role', 'button')
   div.setAttribute('aria-pressed', 'false')
-  div.setAttribute('aria-label', 'Select this GIF')
+  div.setAttribute('aria-label', name ? `Select ${name}` : 'Select this GIF')
+  if (name) {
+    div.title = name
+  }
 
   const img = document.createElement('img')
   img.src = src
-  img.alt = 'GIF thumbnail'
+  img.alt = name || 'GIF thumbnail'
 
   const deleteBtn = document.createElement('div')
   deleteBtn.className = 'delete-icon'
@@ -156,8 +173,23 @@ function addGifToDOM(src, prepend = false) {
     deleteGif(e, src)
   })
 
+  const favoriteBtn = document.createElement('div')
+  favoriteBtn.className = 'favorite-icon'
+  if (favoriteGifs.includes(src)) {
+    favoriteBtn.classList.add('is-favorite')
+  }
+  favoriteBtn.textContent = '★'
+  favoriteBtn.setAttribute('role', 'button')
+  favoriteBtn.setAttribute('aria-label', 'Pin this GIF to the top')
+  favoriteBtn.setAttribute('aria-pressed', String(favoriteGifs.includes(src)))
+  favoriteBtn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    toggleFavorite(favoriteBtn, src)
+  })
+
   div.appendChild(img)
   div.appendChild(deleteBtn)
+  div.appendChild(favoriteBtn)
 
   const selectThisGif = async () => {
     if (document.getElementById("multi_gif_toggle").checked) {
@@ -222,8 +254,30 @@ document.getElementById("gif_duration").onchange = async function (event) {
 }
 
 document.getElementById("site_toggle").onchange = async function (event) {
+  /* global chrome */
   if (!currentHostname) return
-  await setSiteDisabled(currentHostname, !event.target.checked)
+  const result = await chrome.storage.local.get([SITE_MODE])
+  if ((result[SITE_MODE] || "blocklist") === "allowlist") {
+    await setSiteEnabled(currentHostname, event.target.checked)
+  } else {
+    await setSiteDisabled(currentHostname, !event.target.checked)
+  }
+}
+
+document.getElementById("site_mode_toggle").onchange = async function (event) {
+  /* global chrome */
+  const newMode = event.target.checked ? "allowlist" : "blocklist"
+  await chrome.storage.local.set({ [SITE_MODE]: newMode })
+
+  // The "Show on this site" switch means something different in each mode —
+  // refresh it against the new mode's own host list.
+  const result = await chrome.storage.local.get([DISABLED_HOSTS, ENABLED_HOSTS])
+  const siteToggle = document.getElementById("site_toggle")
+  siteToggle.checked = tabSupported && (newMode === "allowlist"
+    ? (result[ENABLED_HOSTS] || []).includes(currentHostname)
+    : !(result[DISABLED_HOSTS] || []).includes(currentHostname))
+
+  await notifyActiveTab({ from: POPUP_SCREEN, subject: HANDLE_SET_DISABLED_HOSTS })
 }
 
 document.getElementById("random_mode_toggle").onchange = async function (event) {
@@ -233,6 +287,12 @@ document.getElementById("random_mode_toggle").onchange = async function (event) 
 document.getElementById("multi_gif_toggle").onchange = async function (event) {
   /* global chrome */
   await chrome.storage.local.set({ [MULTI_GIF_MODE]: event.target.checked })
+}
+
+async function saveGifName(src, name) {
+  /* global chrome */
+  gifNames[src] = name
+  await chrome.storage.local.set({ [GIF_NAMES]: gifNames })
 }
 
 document.getElementById("btn-add-gif").addEventListener("click", async function () {
@@ -266,8 +326,14 @@ document.getElementById("btn-add-gif").addEventListener("click", async function 
       alert(ERROR_ALERT, "Couldn't save — storage is full. Try removing some GIFs first.")
       return
     }
-    addGifToDOM(url)
+    const nameInput = document.getElementById("gif_name")
+    const name = nameInput.value.trim()
+    if (name) {
+      await saveGifName(url, name)
+    }
+    addGifToDOM(url, name || undefined)
     urlInput.value = ""
+    nameInput.value = ""
     closeAddGifPanel()
     alert(SUCCESS_ALERT)
   }
@@ -317,8 +383,14 @@ fileInput.addEventListener('change', async function () {
       return
     }
 
-    addGifToDOM(dataUrl);
+    const nameInput = document.getElementById("gif_name")
+    const name = nameInput.value.trim()
+    if (name) {
+      await saveGifName(dataUrl, name)
+    }
+    addGifToDOM(dataUrl, name || undefined);
     fileInput.value = ""
+    nameInput.value = ""
     closeAddGifPanel()
     alert(SUCCESS_ALERT);
   };
@@ -329,10 +401,13 @@ fileInput.addEventListener('change', async function () {
 document.getElementById("btn-export-gifs").addEventListener("click", async function () {
   /* global chrome */
   const result = await chrome.storage.local.get([
-    LIST_GIFS, "gif_size", "gif_position", "gif_animation", "gif_duration", RANDOM_MODE
+    LIST_GIFS, "gif_size", "gif_position", "gif_animation", "gif_duration", RANDOM_MODE, GIF_NAMES, FAVORITE_GIFS, PRESETS
   ])
   const payload = {
     gifs: result[LIST_GIFS] || [],
+    names: result[GIF_NAMES] || {},
+    favorites: result[FAVORITE_GIFS] || [],
+    presets: result[PRESETS] || [],
     settings: {
       gif_size: result.gif_size,
       gif_position: result.gif_position,
@@ -367,13 +442,37 @@ importFileInput.addEventListener("change", async function () {
       throw new Error("invalid-format")
     }
 
-    const result = await chrome.storage.local.get([LIST_GIFS])
+    const result = await chrome.storage.local.get([LIST_GIFS, GIF_NAMES, FAVORITE_GIFS, PRESETS])
     const current = result[LIST_GIFS] || []
     const merged = Array.from(new Set([...current, ...imported]))
     const newOnes = merged.filter(src => !current.includes(src))
 
     await chrome.storage.local.set({ [LIST_GIFS]: merged })
-    newOnes.forEach(src => addGifToDOM(src))
+
+    if (!Array.isArray(parsed) && parsed.names && typeof parsed.names === "object") {
+      gifNames = { ...result[GIF_NAMES], ...parsed.names }
+      await chrome.storage.local.set({ [GIF_NAMES]: gifNames })
+    }
+
+    if (!Array.isArray(parsed) && Array.isArray(parsed.favorites)) {
+      favoriteGifs = Array.from(new Set([
+        ...(result[FAVORITE_GIFS] || []),
+        ...parsed.favorites.filter(src => merged.includes(src))
+      ]))
+      await chrome.storage.local.set({ [FAVORITE_GIFS]: favoriteGifs })
+    }
+
+    if (!Array.isArray(parsed) && Array.isArray(parsed.presets)) {
+      const currentPresets = result[PRESETS] || []
+      const existingNames = new Set(currentPresets.map(p => p.name))
+      const newPresets = parsed.presets.filter(p => p && typeof p.name === "string" && !existingNames.has(p.name))
+      if (newPresets.length > 0) {
+        await chrome.storage.local.set({ [PRESETS]: [...currentPresets, ...newPresets] })
+        await renderPresetOptions()
+      }
+    }
+
+    newOnes.forEach(src => addGifToDOM(src, gifNames[src]))
 
     if (!Array.isArray(parsed) && parsed.settings && typeof parsed.settings === "object") {
       await applyImportedSettings(parsed.settings)
@@ -422,11 +521,93 @@ document.getElementById("btn-reset-gifs").addEventListener("click", async functi
   }
 
   await chrome.storage.local.set({ [LIST_GIFS]: LIST_GIFS_DEFAULT })
+
+  gifNames = {}
+  favoriteGifs = favoriteGifs.filter(src => LIST_GIFS_DEFAULT.includes(src))
+  await chrome.storage.local.set({ [GIF_NAMES]: gifNames, [FAVORITE_GIFS]: favoriteGifs })
+
   document.getElementById("gifContainer").querySelectorAll(".gif-item").forEach(el => el.remove())
+  pendingGifs = []
+  document.getElementById("btn-load-more-gifs").hidden = true
   LIST_GIFS_DEFAULT.forEach(src => addGifToDOM(src))
   await clearSelectedGifIfMissing(LIST_GIFS_DEFAULT)
   await displayCheckmark()
   alert(SUCCESS_ALERT, "Restored the default GIF collection.")
+})
+
+async function renderPresetOptions() {
+  /* global chrome */
+  const result = await chrome.storage.local.get([PRESETS])
+  const presets = result[PRESETS] || []
+  const select = document.getElementById("preset_select")
+  select.innerHTML = '<option value="" selected disabled>Load preset…</option>'
+  presets.forEach((preset, index) => {
+    const option = document.createElement("option")
+    option.value = String(index)
+    option.textContent = preset.name
+    select.appendChild(option)
+  })
+  document.getElementById("btn-delete-preset").hidden = true
+}
+
+document.getElementById("preset_select").addEventListener("change", async function (event) {
+  /* global chrome */
+  const index = Number(event.target.value)
+  const result = await chrome.storage.local.get([PRESETS])
+  const preset = (result[PRESETS] || [])[index]
+  if (!preset) return
+
+  document.getElementById("gif_size").value = preset.gif_size
+  document.getElementById("gif_position").value = preset.gif_position
+  document.getElementById("gif_animation").value = preset.gif_animation
+  document.getElementById("gif_duration").value = preset.gif_duration
+
+  await setGifSize(preset.gif_size)
+  await setGifPosition(preset.gif_position)
+  await setGifAnimation(preset.gif_animation)
+  await setGifDuration(preset.gif_duration)
+
+  document.getElementById("btn-delete-preset").hidden = false
+})
+
+document.getElementById("btn-save-preset").addEventListener("click", async function () {
+  /* global chrome */
+  const name = window.prompt("Name this preset:")
+  if (!name || !name.trim()) return
+
+  const preset = {
+    name: name.trim(),
+    gif_size: document.getElementById("gif_size").value,
+    gif_position: document.getElementById("gif_position").value,
+    gif_animation: document.getElementById("gif_animation").value,
+    gif_duration: document.getElementById("gif_duration").value
+  }
+
+  const result = await chrome.storage.local.get([PRESETS])
+  const presets = result[PRESETS] || []
+  const existingIndex = presets.findIndex(p => p.name === preset.name)
+  if (existingIndex >= 0) {
+    presets[existingIndex] = preset
+  } else {
+    presets.push(preset)
+  }
+
+  await chrome.storage.local.set({ [PRESETS]: presets })
+  await renderPresetOptions()
+  alert(SUCCESS_ALERT, `Saved preset "${preset.name}".`)
+})
+
+document.getElementById("btn-delete-preset").addEventListener("click", async function () {
+  /* global chrome */
+  const select = document.getElementById("preset_select")
+  const index = Number(select.value)
+  if (Number.isNaN(index)) return
+
+  const result = await chrome.storage.local.get([PRESETS])
+  const presets = result[PRESETS] || []
+  presets.splice(index, 1)
+  await chrome.storage.local.set({ [PRESETS]: presets })
+  await renderPresetOptions()
 })
 
 const toggleAddGifBtn = document.getElementById('toggle-add-gif');

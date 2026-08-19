@@ -47,19 +47,14 @@ chrome.commands.onCommand.addListener(async function (command) {
   }
 
   const hostname = new URL(tab.url).hostname
-  const result = await chrome.storage.local.get([DISABLED_HOSTS])
-  const hosts = result[DISABLED_HOSTS] || []
-  const wasDisabled = hosts.includes(hostname)
-  const nextHosts = wasDisabled ? hosts.filter(h => h !== hostname) : [...hosts, hostname]
-
-  await chrome.storage.local.set({ [DISABLED_HOSTS]: nextHosts })
+  const nowActive = await toggleSiteActive(hostname)
   try {
     await chrome.tabs.sendMessage(tab.id, { from: BACKGROUND_SCREEN, subject: HANDLE_SET_DISABLED_HOSTS })
   } catch (e) {
     // No content script listening on this tab — nothing to do.
   }
 
-  flashBadge(wasDisabled ? "ON" : "OFF", wasDisabled ? "#34c759" : "#8e8e93")
+  flashBadge(nowActive ? "ON" : "OFF", nowActive ? "#34c759" : "#8e8e93")
 });
 
 function flashBadge(text, color) {

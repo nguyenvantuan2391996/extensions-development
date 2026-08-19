@@ -71,6 +71,21 @@ async function toggleGifSelected(selectedDiv, src) {
     await notifyActiveTab({ from: POPUP_SCREEN, subject: HANDLE_SET_GIF_SELECTED })
 }
 
+// Pins/unpins a GIF so it sorts to the front of the library on next popup
+// open. Purely a popup-local organizational feature — doesn't touch what's
+// displayed on the page, so no message to the content script is needed.
+async function toggleFavorite(favoriteBtn, src) {
+    /* global chrome */
+    const result = await chrome.storage.local.get([FAVORITE_GIFS])
+    const favorites = result[FAVORITE_GIFS] || []
+    const wasFavorite = favorites.includes(src)
+    const next = wasFavorite ? favorites.filter(s => s !== src) : [...favorites, src]
+
+    await chrome.storage.local.set({ [FAVORITE_GIFS]: next })
+    favoriteBtn.classList.toggle("is-favorite", !wasFavorite)
+    favoriteBtn.setAttribute('aria-pressed', String(!wasFavorite))
+}
+
 async function displayCheckmark() {
     /* global chrome */
     const result = await chrome.storage.local.get([GIF_SELECTED])
@@ -114,11 +129,23 @@ async function deleteGif(event, src) {
     });
 
     /* global chrome */
-    const result = await chrome.storage.local.get([LIST_GIFS])
+    const result = await chrome.storage.local.get([LIST_GIFS, GIF_NAMES, FAVORITE_GIFS])
     const current_gifs = result[LIST_GIFS] || []
     const remaining_gifs = current_gifs.filter(item => item !== src)
     await chrome.storage.local.set({ [LIST_GIFS]: remaining_gifs })
     await clearSelectedGifIfMissing(remaining_gifs)
+
+    const names = result[GIF_NAMES] || {}
+    if (src in names) {
+        delete names[src]
+        await chrome.storage.local.set({ [GIF_NAMES]: names })
+    }
+
+    const favorites = result[FAVORITE_GIFS] || []
+    if (favorites.includes(src)) {
+        await chrome.storage.local.set({ [FAVORITE_GIFS]: favorites.filter(s => s !== src) })
+    }
+
     updateEmptyState()
 }
 
@@ -232,6 +259,42 @@ async function setSiteDisabled(hostname, disabled) {
         : hosts.filter(h => h !== hostname)
     await chrome.storage.local.set({ [DISABLED_HOSTS]: next })
     await notifyActiveTab({ from: POPUP_SCREEN, subject: HANDLE_SET_DISABLED_HOSTS })
+}
+
+// Allowlist-mode counterpart to setSiteDisabled: here presence in the list
+// means the site IS active, not disabled.
+async function setSiteEnabled(hostname, enabled) {
+    /* global chrome */
+    const result = await chrome.storage.local.get([ENABLED_HOSTS])
+    const hosts = result[ENABLED_HOSTS] || []
+    const next = enabled
+        ? Array.from(new Set([...hosts, hostname]))
+        : hosts.filter(h => h !== hostname)
+    await chrome.storage.local.set({ [ENABLED_HOSTS]: next })
+    await notifyActiveTab({ from: POPUP_SCREEN, subject: HANDLE_SET_DISABLED_HOSTS })
+}
+
+// Blind flip of a hostname's active state, respecting whichever site mode is
+// currently active. Used by the keyboard shortcut, which has no checkbox to
+// read a desired state from. Returns the new active state.
+async function toggleSiteActive(hostname) {
+    /* global chrome */
+    const result = await chrome.storage.local.get([DISABLED_HOSTS, ENABLED_HOSTS, SITE_MODE])
+    const siteMode = result[SITE_MODE] || "blocklist"
+
+    if (siteMode === "allowlist") {
+        const hosts = result[ENABLED_HOSTS] || []
+        const wasActive = hosts.includes(hostname)
+        const next = wasActive ? hosts.filter(h => h !== hostname) : [...hosts, hostname]
+        await chrome.storage.local.set({ [ENABLED_HOSTS]: next })
+        return !wasActive
+    }
+
+    const hosts = result[DISABLED_HOSTS] || []
+    const wasDisabled = hosts.includes(hostname)
+    const next = wasDisabled ? hosts.filter(h => h !== hostname) : [...hosts, hostname]
+    await chrome.storage.local.set({ [DISABLED_HOSTS]: next })
+    return wasDisabled
 }
 
 async function setRandomMode(enabled) {

@@ -34,6 +34,12 @@ Whether you're spicing up a presentation, surprising a friend, or just enjoying 
 3. Adjust Size, Position, Direction, and Duration from the toolbar — changes apply instantly to the current tab.
 4. Use the **Show on this site** switch to turn Bubu Dudu off just for the site you're on, or **Random GIF each visit** to get a surprise pick every time.
 
+## What's new in 1.0.6
+- New: name your GIFs when adding them (via URL or file upload) — search now matches on that name too, which fixes search being useless for uploaded files (they had no filename to match against before)
+- New: pin your favorite GIFs with the ★ icon on each thumbnail — favorited GIFs always sort to the front of the library
+- New: Allowlist mode — flip "Show on this site" from a blocklist (hidden only where you turn it off) to an allowlist (hidden everywhere except where you turn it on)
+- New: save your current Size/Position/Direction/Duration as a named preset and reload it later with one click
+
 ## What's new in 1.0.5
 - New: search box in the picker to filter your GIF library by URL/filename — handy once you've added a lot of your own
 - New: "Show multiple" mode — toggle it on to pick several GIFs at once and have them float across the page together, staggered along the same path instead of stacking

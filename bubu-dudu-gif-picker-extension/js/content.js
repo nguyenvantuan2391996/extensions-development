@@ -55,12 +55,18 @@ async function handleWebsiteLoaded() {
         "gif_animation",
         "gif_duration",
         "disabled_hosts",
+        "enabled_hosts",
+        "site_mode",
         "random_mode",
         "list_gifs"
     ])
 
-    const disabledHosts = result.disabled_hosts || []
-    if (disabledHosts.includes(window.location.hostname)) {
+    const siteMode = result.site_mode || "blocklist"
+    const siteActive = siteMode === "allowlist"
+        ? (result.enabled_hosts || []).includes(window.location.hostname)
+        : !(result.disabled_hosts || []).includes(window.location.hostname)
+
+    if (!siteActive) {
         removeGif()
         return
     }

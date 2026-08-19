@@ -261,6 +261,50 @@
             width: 100%;
         }
 
+        .field-preset {
+            flex: 1 1 130px;
+        }
+
+        .preset-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .preset-controls select {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .mini-icon-btn {
+            flex-shrink: 0;
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            font-size: 13px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: #fbfbfd;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: background 0.15s var(--ease-standard);
+        }
+
+        .mini-icon-btn:hover {
+            background: #f0f0f2;
+        }
+
+        .mini-icon-btn[hidden] {
+            display: none;
+        }
+
+        .mini-icon-btn-danger {
+            color: var(--danger);
+            border-color: rgba(255, 59, 48, 0.3);
+        }
+
         .toolbar-spacer {
             margin-left: auto;
         }
@@ -354,6 +398,10 @@
 
         .add-gif-panel input[type="text"] {
             flex: 1 1 220px;
+        }
+
+        .add-gif-panel .gif-name-input {
+            flex: 1 1 140px;
         }
 
         #gif_file {
@@ -515,6 +563,38 @@
         .gif-item:focus-within .delete-icon {
             opacity: 1;
             transform: scale(1);
+        }
+
+        .favorite-icon {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            background-color: rgba(0, 0, 0, 0.35);
+            border-radius: 9999px;
+            width: 17px;
+            height: 17px;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.15s var(--ease-standard), transform 0.15s var(--ease-spring), background-color 0.15s var(--ease-standard), color 0.15s var(--ease-standard);
+            transform: scale(0.85);
+        }
+
+        .gif-item:hover .favorite-icon,
+        .gif-item:focus-visible .favorite-icon,
+        .gif-item:focus-within .favorite-icon,
+        .favorite-icon.is-favorite {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .favorite-icon.is-favorite {
+            background-color: #ffb400;
+            color: #fff;
         }
 
         #gifContainer .gif-item img {
@@ -788,6 +868,16 @@
                 <label>Duration (s)</label>
                 <input id="gif_duration" type="number" value="60" min="5" max="300" step="5">
             </div>
+            <div class="field field-preset">
+                <label>Preset</label>
+                <div class="preset-controls">
+                    <select id="preset_select">
+                        <option value="" selected disabled>None</option>
+                    </select>
+                    <button type="button" id="btn-save-preset" class="mini-icon-btn" title="Save current settings as a preset" aria-label="Save preset">💾</button>
+                    <button type="button" id="btn-delete-preset" class="mini-icon-btn mini-icon-btn-danger" title="Delete this preset" aria-label="Delete preset" hidden="hidden">✕</button>
+                </div>
+            </div>
         </div>
 
         <div class="toolbar-row toolbar-row-secondary">
@@ -795,6 +885,13 @@
                 <label for="site_toggle">Show on this site</label>
                 <label class="switch">
                     <input type="checkbox" id="site_toggle" checked>
+                    <span class="switch-slider"></span>
+                </label>
+            </div>
+            <div class="field switch-field">
+                <label for="site_mode_toggle" title="Off: hidden only on sites you turn off below. On: hidden everywhere except sites you turn on.">Allowlist mode</label>
+                <label class="switch">
+                    <input type="checkbox" id="site_mode_toggle">
                     <span class="switch-slider"></span>
                 </label>
             </div>
@@ -818,6 +915,7 @@
 
         <div class="add-gif-panel" id="add-gif-panel" hidden="hidden">
             <input type="text" placeholder="https://example.com/cute.gif" id="gif_url">
+            <input type="text" placeholder="Name (optional)" id="gif_name" class="gif-name-input">
             <button id="btn-add-gif">Add</button>
             <input type="file" accept="image/gif" id="gif_file">
             <div class="panel-icon-actions">
@@ -827,6 +925,7 @@
                 <button type="button" id="btn-reset-gifs" class="pill-btn pill-btn-danger">Reset to defaults</button>
             </div>
         </div>
+
     </div>
 
     <!-- GIF List -->
