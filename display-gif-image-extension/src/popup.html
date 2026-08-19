@@ -2,69 +2,81 @@
 <head>
     <meta charset="UTF-8">
     <title>The extension supports for displaying the gif image when the website was loaded</title>
-    <link rel="stylesheet" href="../css/tailwind.css">
     <link rel="stylesheet" href="../css/popup.css">
 </head>
-<body class="w-[340px] bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800 font-sans antialiased">
+<body>
 
-<div class="p-4">
-    <div class="flex items-center gap-2.5 mb-4">
-        <img src="../images/icon.png" alt="logo" class="w-9 h-9 rounded-xl shadow-sm ring-1 ring-slate-200">
-        <div class="leading-tight">
-            <h1 class="text-sm font-semibold text-slate-900">Gif Overlay</h1>
-            <p class="text-xs text-slate-500">Configure your gif companion</p>
+<div class="container">
+    <div class="header">
+        <img src="../images/icon.png" alt="logo" class="header-icon">
+        <div class="header-text">
+            <h1>Gif Overlay</h1>
+            <p>Configure your gif companion</p>
         </div>
     </div>
 
-    <div id="alert-success" role="alert"
-         class="hidden mb-3 text-xs font-medium px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-    </div>
+    <div id="alert-success" role="alert" class="alert hidden"></div>
 
-    <div class="space-y-3 bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
-        <div>
-            <label for="select-type" class="block text-xs font-medium text-slate-500 mb-1">Gif source</label>
-            <select id="select-type"
-                    class="w-full text-sm rounded-lg border border-slate-300 px-2.5 py-1.5 text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+    <div class="card">
+        <div class="field">
+            <label for="select-type">Gif source</label>
+            <select id="select-type">
                 <option id="type-random" value="type-random" selected>Random Gif</option>
                 <option id="type-search-key" value="type-search-key">Search Gif By Key</option>
             </select>
         </div>
 
-        <div>
-            <label for="input-key-search" class="block text-xs font-medium text-slate-500 mb-1">Keyword</label>
-            <input type="text" id="input-key-search" placeholder="e.g. cat cute" hidden
-                   class="w-full text-sm rounded-lg border border-slate-300 px-2.5 py-1.5 text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+        <div class="field">
+            <label for="input-key-search">Keyword</label>
+            <input type="text" id="input-key-search" placeholder="e.g. cat cute" hidden>
+            <p id="input-key-search-error" class="field-error hidden">Enter a keyword to search, or switch to Random Gif.</p>
         </div>
 
-        <div>
-            <label for="select-position" class="block text-xs font-medium text-slate-500 mb-1">Position</label>
-            <select id="select-position"
-                    class="w-full text-sm rounded-lg border border-slate-300 px-2.5 py-1.5 text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400">
+        <div class="field">
+            <label for="select-position">Position</label>
+            <select id="select-position">
                 <option id="type-bottom-right" value="type-bottom-right" selected>Bottom Right</option>
                 <option id="type-top-right" value="type-top-right">Top Right</option>
                 <option id="type-bottom-left" value="type-bottom-left">Bottom Left</option>
                 <option id="type-top-left" value="type-top-left">Top Left</option>
             </select>
         </div>
+
+        <div class="field">
+            <label for="range-size">Size <span id="size-value" class="field-value">180px</span></label>
+            <input type="range" id="range-size" min="80" max="320" step="10" value="180">
+        </div>
+
+        <div class="field">
+            <label for="range-speed">Speed <span id="speed-value" class="field-value">Medium</span></label>
+            <input type="range" id="range-speed" min="10" max="60" step="5" value="30">
+        </div>
+
+        <div class="field">
+            <div class="preview-header">
+                <label class="preview-label">Preview</label>
+                <button type="button" id="btn-preview" class="btn-link">Preview gif</button>
+            </div>
+            <div id="preview-box" class="preview-box hidden">
+                <img id="preview-img" alt="Gif preview">
+            </div>
+        </div>
     </div>
 
-    <div class="flex gap-2 mt-3">
-        <button type="button" id="btn-save-config"
-                class="flex-1 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-lg py-2 transition-colors">
-            Save
-        </button>
-        <button type="button" id="btn-turn-on-off"
-                class="text-sm font-medium text-white bg-rose-500 hover:bg-rose-600 active:bg-rose-700 rounded-lg py-2 px-3 transition-colors">
-            Off
-        </button>
-        <button type="button" id="btn-clear-config"
-                class="text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-lg py-2 px-3 transition-colors">
-            Clear
-        </button>
+    <div class="site-toggle">
+        <span id="site-host" class="site-host"></span>
+        <button type="button" id="btn-toggle-site" class="btn-link hidden">Disable on this site</button>
+    </div>
+
+    <div class="actions">
+        <button type="button" id="btn-save-config" class="btn btn-primary">Save</button>
+        <button type="button" id="btn-turn-on-off" class="btn btn-off">Off</button>
+        <button type="button" id="btn-clear-config" class="btn btn-neutral">Clear</button>
     </div>
 </div>
 
-<script src="../js/popup.js"></script>
 <script src="../js/constants.js"></script>
+<script src="../js/apis.js"></script>
+<script src="../js/popup.js"></script>
 </body>
 </html>

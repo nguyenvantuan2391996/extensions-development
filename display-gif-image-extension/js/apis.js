@@ -1,4 +1,27 @@
+async function getCachedGifUrl(cacheKey) {
+  const result = await chrome.storage.local.get([STORAGE_KEY_GIF_CACHE]);
+  const cache = result[STORAGE_KEY_GIF_CACHE] || {};
+  const entry = cache[cacheKey];
+  if (entry && Date.now() - entry.ts < GIF_CACHE_TTL_MS) {
+    return entry.url;
+  }
+  return null;
+}
+
+async function setCachedGifUrl(cacheKey, url) {
+  const result = await chrome.storage.local.get([STORAGE_KEY_GIF_CACHE]);
+  const cache = result[STORAGE_KEY_GIF_CACHE] || {};
+  cache[cacheKey] = { url, ts: Date.now() };
+  await chrome.storage.local.set({ [STORAGE_KEY_GIF_CACHE]: cache });
+}
+
 async function getGifImageByKey(keySearch) {
+  const cacheKey = "search:" + keySearch;
+  const cached = await getCachedGifUrl(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const requestOptions = {
     method: "GET",
     redirect: "follow",
@@ -23,7 +46,14 @@ async function getGifImageByKey(keySearch) {
       console.log("error", error);
     });
 
-  return listGifImages[Math.floor(Math.random() * listGifImages.length)];
+  const gifImageUrl =
+    listGifImages[Math.floor(Math.random() * listGifImages.length)];
+
+  if (gifImageUrl) {
+    await setCachedGifUrl(cacheKey, gifImageUrl);
+  }
+
+  return gifImageUrl;
 }
 
 async function getGifImageByRandom() {

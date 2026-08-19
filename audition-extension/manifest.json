@@ -1,6 +1,6 @@
 {
-  "name": "Audition Dance Extension",
-  "description": "Audition-style rhythm dance game: 4K, 8K, and Beat-up modes, using only music you pick from your own computer.",
+  "name": "Beat Dance Extension",
+  "description": "4-direction rhythm dance game: 4K, 8K, and Beat-up modes, using only music you pick from your own computer.",
   "version": "1.0.0",
   "action": {
     "default_popup": "src/popup.html",

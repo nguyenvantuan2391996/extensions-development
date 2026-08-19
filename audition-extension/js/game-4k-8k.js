@@ -493,7 +493,7 @@ function startCountdownThenPlay() {
 // Entry point called from game-setup.js once a local file + dance type have
 // been picked - replaces the original's URL-param + IndexedDB handoff since
 // setup and gameplay now live on the same page/tab.
-function startAuditionGame(file, danceType) {
+function startBeatDanceGame(file, danceType) {
   stopMoveLoop();
   if (typeof stopBeatUpLoops === "function") stopBeatUpLoops();
 
@@ -512,7 +512,7 @@ function startAuditionGame(file, danceType) {
       maxCombo,
       judgementCounts,
       onReplay: function () {
-        startAuditionGame(currentFile, currentTypeDance);
+        startBeatDanceGame(currentFile, currentTypeDance);
       },
       onHome: quitToHome,
     });

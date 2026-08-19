@@ -5,24 +5,36 @@ chrome.runtime.onMessage.addListener(async function (msg) {
   ) {
     await chrome.storage.local.get(
       [
-        "gif_extension_select_type",
-        "gif_extension_key_search",
-        "gif_extension_select_position",
-        "turn_on_off",
+        STORAGE_KEY_SELECT_TYPE,
+        STORAGE_KEY_KEY_SEARCH,
+        STORAGE_KEY_SELECT_POSITION,
+        STORAGE_KEY_SIZE,
+        STORAGE_KEY_SPEED,
+        STORAGE_KEY_BLOCKLIST,
+        STORAGE_KEY_TURN_ON_OFF,
       ],
       async function (result) {
-        let selectType = result.gif_extension_select_type
-          ? result.gif_extension_select_type
+        let selectType = result[STORAGE_KEY_SELECT_TYPE]
+          ? result[STORAGE_KEY_SELECT_TYPE]
           : "type-random";
-        let keySearch = result.gif_extension_key_search
-          ? result.gif_extension_key_search
+        let keySearch = result[STORAGE_KEY_KEY_SEARCH]
+          ? result[STORAGE_KEY_KEY_SEARCH]
           : "";
-        let selectPosition = result.gif_extension_select_position
-          ? result.gif_extension_select_position
+        let selectPosition = result[STORAGE_KEY_SELECT_POSITION]
+          ? result[STORAGE_KEY_SELECT_POSITION]
           : "type-bottom-right";
-        let onOff = result.turn_on_off ? result.turn_on_off : "On";
+        let size = result[STORAGE_KEY_SIZE] || DEFAULT_CHARACTER_SIZE;
+        let speed = result[STORAGE_KEY_SPEED] || DEFAULT_ANIMATION_DURATION;
+        let blocklist = result[STORAGE_KEY_BLOCKLIST] || [];
+        let onOff = result[STORAGE_KEY_TURN_ON_OFF]
+          ? result[STORAGE_KEY_TURN_ON_OFF]
+          : "On";
 
         if (onOff === "Off") {
+          return;
+        }
+
+        if (blocklist.includes(location.hostname)) {
           return;
         }
 
@@ -50,10 +62,8 @@ chrome.runtime.onMessage.addListener(async function (msg) {
 
       .character {
         position: fixed;
-        width: 180px;
         height: auto;
         z-index: 999;
-        animation-duration: 30s;
         animation-iteration-count: infinite;
         animation-timing-function: linear;
         pointer-events: none;
@@ -80,6 +90,8 @@ chrome.runtime.onMessage.addListener(async function (msg) {
         character.src = gifImageUrl;
         character.alt = "Gif character";
         character.className = "character";
+        character.style.width = size + "px";
+        character.style.animationDuration = speed + "s";
         character.style.animationName = isLeft
           ? "moveRightToLeft"
           : "moveLeftToRight";
@@ -94,41 +106,54 @@ chrome.runtime.onMessage.addListener(async function (msg) {
   if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SAVE_CONFIG) {
     /* global chrome */
     chrome.storage.local.set(
-      { gif_extension_select_type: msg.objectSearch.type },
+      { [STORAGE_KEY_SELECT_TYPE]: msg.objectSearch.type },
       function () {
         console.log("Data select type saved successfully");
       }
     );
 
     chrome.storage.local.set(
-      { gif_extension_key_search: msg.objectSearch.key_search },
+      { [STORAGE_KEY_KEY_SEARCH]: msg.objectSearch.key_search },
       function () {
         console.log("Data key search saved successfully");
       }
     );
 
     chrome.storage.local.set(
-      { gif_extension_select_position: msg.position },
+      { [STORAGE_KEY_SELECT_POSITION]: msg.position },
       function () {
         console.log("Data select position saved successfully");
       }
     );
+
+    chrome.storage.local.set({ [STORAGE_KEY_SIZE]: msg.size }, function () {
+      console.log("Data size saved successfully");
+    });
+
+    chrome.storage.local.set({ [STORAGE_KEY_SPEED]: msg.speed }, function () {
+      console.log("Data speed saved successfully");
+    });
   }
 
   if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_ON_OFF) {
-    chrome.storage.local.set({ turn_on_off: msg.onOff }, function () {
-      console.log("Data turn on/off saved successfully");
-    });
+    chrome.storage.local.set(
+      { [STORAGE_KEY_TURN_ON_OFF]: msg.onOff },
+      function () {
+        console.log("Data turn on/off saved successfully");
+      }
+    );
   }
 
   if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_CLEAR_CONFIG) {
     // Remove the data
     chrome.storage.local.remove(
       [
-        "gif_extension_select_type",
-        "gif_extension_key_search",
-        "gif_extension_select_position",
-        "turn_on_off",
+        STORAGE_KEY_SELECT_TYPE,
+        STORAGE_KEY_KEY_SEARCH,
+        STORAGE_KEY_SELECT_POSITION,
+        STORAGE_KEY_SIZE,
+        STORAGE_KEY_SPEED,
+        STORAGE_KEY_TURN_ON_OFF,
       ],
       function () {
         console.log("Data removed successfully");

@@ -1,7 +1,7 @@
 {
   "name": "Display Gif Image Extension",
   "description": "The extension supports displaying the gif image when load a website.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "action": {
     "default_popup": "src/popup.html",
     "default_icon": "images/icon.png"
@@ -15,9 +15,9 @@
         "<all_urls>"
       ],
       "js": [
+        "js/constants.js",
         "js/apis.js",
-        "js/content.js",
-        "js/constants.js"
+        "js/content.js"
       ],
       "run_at": "document_start"
     }

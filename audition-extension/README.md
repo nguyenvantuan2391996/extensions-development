@@ -11,10 +11,10 @@
 
 I will be super happy if you could help me endorse some skills or knowledge on my [LinkedIn](https://www.linkedin.com/in/tuan-nguyen-van-555315156) profile that you believe I have.
 
-# About audition-extension
+# About Beat Dance extension
 - The extension is developed by Tuan Nguyen.
 
-An *Audition Online*-style rhythm dance game, playable right from your toolbar - arrow prompts scroll across the screen and you hit the matching keys in time to the beat, scored on timing accuracy:
+A 4-direction rhythm dance game, playable right from your toolbar - arrow prompts scroll across the screen and you hit the matching keys in time to the beat, scored on timing accuracy:
 
 - 🎵 **Bring your own music** - the extension ships with **no bundled songs, no background image, and no third-party/streaming integration**. On the setup screen you pick one or more audio files straight from your own computer; nothing is uploaded anywhere, everything stays local to the browser tab.
 - 🕹️ **Three dance modes** - 4K (arrows), 8K (arrows + diagonals), and Beat-up (continuous multi-lane beat tracking).
@@ -25,7 +25,7 @@ An *Audition Online*-style rhythm dance game, playable right from your toolbar -
 - ⏸️ **Pause/resume** - <kbd>Esc</kbd> pauses the run with an overlay to resume or go back to song/mode selection.
 - 📱 **Touch controls** - an on-screen numpad mirrors the desktop shortcuts for phones/tablets.
 
-Everything (arrow prompts, judgement badges, the extension icon) is drawn with plain CSS/Unicode glyphs - there are no bundled image or audio assets of any kind, so there's nothing here that could raise a copyright question.
+Everything (arrow prompts, judgement badges, the extension icon) is drawn with plain CSS/Unicode glyphs - there are no bundled image or audio assets of any kind. The extension also uses its own name ("Beat Dance") and its own copy throughout, rather than the name/tagline of any commercial rhythm game, to stay clear of trademark/copyright issues on that front too.
 
 ☕ Like the tool? Buy me a coffee 👉 [https://paypal.me/Newslette247](https://paypal.me/Newslette247)
 
@@ -53,9 +53,11 @@ Everything (arrow prompts, judgement badges, the extension icon) is drawn with p
 ## Notes
 
 This is adapted from the original `games/audition` project in
-`game-development`, with everything copyright-sensitive removed: no
+`game-development`, with everything copyright/trademark-sensitive removed: no
 `background.jpeg`, no hosted MP3s, no Jamendo (Creative Commons music)
-search, and no YouTube ambient-music player. The only way to get music into
-a run is picking a local file - the setup and gameplay screens also live on
-one page instead of two (`home.html` + `audition.html`), since there's no
-longer a need to hand a picked file off across a full page navigation.
+search, no YouTube ambient-music player, and no reuse of the original game's
+name or marketing tagline (renamed to "Beat Dance" throughout). The only way
+to get music into a run is picking a local file - the setup and gameplay
+screens also live on one page instead of two (`home.html` + `audition.html`),
+since there's no longer a need to hand a picked file off across a full page
+navigation.

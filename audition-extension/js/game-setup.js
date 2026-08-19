@@ -122,7 +122,7 @@ btnLetsGo.addEventListener("click", () => {
     return;
   }
   previewAudio.pause();
-  startAuditionGame(selectedFile, selectedDanceType);
+  startBeatDanceGame(selectedFile, selectedDanceType);
 });
 
 renderBestScores();
