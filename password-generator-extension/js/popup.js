@@ -1,4 +1,12 @@
-import { generatePasswordFromOptions, generatePassphraseFromOptions } from "./core.js";
+import {
+    generatePasswordFromOptions,
+    generatePassphraseFromOptions,
+    estimatePasswordStrength,
+    estimatePassphraseBits,
+    pickRandomWord,
+    pickRandomPassphraseNumber,
+    assemblePassphrase
+} from "./core.js";
 
 const passwordField = document.getElementById("password");
 const copyBtn = document.getElementById("copy");
@@ -7,11 +15,15 @@ const strengthMeter = document.getElementById("strength-meter");
 const strengthBar = document.getElementById("strength-bar");
 const strengthLabel = document.getElementById("strength-label");
 const warningText = document.getElementById("warning-text");
+const checkHint = document.getElementById("check-hint");
 
 const modeField = document.getElementById("mode");
 const segments = document.querySelectorAll(".segment");
 const passwordOptions = document.getElementById("password-options");
 const passphraseOptions = document.getElementById("passphrase-options");
+const generalOptions = document.getElementById("general-options");
+const generateBtn = document.getElementById("generate");
+const chipRow = document.getElementById("passphrase-chips");
 
 const lengthInput = document.getElementById("length");
 const lengthRange = document.getElementById("length-range");
@@ -62,6 +74,9 @@ const historyEntries = [];
 const storageAvailable = typeof chrome !== "undefined" && !!chrome.storage && !!chrome.storage.sync;
 const historyStorageAvailable = typeof chrome !== "undefined" && !!chrome.storage && !!chrome.storage.local;
 
+// Passphrase state, kept in sync with the chips so individual words/number can be rerolled.
+let currentPassphrase = null; // { words: string[], number: string|null, separator: string }
+
 /* ---------- Settings persistence ---------- */
 
 function loadSettings() {
@@ -84,6 +99,8 @@ function loadSettings() {
                 }
             });
         }
+        // "Check" is a session-only tool, not something to reopen the popup into.
+        if (modeField.value === "check") modeField.value = "password";
         syncModeUI();
         syncSliderLabels();
         loadHistoryThenGenerate();
@@ -103,13 +120,23 @@ function saveSettings() {
 
 /* ---------- UI sync helpers ---------- */
 
+function normalizeMode(value) {
+    return value === "passphrase" || value === "check" ? value : "password";
+}
+
 function syncModeUI() {
-    const mode = modeField.value === "passphrase" ? "passphrase" : "password";
+    const mode = normalizeMode(modeField.value);
     segments.forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.mode === mode);
     });
     passwordOptions.hidden = mode !== "password";
     passphraseOptions.hidden = mode !== "passphrase";
+    generalOptions.hidden = mode === "check";
+    generateBtn.hidden = mode === "check";
+    checkHint.hidden = mode !== "check";
+    passwordField.readOnly = mode !== "check";
+    passwordField.placeholder = mode === "check" ? "Paste or type a password to check" : "";
+    if (mode !== "passphrase") chipRow.hidden = true;
 }
 
 function syncSliderLabels() {
@@ -216,37 +243,70 @@ function copyToClipboard(value) {
     });
 }
 
-/* ---------- Dispatch ---------- */
+/* ---------- Passphrase word/number chips ---------- */
 
-function generate() {
-    saveSettings();
-
-    const mode = modeField.value === "passphrase" ? "passphrase" : "password";
-    const result = mode === "passphrase"
-        ? generatePassphraseFromOptions({
-            wordCount: wordsRange.value,
-            separator: document.getElementById("passphrase-separator").value,
-            capitalize: document.getElementById("passphrase-capitalize").checked,
-            includeNumber: document.getElementById("passphrase-number").checked
-        })
-        : generatePasswordFromOptions({
-            length: lengthInput.value,
-            includeLower: document.getElementById("include-lower").checked,
-            includeUpper: document.getElementById("include-upper").checked,
-            includeNumber: document.getElementById("include-number").checked,
-            includeSymbol: document.getElementById("include-symbol").checked,
-            includeOther: document.getElementById("include-other").checked,
-            excludeDuplicates: document.getElementById("exclude-duplicates").checked,
-            excludeAmbiguous: document.getElementById("exclude-ambiguous").checked,
-            avoidSequential: document.getElementById("avoid-sequential").checked,
-            customExclude: customExcludeInput.value
-        });
-
-    if (result.error) {
-        showWarning();
+function renderChips() {
+    if (!currentPassphrase) {
+        chipRow.hidden = true;
         return;
     }
+    chipRow.hidden = false;
+    chipRow.innerHTML = "";
+    currentPassphrase.words.forEach((word, index) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.textContent = word;
+        chip.title = "Click to reroll this word";
+        chip.addEventListener("click", () => rerollWord(index));
+        chipRow.appendChild(chip);
+    });
+    if (currentPassphrase.number !== null) {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.textContent = currentPassphrase.number;
+        chip.title = "Click to reroll this number";
+        chip.addEventListener("click", rerollNumber);
+        chipRow.appendChild(chip);
+    }
+}
 
+function applyPassphraseUpdate() {
+    const value = assemblePassphrase(currentPassphrase.words, currentPassphrase.number, currentPassphrase.separator);
+    const bits = estimatePassphraseBits(currentPassphrase.words.length, currentPassphrase.number !== null);
+    renderChips();
+    applyGeneratedResult({ value, bits });
+}
+
+function rerollWord(index) {
+    const capitalize = document.getElementById("passphrase-capitalize").checked;
+    currentPassphrase.words[index] = pickRandomWord(capitalize);
+    applyPassphraseUpdate();
+}
+
+function rerollNumber() {
+    currentPassphrase.number = pickRandomPassphraseNumber();
+    applyPassphraseUpdate();
+}
+
+/* ---------- Check mode ---------- */
+
+function evaluateCheckMode() {
+    chipRow.hidden = true;
+    hideWarning();
+    const value = passwordField.value;
+    if (!value) {
+        strengthBar.style.width = "0%";
+        strengthLabel.textContent = "";
+        return;
+    }
+    renderStrengthFromBits(estimatePasswordStrength(value).bits);
+}
+
+/* ---------- Dispatch ---------- */
+
+function applyGeneratedResult(result) {
     hideWarning();
     passwordField.value = result.value;
     renderStrengthFromBits(result.bits);
@@ -256,6 +316,53 @@ function generate() {
     if (autoCopyCheckbox && autoCopyCheckbox.checked) {
         copyToClipboard(result.value);
     }
+}
+
+function generate() {
+    saveSettings();
+
+    const mode = normalizeMode(modeField.value);
+
+    if (mode === "check") {
+        evaluateCheckMode();
+        return;
+    }
+
+    if (mode === "passphrase") {
+        const separator = document.getElementById("passphrase-separator").value;
+        const result = generatePassphraseFromOptions({
+            wordCount: wordsRange.value,
+            separator,
+            capitalize: document.getElementById("passphrase-capitalize").checked,
+            includeNumber: document.getElementById("passphrase-number").checked
+        });
+        currentPassphrase = { words: result.words, number: result.number, separator };
+        renderChips();
+        applyGeneratedResult(result);
+        return;
+    }
+
+    currentPassphrase = null;
+    chipRow.hidden = true;
+    const result = generatePasswordFromOptions({
+        length: lengthInput.value,
+        includeLower: document.getElementById("include-lower").checked,
+        includeUpper: document.getElementById("include-upper").checked,
+        includeNumber: document.getElementById("include-number").checked,
+        includeSymbol: document.getElementById("include-symbol").checked,
+        includeOther: document.getElementById("include-other").checked,
+        excludeDuplicates: document.getElementById("exclude-duplicates").checked,
+        excludeAmbiguous: document.getElementById("exclude-ambiguous").checked,
+        avoidSequential: document.getElementById("avoid-sequential").checked,
+        customExclude: customExcludeInput.value
+    });
+
+    if (result.error) {
+        showWarning();
+        return;
+    }
+
+    applyGeneratedResult(result);
 }
 
 /* ---------- Event wiring ---------- */
@@ -292,6 +399,13 @@ segments.forEach((btn) => {
         syncModeUI();
         generate();
     });
+});
+
+let checkDebounce;
+passwordField.addEventListener("input", () => {
+    if (normalizeMode(modeField.value) !== "check") return;
+    clearTimeout(checkDebounce);
+    checkDebounce = setTimeout(generate, 150);
 });
 
 lengthInput.addEventListener("input", () => {

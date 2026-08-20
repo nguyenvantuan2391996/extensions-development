@@ -216,6 +216,39 @@
       animation: password-fade 0.25s ease;
     }
 
+    /* ---------- Passphrase word chips ---------- */
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .chip-row[hidden] {
+      display: none;
+    }
+
+    .chip {
+      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      font-size: 12px;
+      padding: 5px 10px;
+      border-radius: 980px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: border-color 0.15s ease, transform 0.1s ease;
+    }
+
+    .chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .chip:active {
+      transform: scale(0.94);
+    }
+
     /* ---------- Strength meter ---------- */
     .strength-meter {
       height: 4px;
@@ -253,6 +286,17 @@
       display: none;
     }
 
+    .check-hint {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-align: center;
+      margin: 8px 0 16px;
+    }
+
+    .check-hint[hidden] {
+      display: none;
+    }
+
     /* ---------- Generate button ---------- */
     #generate {
       display: block;
@@ -270,6 +314,10 @@
       cursor: pointer;
       box-shadow: 0 4px 14px rgba(0, 113, 227, 0.32);
       transition: transform 0.12s ease, box-shadow 0.15s ease;
+    }
+
+    #generate[hidden] {
+      display: none;
     }
 
     #generate:hover {
@@ -617,6 +665,7 @@
     <div class="segmented" role="tablist">
       <button type="button" class="segment active" data-mode="password" id="mode-password">Password</button>
       <button type="button" class="segment" data-mode="passphrase" id="mode-passphrase">Passphrase</button>
+      <button type="button" class="segment" data-mode="check" id="mode-check">Check</button>
     </div>
     <input type="hidden" id="mode" value="password" />
 
@@ -624,31 +673,35 @@
       <input id="password" type="text" readonly />
       <button id="copy" type="button" title="Copy to clipboard">📋</button>
     </div>
+    <div class="chip-row" id="passphrase-chips" hidden></div>
     <div class="strength-meter" id="strength-meter">
       <div class="strength-bar" id="strength-bar"></div>
     </div>
     <p class="strength-label" id="strength-label">&nbsp;</p>
     <p class="warning-text" id="warning-text" hidden>Select at least 1 character type</p>
+    <p class="check-hint" id="check-hint" hidden>Estimate only — based on length and character variety, not a dictionary/breach check.</p>
 
     <form id="generator-form">
       <button type="submit" id="generate">Generate</button>
 
-      <div class="section-label">General</div>
-      <div class="toggle-list">
-        <label class="toggle-row">
-          <span class="label-text">Auto-copy on generate</span>
-          <span class="switch">
-            <input id="auto-copy" type="checkbox" />
-            <span class="slider"></span>
-          </span>
-        </label>
-        <label class="toggle-row">
-          <span class="label-text">Save history across sessions (this device)</span>
-          <span class="switch">
-            <input id="persist-history" type="checkbox" />
-            <span class="slider"></span>
-          </span>
-        </label>
+      <div id="general-options">
+        <div class="section-label">General</div>
+        <div class="toggle-list">
+          <label class="toggle-row">
+            <span class="label-text">Auto-copy on generate</span>
+            <span class="switch">
+              <input id="auto-copy" type="checkbox" />
+              <span class="slider"></span>
+            </span>
+          </label>
+          <label class="toggle-row">
+            <span class="label-text">Save history across sessions (this device)</span>
+            <span class="switch">
+              <input id="persist-history" type="checkbox" />
+              <span class="slider"></span>
+            </span>
+          </label>
+        </div>
       </div>
 
       <div id="password-options">

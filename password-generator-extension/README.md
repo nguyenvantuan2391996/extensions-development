@@ -18,7 +18,8 @@ Generate strong, secure passwords in one click! This simple yet powerful extensi
 
 - 🔐 Cryptographically secure randomness (`crypto.getRandomValues`), with every selected character type guaranteed to appear
 - 💡 One-click password generation, with a fresh password generated automatically as soon as you open the popup
-- 🔀 Two modes: **Password** (character-based) and **Passphrase** (word-based, e.g. `Coral-Willow-Ember-42`)
+- 🔀 Three modes: **Password** (character-based), **Passphrase** (word-based, e.g. `Coral-Willow-Ember-42`), and **Check** (estimate the strength of any password you paste in)
+- 🎲 Click any word (or the number) in a generated passphrase to reroll just that piece
 - 🧩 Custom character options (lowercase, uppercase, numbers, symbols, and more)
 - 🙈 Exclude ambiguous characters (`I`, `l`, `1`, `O`, `0`, `o`) or your own custom characters
 - 🎚️ Length slider (passwords) and word-count slider (passphrases)
@@ -38,6 +39,10 @@ Generate strong, secure passwords in one click! This simple yet powerful extensi
 Perfect for developers, security-conscious users, or anyone needing safe, random passwords. Lightweight, no ads, and privacy-friendly.
 
 ## Changelog
+
+### 1.0.4
+- Added a **Check** mode: paste or type any password to get a live strength estimate (based on character variety, length, and repeated/sequential-run patterns — an approximation, not a dictionary or breach check)
+- Passphrase words and the trailing number are now individually clickable chips — reroll just one word instead of regenerating the whole passphrase
 
 ### 1.0.3
 - Added **Generate & Fill**: right-click any input field on a page and fill it with a freshly generated password/passphrase (uses your saved settings), via `activeTab` + a context menu — no persistent content script or broad host permissions added

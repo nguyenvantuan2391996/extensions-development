@@ -118,6 +118,27 @@ export function generatePasswordFromOptions(options) {
 
 /* ---------- Passphrase generation ---------- */
 
+export function pickRandomWord(capitalize) {
+    let word = WORDLIST[secureRandomInt(WORDLIST.length)];
+    if (capitalize) word = word[0].toUpperCase() + word.slice(1);
+    return word;
+}
+
+export function pickRandomPassphraseNumber() {
+    return String(secureRandomInt(90) + 10);
+}
+
+export function assemblePassphrase(words, number, separator) {
+    const parts = number !== null && number !== undefined ? [...words, number] : words;
+    return parts.join(separator);
+}
+
+export function estimatePassphraseBits(wordCount, hasNumber) {
+    let bits = wordCount * Math.log2(WORDLIST.length);
+    if (hasNumber) bits += Math.log2(90);
+    return bits;
+}
+
 export function generatePassphraseFromOptions(options) {
     const wordCount = parseInt(options.wordCount, 10) || 6;
     const separator = options.separator ?? "-";
@@ -126,17 +147,41 @@ export function generatePassphraseFromOptions(options) {
 
     const words = [];
     for (let i = 0; i < wordCount; i++) {
-        let word = WORDLIST[secureRandomInt(WORDLIST.length)];
-        if (capitalize) word = word[0].toUpperCase() + word.slice(1);
-        words.push(word);
+        words.push(pickRandomWord(capitalize));
     }
-    if (includeNumber) {
-        words.push(String(secureRandomInt(90) + 10));
+    const number = includeNumber ? pickRandomPassphraseNumber() : null;
+
+    const value = assemblePassphrase(words, number, separator);
+    const bits = estimatePassphraseBits(wordCount, includeNumber);
+
+    return { value, bits, words, number };
+}
+
+/* ---------- Strength estimate for an arbitrary (e.g. pasted) password ---------- */
+
+export function estimatePasswordStrength(value) {
+    if (!value) return { bits: 0 };
+
+    let poolSize = 0;
+    if (/[a-z]/.test(value)) poolSize += 26;
+    if (/[A-Z]/.test(value)) poolSize += 26;
+    if (/[0-9]/.test(value)) poolSize += 10;
+    if (/[!-/:-@[-`{-~]/.test(value)) poolSize += 32;
+    if (/[^\x00-\x7f]/.test(value)) poolSize += 20;
+    if (poolSize === 0) poolSize = 1;
+
+    let bits = value.length * Math.log2(poolSize);
+
+    // Repeated characters contribute little real entropy beyond the first use.
+    const uniqueRatio = new Set(value).size / value.length;
+    bits *= 0.5 + 0.5 * uniqueRatio;
+
+    // Discount runs like "abc", "123", or "aaa" found anywhere in the string.
+    let weakRuns = 0;
+    for (let i = 0; i < value.length - 2; i++) {
+        if (violatesSequential([value[i], value[i + 1]], value[i + 2])) weakRuns++;
     }
+    bits = Math.max(0, bits - weakRuns * 2);
 
-    const value = words.join(separator);
-    let bits = wordCount * Math.log2(WORDLIST.length);
-    if (includeNumber) bits += Math.log2(90);
-
-    return { value, bits };
+    return { bits };
 }
