@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ClipboardIQ</title>
+    <link rel="stylesheet" href="../css/popup.css">
+</head>
+<body>
+    <div class="home-shell">
+        <div class="home-hero">
+            <div class="home-hero__top">
+                <span class="home-hero__eyebrow">Clipboard manager</span>
+                <a class="coffee-badge" href="https://paypal.me/Newslette247" target="_blank" rel="noopener">
+                    <span class="emoji">☕</span> Buy me a coffee
+                </a>
+            </div>
+            <h1 class="home-hero__title">ClipboardIQ</h1>
+            <p class="home-hero__subtitle">Clipboard history that learns your reply patterns and turns repeats into fill-in-the-blank templates.</p>
+        </div>
+
+        <label class="capture-toggle">
+            <span class="capture-toggle__label">
+                <span class="capture-toggle__title">Capture clipboard</span>
+                <span class="capture-toggle__desc">Text you copy on web pages, kept only on this device</span>
+            </span>
+            <input type="checkbox" id="capture-toggle" class="switch">
+        </label>
+
+        <div class="stat-row">
+            <div class="stat-chip">
+                <span class="stat-chip__value" id="stat-history">0</span>
+                <span class="stat-chip__label">History</span>
+            </div>
+            <div class="stat-chip">
+                <span class="stat-chip__value" id="stat-templates">0</span>
+                <span class="stat-chip__label">Templates</span>
+            </div>
+            <div class="stat-chip stat-chip--accent">
+                <span class="stat-chip__value" id="stat-suggestions">0</span>
+                <span class="stat-chip__label">Suggestions</span>
+            </div>
+        </div>
+
+        <div class="suggestion-card" id="suggestion-card" hidden>
+            <div class="suggestion-card__title">Pattern spotted</div>
+            <p class="suggestion-card__desc" id="suggestion-card-desc"></p>
+            <div class="suggestion-card__actions">
+                <button type="button" class="button button--small" id="btn-open-suggestion">Open</button>
+                <button type="button" class="button button--small button--ghost" id="btn-dismiss-suggestion">Dismiss</button>
+            </div>
+        </div>
+
+        <div class="template-section">
+            <div class="template-section__label">Templates</div>
+            <div class="template-mini-list" id="template-mini-list"></div>
+            <p class="empty-state" id="template-mini-empty" hidden>No templates yet — accept a suggestion or create one in the dashboard.</p>
+            <a class="template-more-link" id="template-more-link" hidden href="#">See all templates</a>
+        </div>
+
+        <div class="recent-list" id="recent-list"></div>
+        <p class="empty-state" id="recent-empty" hidden>Nothing copied yet. Copy some text on any page to get started.</p>
+
+        <button type="button" class="button" id="btn-dashboard">Open dashboard</button>
+
+        <footer class="app-footer">
+            <div class="footer-meta">
+                <span>© 2026 ClipboardIQ Extension</span>
+                <span class="footer-dot">&middot;</span>
+                <a class="footer-email-link" href="mailto:nguyenvantuan2391996@gmail.com">nguyenvantuan2391996@gmail.com</a>
+            </div>
+            <div class="footer-socials">
+                <a class="footer-social-link" href="mailto:nguyenvantuan2391996@gmail.com" aria-label="Email" title="Email">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M2 4h20v16H2V4zm2 2.24V6l8 5.99L20 6v.24l-8 6-8-6zM20 18V8.51l-8 6-8-6V18h16z"/></svg>
+                </a>
+                <a class="footer-social-link" href="https://www.linkedin.com/in/tuan-nguyen-van-555315156" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.85 0-2.14 1.45-2.14 2.94v5.66H9.5V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45z"/></svg>
+                </a>
+                <a class="footer-social-link" href="https://www.facebook.com/tuanelnino9/" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z"/></svg>
+                </a>
+            </div>
+        </footer>
+    </div>
+
+    <div class="modal" id="fill-modal" hidden>
+        <div class="modal__backdrop" id="fill-modal-backdrop"></div>
+        <div class="modal__card">
+            <h2 class="modal__title" id="fill-modal-title">Use template</h2>
+            <div class="modal__fields" id="fill-modal-fields"></div>
+            <div class="modal__preview-label">Preview</div>
+            <div class="modal__preview" id="fill-modal-preview"></div>
+            <div class="modal__actions">
+                <button type="button" class="button button--ghost button--small" id="fill-modal-cancel">Cancel</button>
+                <button type="button" class="button button--small" id="fill-modal-copy">Copy to clipboard</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/constants.js"></script>
+    <script src="../js/popup.js"></script>
+</body>
+</html>
