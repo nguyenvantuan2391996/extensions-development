@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClipboardIQ Dashboard</title>
+    <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+<body>
+    <div class="bg-glow"></div>
+
+    <button type="button" class="back-link" id="btn-close">&larr; Close</button>
+
+    <div class="dash-shell">
+        <header class="dash-header">
+            <div>
+                <span class="dash-header__eyebrow">Clipboard manager</span>
+                <h1 class="dash-header__title">ClipboardIQ</h1>
+            </div>
+            <a class="coffee-badge" href="https://paypal.me/Newslette247" target="_blank" rel="noopener">
+                <span class="emoji">☕</span> Buy me a coffee
+            </a>
+        </header>
+
+        <nav class="dash-tabs" id="dash-tabs">
+            <button type="button" class="dash-tab is-active" data-tab="history">History</button>
+            <button type="button" class="dash-tab" data-tab="suggestions">
+                Suggestions <span class="tab-badge" id="tab-badge-suggestions" hidden>0</span>
+            </button>
+            <button type="button" class="dash-tab" data-tab="templates">Templates</button>
+            <button type="button" class="dash-tab" data-tab="settings">Settings</button>
+        </nav>
+
+        <section class="dash-panel" data-tab-panel="history">
+            <div class="panel-toolbar">
+                <input type="search" id="history-search" class="text-input" placeholder="Search clipboard history...">
+                <button type="button" class="button button--ghost" id="btn-clear-history">Clear all</button>
+            </div>
+            <ul class="entry-list" id="history-list"></ul>
+            <p class="empty-state" id="history-empty" hidden>Nothing copied yet. Copy some text on any page to get started.</p>
+        </section>
+
+        <section class="dash-panel" data-tab-panel="suggestions" hidden>
+            <p class="panel-intro">ClipboardIQ noticed these repeated patterns. Turn them into a reusable template with fill-in-the-blank placeholders.</p>
+            <div class="suggestion-list" id="suggestion-list"></div>
+            <p class="empty-state" id="suggestions-empty" hidden>No suggestions yet. Keep copying, patterns will show up here once you copy 3+ similar snippets.</p>
+        </section>
+
+        <section class="dash-panel" data-tab-panel="templates" hidden>
+            <div class="panel-toolbar">
+                <button type="button" class="button button--small-inline" id="btn-new-template">+ New template</button>
+            </div>
+            <div class="template-list" id="template-list"></div>
+            <p class="empty-state" id="templates-empty" hidden>No templates yet. Accept a suggestion or create one manually.</p>
+        </section>
+
+        <section class="dash-panel" data-tab-panel="settings" hidden>
+            <div class="settings-card">
+                <label class="settings-row">
+                    <div class="settings-row__text">
+                        <div class="settings-row__title">Capture clipboard</div>
+                        <div class="settings-row__desc">Watch text you copy on web pages to build history and suggestions.</div>
+                    </div>
+                    <input type="checkbox" id="setting-capture" class="switch">
+                </label>
+                <label class="settings-row">
+                    <div class="settings-row__text">
+                        <div class="settings-row__title">Similarity threshold</div>
+                        <div class="settings-row__desc">How alike snippets must be to group together (<span id="setting-threshold-value">60</span>%).</div>
+                    </div>
+                    <input type="range" id="setting-threshold" min="40" max="85" step="5">
+                </label>
+                <label class="settings-row">
+                    <div class="settings-row__text">
+                        <div class="settings-row__title">Minimum group size</div>
+                        <div class="settings-row__desc">How many similar copies before ClipboardIQ suggests a template.</div>
+                    </div>
+                    <input type="number" id="setting-min-cluster" min="2" max="6" class="text-input text-input--num">
+                </label>
+                <label class="settings-row">
+                    <div class="settings-row__text">
+                        <div class="settings-row__title">History size</div>
+                        <div class="settings-row__desc">Maximum clipboard entries kept on this device.</div>
+                    </div>
+                    <input type="number" id="setting-max-history" min="20" max="500" step="10" class="text-input text-input--num">
+                </label>
+            </div>
+            <p class="privacy-note">🔒 Everything stays on this device. ClipboardIQ never sends clipboard content anywhere.</p>
+            <button type="button" class="button button--danger" id="btn-clear-all">Clear all ClipboardIQ data</button>
+        </section>
+    </div>
+
+    <div class="mini-contact">
+        <a class="mini-contact__link" href="mailto:nguyenvantuan2391996@gmail.com" aria-label="Email" title="Email">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M2 4h20v16H2V4zm2 2.24V6l8 5.99L20 6v.24l-8 6-8-6zM20 18V8.51l-8 6-8-6V18h16z"/></svg>
+        </a>
+        <a class="mini-contact__link" href="https://www.linkedin.com/in/tuan-nguyen-van-555315156" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.03-1.85-3.03-1.85 0-2.14 1.45-2.14 2.94v5.66H9.5V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45z"/></svg>
+        </a>
+        <a class="mini-contact__link" href="https://www.facebook.com/tuanelnino9/" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z"/></svg>
+        </a>
+    </div>
+
+    <div class="modal" id="fill-modal" hidden>
+        <div class="modal__backdrop" id="fill-modal-backdrop"></div>
+        <div class="modal__card">
+            <h2 class="modal__title" id="fill-modal-title">Use template</h2>
+            <div class="modal__fields" id="fill-modal-fields"></div>
+            <div class="modal__preview-label">Preview</div>
+            <div class="modal__preview" id="fill-modal-preview"></div>
+            <div class="modal__actions">
+                <button type="button" class="button button--ghost" id="fill-modal-cancel">Cancel</button>
+                <button type="button" class="button" id="fill-modal-copy">Copy to clipboard</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="editor-modal" hidden>
+        <div class="modal__backdrop" id="editor-modal-backdrop"></div>
+        <div class="modal__card">
+            <h2 class="modal__title" id="editor-modal-title">New template</h2>
+            <label class="modal__label">Name</label>
+            <input type="text" id="editor-name" class="text-input" placeholder="e.g. Refund confirmation">
+            <label class="modal__label">Body</label>
+            <textarea id="editor-body" class="text-input textarea" rows="6" placeholder="Hi {{customer_name}}, thanks for reaching out about order {{order_id}}..."></textarea>
+            <p class="modal__hint">Wrap variable parts in double curly braces, like <code>{{customer_name}}</code>.</p>
+            <div class="modal__actions">
+                <button type="button" class="button button--ghost" id="editor-modal-cancel">Cancel</button>
+                <button type="button" class="button" id="editor-modal-save">Save template</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="../js/constants.js"></script>
+    <script src="../js/dashboard.js"></script>
+</body>
+</html>
