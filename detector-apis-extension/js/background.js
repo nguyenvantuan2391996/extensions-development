@@ -39,7 +39,96 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   // done here. Also keeps the toolbar badge from staying stale if it ever
   // desyncs from storage for any reason.
   updateBadgeCount();
+  checkWebRequestHealth();
 });
+
+// Best-effort auto-recovery for the silent-update bug described at the top
+// of this file. See js/constants.js for why this compares two timestamps
+// from real traffic instead of firing a synthetic probe request (both
+// obvious probe designs — content-script fetch, service-worker fetch — turn
+// out to false-positive on a perfectly healthy install, from page CSP and
+// from chrome.webRequest's own by-design blind spot for extension-initiated
+// requests, respectively).
+//
+// If LAST_PAGE_TRAFFIC_KEY keeps advancing (real page traffic is happening
+// and reaching background.js via messaging) while LAST_WEBREQUEST_SEEN_KEY
+// falls behind it by more than WEBREQUEST_STALE_THRESHOLD_MS, that's
+// evidence this service worker instance is alive and running JS — the
+// heartbeat alarm firing, and the message itself arriving, both prove that
+// — but chrome.webRequest specifically isn't routing events to it anymore.
+// LAST_WEBREQUEST_SEEN_KEY is stamped on both onBeforeRequest (request
+// start) and onHeadersReceived (response arrival) — using only the former
+// would make a single slow request (long-poll, large upload/download) look
+// like a growing gap for its entire duration, since LAST_PAGE_TRAFFIC_KEY
+// only advances once the page side sees its response, comparing "when did
+// this request start" against "when did some response finish" is comparing
+// two different things whenever more than one request is in flight.
+//
+// chrome.runtime.reload() is the same soft-restart the "Reload" button in
+// chrome://extensions triggers; unlike uninstall+reinstall it does not
+// clear chrome.storage.local. Whether it actually clears the underlying
+// Chromium-side routing bug is NOT confirmed (see CHANGELOG) — this is a
+// best-effort attempt, not a proven fix, and it's also not the only
+// explanation for a persistent gap: a page whose Service Worker answers
+// fetch() from Cache Storage never touches the network layer webRequest
+// observes at all, so its traffic would look "invisible to webRequest"
+// forever even though nothing is actually broken. RELOAD_ATTEMPT_COUNT_KEY
+// caps recovery attempts at MAX_AUTO_RELOAD_ATTEMPTS so a gap that reload()
+// can't (or was never going to) close stops interrupting the user's session
+// every WEBREQUEST_STALE_THRESHOLD_MS forever; the count resets once a
+// check finds the gap closed, so a later, distinct incident gets the full
+// retry budget again.
+async function checkWebRequestHealth() {
+  const {
+    [LAST_PAGE_TRAFFIC_KEY]: lastPageTraffic,
+    [LAST_WEBREQUEST_SEEN_KEY]: lastWebRequestSeen,
+    [RELOAD_ATTEMPT_COUNT_KEY]: reloadAttempts,
+  } = await chrome.storage.local.get([
+    LAST_PAGE_TRAFFIC_KEY,
+    LAST_WEBREQUEST_SEEN_KEY,
+    RELOAD_ATTEMPT_COUNT_KEY,
+  ]);
+
+  if (!lastPageTraffic) {
+    // No real page traffic observed yet — nothing to compare against, and
+    // no evidence either way.
+    return;
+  }
+
+  const gap = lastPageTraffic - (lastWebRequestSeen || 0);
+  if (gap < WEBREQUEST_STALE_THRESHOLD_MS) {
+    if (reloadAttempts) {
+      await safeStorageSet({ [RELOAD_ATTEMPT_COUNT_KEY]: 0 });
+    }
+    return;
+  }
+
+  const attempts = reloadAttempts || 0;
+  if (attempts >= MAX_AUTO_RELOAD_ATTEMPTS) {
+    // Already tried MAX_AUTO_RELOAD_ATTEMPTS times without the gap closing —
+    // either reload() doesn't fix whatever this is, or it's the Service
+    // Worker/Cache Storage case above where there was never anything to
+    // fix. Stop; logging is enough from here.
+    return;
+  }
+
+  console.warn(
+    "detector-apis-extension: webRequest health check failed — page traffic " +
+      "is reaching background.js via messaging, but chrome.webRequest hasn't " +
+      "reported a request in " +
+      Math.round(gap / 1000) +
+      "s. Reloading extension to attempt recovery (attempt " +
+      (attempts + 1) +
+      "/" +
+      MAX_AUTO_RELOAD_ATTEMPTS +
+      ")."
+  );
+  await safeStorageSet({
+    [LAST_WEBREQUEST_SEEN_KEY]: Date.now(),
+    [RELOAD_ATTEMPT_COUNT_KEY]: attempts + 1,
+  });
+  chrome.runtime.reload();
+}
 
 // chrome.storage.local.set() can reject (e.g. Resource::kQuotaBytes quota
 // exceeded). Every listener below does more work after its set() calls
@@ -97,6 +186,9 @@ chrome.webRequest.onBeforeRequest.addListener(
       // compute how long it took once it completes/fails (onHeadersReceived
       // / handleRequestError below).
       [details.requestId + "-start-time"]: details.timeStamp,
+      // Proof chrome.webRequest itself is alive and seeing real requests —
+      // see checkWebRequestHealth's big comment above for how this is used.
+      [LAST_WEBREQUEST_SEEN_KEY]: Date.now(),
     });
   },
   { urls: ["<all_urls>"] }
@@ -321,6 +413,11 @@ chrome.webRequest.onHeadersReceived.addListener(
       ),
       [details.requestId + "-duration"]: duration,
       [details.requestId + "-size"]: size,
+      // Response-side proof chrome.webRequest is alive, timed comparably to
+      // LAST_PAGE_TRAFFIC_KEY (also stamped on response arrival) — see
+      // checkWebRequestHealth's comment for why request-start alone isn't
+      // enough.
+      [LAST_WEBREQUEST_SEEN_KEY]: Date.now(),
     });
     await chrome.storage.local.remove(details.requestId + "-pending");
 
@@ -486,6 +583,14 @@ chrome.webRequest.onBeforeRequest.addListener(
 // read response bodies) and relayed here through js/response-bridge.js.
 chrome.runtime.onMessage.addListener(function (message) {
   if (message && message.type === "DETECTOR_APIS_RESPONSE_BODY") {
+    // Stamped unconditionally, before the claim attempt below — this is
+    // proof a page made a real completed fetch/XHR call and the
+    // content-script -> background messaging channel is alive, regardless
+    // of whether claimPendingBodyMatch below finds a match (that match only
+    // exists if chrome.webRequest's own onHeadersReceived already ran,
+    // which is exactly what checkWebRequestHealth is trying to detect the
+    // absence of). See js/constants.js for the full reasoning.
+    safeStorageSet({ [LAST_PAGE_TRAFFIC_KEY]: Date.now() });
     handleResponseBodyCapture(message);
   } else if (message && message.type === "DETECTOR_APIS_CLEAR_ALL") {
     clearAllRequests();

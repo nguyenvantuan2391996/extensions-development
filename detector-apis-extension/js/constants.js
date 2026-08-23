@@ -67,3 +67,45 @@ const REVEAL_SENSITIVE_KEY = "reveal_sensitive_key";
 
 // popup.js's Time column: requests slower than this get a ".slow" highlight.
 const SLOW_REQUEST_THRESHOLD_MS = 1000;
+
+// Health-check for the "chrome.webRequest silently stops firing after a
+// silent Chrome Web Store update" failure mode documented at the top of
+// js/background.js. Deliberately NOT a synthetic probe request: a fetch
+// fired from a content script would be subject to the host page's own CSP
+// connect-src and could be blocked on plenty of real sites regardless of
+// whether the bug is present, and a fetch fired from the service worker
+// itself is invisible to chrome.webRequest by design (Chrome does not route
+// an extension's own outgoing requests through webRequest at all) — so
+// either "probe" approach can false-positive on a perfectly healthy
+// install. Instead this compares two timestamps built entirely from real
+// traffic that was already going to happen:
+//  - LAST_PAGE_TRAFFIC_KEY: stamped whenever background.js receives a
+//    DETECTOR_APIS_RESPONSE_BODY message — proof a page actually completed
+//    a real fetch/XHR AND the content-script -> background messaging
+//    channel (an IPC channel, not a network fetch, so unaffected by page
+//    CSP) is alive.
+//  - LAST_WEBREQUEST_SEEN_KEY: stamped inside the existing trackable
+//    onBeforeRequest AND onHeadersReceived listeners — proof
+//    chrome.webRequest actually saw a request start/complete. Stamped on
+//    both ends (not just request start) so a single slow request in flight
+//    doesn't look like a growing gap against LAST_PAGE_TRAFFIC_KEY, which
+//    only ever advances on response completion.
+// Every response necessarily has an earlier request, so in a healthy
+// extension LAST_WEBREQUEST_SEEN_KEY is always stamped at/before the
+// corresponding LAST_PAGE_TRAFFIC_KEY update. If real traffic keeps
+// confirming itself via messaging while webRequest stays silent, that's
+// direct evidence webRequest itself is the broken link, not "there was no
+// traffic to see." Even so, a persistent gap isn't proof reload() will
+// help — see MAX_AUTO_RELOAD_ATTEMPTS below.
+const LAST_PAGE_TRAFFIC_KEY = "__detector_apis_last_page_traffic__";
+const LAST_WEBREQUEST_SEEN_KEY = "__detector_apis_last_webrequest_seen__";
+// Caps js/background.js's checkWebRequestHealth auto-reload attempts so a
+// gap chrome.runtime.reload() can't (or was never going to) close — e.g. a
+// page whose Service Worker answers fetch() from Cache Storage, which never
+// touches the network layer chrome.webRequest observes, so its traffic is
+// legitimately invisible to webRequest with nothing actually broken —
+// doesn't interrupt the user's session every WEBREQUEST_STALE_THRESHOLD_MS
+// forever. Resets to 0 once a check finds the gap closed.
+const MAX_AUTO_RELOAD_ATTEMPTS = 3;
+const RELOAD_ATTEMPT_COUNT_KEY = "__detector_apis_reload_attempt_count__";
+const WEBREQUEST_STALE_THRESHOLD_MS = 2 * 60 * 1000;
