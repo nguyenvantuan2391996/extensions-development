@@ -261,9 +261,9 @@ function statusBucketFor(statusCode) {
 
 function badgeClassForStatus(statusCode) {
   let apiStatus = Number(statusCode.split(" ")[0]);
-  return apiStatus >= 200 && apiStatus < 300
-    ? "status-badge status-success"
-    : "status-badge status-danger";
+  if (apiStatus >= 200 && apiStatus < 300) return "status-badge status-success";
+  if (apiStatus >= 300 && apiStatus < 400) return "status-badge status-redirect";
+  return "status-badge status-danger";
 }
 
 function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
@@ -280,6 +280,7 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
     method: statusCode.split(" ")[1] || "",
     status: statusCode.split(" ")[0] || "",
     duration: formatDuration(durationMs),
+    durationMs: durationMs,
     size: formatSize(sizeBytes),
     requestHeaders: parseHeadersJSON(items[requestId + "-request-headers"]),
     responseHeaders: parseHeadersJSON(items[requestId + "-response-headers"]),
@@ -312,20 +313,18 @@ function upsertDataRow(requestId, url, statusAndRequestID, items, tbody) {
     return;
   }
 
-  if (entry.status !== statusCode) {
-    entry.status = statusCode;
-    entry.tr.dataset.statusBucket = statusBucketFor(statusCode);
-    entry.tr.dataset.statusCode = statusCodeSortValue(statusCode);
-    entry.tr.dataset.durationMs = typeof durationMs === "number" ? durationMs : "";
-    entry.tr.dataset.sizeBytes = typeof sizeBytes === "number" ? sizeBytes : "";
-    let badge = entry.tr.querySelector(".status-cell .status-badge");
-    badge.className = badgeClass;
-    badge.textContent = statusCode;
-    let timeCell = entry.tr.querySelector(".time-cell");
-    timeCell.textContent = formatDuration(durationMs);
-    timeCell.classList.toggle("slow", isSlowRequest(durationMs));
-    entry.tr.querySelector(".size-cell").textContent = formatSize(sizeBytes);
-  }
+  entry.status = statusCode;
+  entry.tr.dataset.statusBucket = statusBucketFor(statusCode);
+  entry.tr.dataset.statusCode = statusCodeSortValue(statusCode);
+  entry.tr.dataset.durationMs = typeof durationMs === "number" ? durationMs : "";
+  entry.tr.dataset.sizeBytes = typeof sizeBytes === "number" ? sizeBytes : "";
+  let badge = entry.tr.querySelector(".status-cell .status-badge");
+  badge.className = badgeClass;
+  badge.textContent = statusCode;
+  let timeCell = entry.tr.querySelector(".time-cell");
+  timeCell.textContent = formatDuration(durationMs);
+  timeCell.classList.toggle("slow", isSlowRequest(durationMs));
+  entry.tr.querySelector(".size-cell").textContent = formatSize(sizeBytes);
 }
 
 function upsertPendingRow(requestId, url, method, tbody) {
@@ -953,7 +952,7 @@ async function exportHarCollection() {
     let statusCode = parseInt(info.status, 10) || 0;
     return {
       startedDateTime: new Date().toISOString(),
-      time: parseFloat(info.duration) || 0,
+      time: typeof info.durationMs === "number" ? info.durationMs : 0,
       request: {
         method: info.method || "GET",
         url: info.url,
@@ -985,7 +984,7 @@ async function exportHarCollection() {
         bodySize: info.responseBody ? info.responseBody.length : 0,
       },
       cache: {},
-      timings: { send: 0, wait: parseFloat(info.duration) || 0, receive: 0 },
+      timings: { send: 0, wait: typeof info.durationMs === "number" ? info.durationMs : 0, receive: 0 },
     };
   });
 

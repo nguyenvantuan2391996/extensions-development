@@ -32,7 +32,7 @@ const SHOW_ALL_TABS_KEY = "show_all_tabs_key"
 // storage growth guardrails. MAX_TRACKED_REQUESTS is the default; the
 // options page (src/options.html) can override it via MAX_TRACKED_REQUESTS_KEY
 // in chrome.storage.local, read by trackAndEvict in js/background.js.
-const MAX_TRACKED_REQUESTS = 150;
+const MAX_TRACKED_REQUESTS = 500;
 const MAX_TRACKED_REQUESTS_KEY = "max_tracked_requests_key";
 const REQUEST_ORDER_KEY = "__detector_apis_request_order__";
 
@@ -108,4 +108,12 @@ const LAST_WEBREQUEST_SEEN_KEY = "__detector_apis_last_webrequest_seen__";
 // forever. Resets to 0 once a check finds the gap closed.
 const MAX_AUTO_RELOAD_ATTEMPTS = 3;
 const RELOAD_ATTEMPT_COUNT_KEY = "__detector_apis_reload_attempt_count__";
+// Set once checkWebRequestHealth exhausts MAX_AUTO_RELOAD_ATTEMPTS without
+// the gap closing — neither chrome.runtime.requestUpdateCheck() nor
+// chrome.runtime.reload() are confirmed to fix the underlying Chromium-side
+// bug, so instead of silently giving up, js/background.js switches the
+// toolbar into a visible warning state (updateBadgeCount checks this flag
+// and stands down so it can't be overwritten by a normal request count) that
+// points the user at chrome://extensions to remove+reinstall themselves.
+const EXTENSION_BROKEN_KEY = "__detector_apis_extension_broken__";
 const WEBREQUEST_STALE_THRESHOLD_MS = 2 * 60 * 1000;

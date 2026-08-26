@@ -67,17 +67,24 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // chrome.runtime.reload() is the same soft-restart the "Reload" button in
 // chrome://extensions triggers; unlike uninstall+reinstall it does not
 // clear chrome.storage.local. Whether it actually clears the underlying
-// Chromium-side routing bug is NOT confirmed (see CHANGELOG) — this is a
-// best-effort attempt, not a proven fix, and it's also not the only
-// explanation for a persistent gap: a page whose Service Worker answers
-// fetch() from Cache Storage never touches the network layer webRequest
-// observes at all, so its traffic would look "invisible to webRequest"
-// forever even though nothing is actually broken. RELOAD_ATTEMPT_COUNT_KEY
-// caps recovery attempts at MAX_AUTO_RELOAD_ATTEMPTS so a gap that reload()
-// can't (or was never going to) close stops interrupting the user's session
-// every WEBREQUEST_STALE_THRESHOLD_MS forever; the count resets once a
-// check finds the gap closed, so a later, distinct incident gets the full
-// retry budget again.
+// Chromium-side routing bug is NOT confirmed (see CHANGELOG) — live testing
+// found it does NOT reliably fix this — this is a best-effort attempt, not a
+// proven fix, and it's also not the only explanation for a persistent gap: a
+// page whose Service Worker answers fetch() from Cache Storage never
+// touches the network layer webRequest observes at all, so its traffic
+// would look "invisible to webRequest" forever even though nothing is
+// actually broken. chrome.runtime.requestUpdateCheck() is tried first each
+// attempt — a distinct mechanism (asks Chrome to check for/apply a real
+// update right now instead of a soft restart) that might reset whatever
+// reload() doesn't, though this is equally unconfirmed and likely a no-op
+// once already on the latest version. RELOAD_ATTEMPT_COUNT_KEY caps recovery
+// attempts at MAX_AUTO_RELOAD_ATTEMPTS so a gap neither mechanism can (or
+// was ever going to) close stops interrupting the user's session every
+// WEBREQUEST_STALE_THRESHOLD_MS forever; once attempts are exhausted,
+// syncBrokenWarningUI switches the toolbar into a visible warning instead of
+// continuing to fail silently. The count (and warning) reset once a check
+// finds the gap closed, so a later, distinct incident gets the full retry
+// budget again.
 async function checkWebRequestHealth() {
   const {
     [LAST_PAGE_TRAFFIC_KEY]: lastPageTraffic,
@@ -100,15 +107,18 @@ async function checkWebRequestHealth() {
     if (reloadAttempts) {
       await safeStorageSet({ [RELOAD_ATTEMPT_COUNT_KEY]: 0 });
     }
+    await syncBrokenWarningUI(false);
     return;
   }
 
   const attempts = reloadAttempts || 0;
   if (attempts >= MAX_AUTO_RELOAD_ATTEMPTS) {
     // Already tried MAX_AUTO_RELOAD_ATTEMPTS times without the gap closing —
-    // either reload() doesn't fix whatever this is, or it's the Service
-    // Worker/Cache Storage case above where there was never anything to
-    // fix. Stop; logging is enough from here.
+    // neither recovery mechanism fixes whatever this is, or it's the
+    // Service Worker/Cache Storage case above where there was never
+    // anything to fix. Stop retrying and make sure the user actually
+    // notices instead of silently sitting broken.
+    await syncBrokenWarningUI(true);
     return;
   }
 
@@ -117,7 +127,7 @@ async function checkWebRequestHealth() {
       "is reaching background.js via messaging, but chrome.webRequest hasn't " +
       "reported a request in " +
       Math.round(gap / 1000) +
-      "s. Reloading extension to attempt recovery (attempt " +
+      "s. Attempting recovery (attempt " +
       (attempts + 1) +
       "/" +
       MAX_AUTO_RELOAD_ATTEMPTS +
@@ -127,8 +137,50 @@ async function checkWebRequestHealth() {
     [LAST_WEBREQUEST_SEEN_KEY]: Date.now(),
     [RELOAD_ATTEMPT_COUNT_KEY]: attempts + 1,
   });
+  try {
+    const updateCheck = await chrome.runtime.requestUpdateCheck();
+    console.warn(
+      "detector-apis-extension: requestUpdateCheck status=" + updateCheck.status
+    );
+  } catch (err) {
+    console.warn("detector-apis-extension: requestUpdateCheck failed", err);
+  }
   chrome.runtime.reload();
 }
+
+// Toolbar warning for when auto-recovery gives up (see checkWebRequestHealth
+// above). Overrides the normal count badge with a red "!" and disables the
+// popup so the toolbar icon click opens chrome://extensions instead of an
+// empty, broken capture popup — reinstalling is still manual, but at least
+// visible instead of a user only noticing when they happen to check an
+// empty popup. Re-derives the actual chrome.action state every call instead
+// of trusting EXTENSION_BROKEN_KEY alone, since Chrome doesn't guarantee
+// action overrides survive a full browser restart.
+async function syncBrokenWarningUI(isBroken) {
+  await safeStorageSet({ [EXTENSION_BROKEN_KEY]: isBroken });
+  if (isBroken) {
+    await chrome.action.setBadgeText({ text: "!" });
+    await chrome.action.setBadgeBackgroundColor({ color: "#d70015" });
+    await chrome.action.setTitle({
+      title:
+        (chrome.runtime.getManifest().name || "Detector APIs Extension") +
+        ": request capture appears broken after an update. Click to open " +
+        "chrome://extensions and remove + reinstall.",
+    });
+    await chrome.action.setPopup({ popup: "" });
+  } else {
+    await chrome.action.setTitle({ title: chrome.runtime.getManifest().name || "" });
+    await chrome.action.setPopup({ popup: "src/popup.html" });
+    await updateBadgeCount();
+  }
+}
+
+chrome.action.onClicked.addListener(function () {
+  // Only ever fires while the popup is unset (syncBrokenWarningUI(true))
+  // above — a default_popup in the manifest otherwise means Chrome opens
+  // the popup itself and never dispatches this event at all.
+  chrome.tabs.create({ url: "chrome://extensions/?id=" + chrome.runtime.id });
+});
 
 // chrome.storage.local.set() can reject (e.g. Resource::kQuotaBytes quota
 // exceeded). Every listener below does more work after its set() calls
@@ -177,7 +229,13 @@ chrome.webRequest.onBeforeRequest.addListener(
       return;
     }
 
-    await trackAndEvict(details.requestId);
+    // Written before trackAndEvict, not after: trackAndEvict serializes on a
+    // shared order-lock queue that can be backlogged under a burst of
+    // requests, and a request that fails almost instantly can have
+    // onErrorOccurred/computeDuration read `-start-time` back before that
+    // queue gets to this call — writing this request's own keys first (they
+    // don't depend on the shared order array) keeps that window as small as
+    // a single storage.local.set instead of however long the queue is.
     await safeStorageSet({
       [details.requestId + "-url"]: details.url,
       [details.requestId + "-tab-id"]: details.tabId,
@@ -190,6 +248,7 @@ chrome.webRequest.onBeforeRequest.addListener(
       // see checkWebRequestHealth's big comment above for how this is used.
       [LAST_WEBREQUEST_SEEN_KEY]: Date.now(),
     });
+    await trackAndEvict(details.requestId);
   },
   { urls: ["<all_urls>"] }
 );
@@ -454,6 +513,17 @@ chrome.webRequest.onHeadersReceived.addListener(
 // toggle, so switching "All tabs" off made the popup show a filtered
 // single-tab subset while the badge kept showing the old global count.
 async function updateBadgeCount() {
+  // Stand down while the toolbar is showing checkWebRequestHealth's broken
+  // warning (syncBrokenWarningUI) — otherwise this would silently overwrite
+  // that "!" badge with a normal request count on the very next completed
+  // request or heartbeat tick, defeating the point of the warning.
+  const { [EXTENSION_BROKEN_KEY]: isBroken } = await chrome.storage.local.get(
+    EXTENSION_BROKEN_KEY
+  );
+  if (isBroken) {
+    return;
+  }
+
   const { [REQUEST_ORDER_KEY]: order } = await chrome.storage.local.get(
     REQUEST_ORDER_KEY
   );
@@ -663,6 +733,17 @@ async function handleTabNavigation(tabId, changeInfo) {
 }
 
 chrome.tabs.onUpdated.addListener(handleTabNavigation);
+
+// A closed tab can never be viewed again, so its tracked requests are pure
+// storage/popup-clutter debris from here on — unlike navigation, this isn't
+// gated on Preserve log (that setting is about not losing a tab's history on
+// its own refresh, not about keeping data for tabs that no longer exist).
+// Without this, a closed tab's requests only ever went away once normal
+// eviction (trackAndEvict, bounded by MAX_TRACKED_REQUESTS) happened to reach
+// them, potentially staying visible in "All tabs" view indefinitely.
+chrome.tabs.onRemoved.addListener(function (tabId) {
+  clearTabRequests(tabId);
+});
 
 // Clears only the tracked requests that belong to the given tab, instead of
 // chrome.storage.local.clear()'ing everything — so navigating one tab (with

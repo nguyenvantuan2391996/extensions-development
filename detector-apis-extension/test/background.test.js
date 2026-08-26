@@ -56,6 +56,9 @@ function createFakeChrome() {
           return Promise.resolve();
         },
         setBadgeBackgroundColor: () => Promise.resolve(),
+        setTitle: () => Promise.resolve(),
+        setPopup: () => Promise.resolve(),
+        onClicked: noopListener,
       },
       webRequest: {
         onBeforeRequest: noopListener,
@@ -67,6 +70,10 @@ function createFakeChrome() {
         onMessage: noopListener,
         onInstalled: noopListener,
         onStartup: noopListener,
+        getManifest: () => ({ name: "Detector APIs Extension" }),
+        requestUpdateCheck: () => Promise.resolve({ status: "no_update" }),
+        reload: () => {},
+        id: "test-extension-id",
       },
       alarms: {
         create: () => {},
@@ -74,6 +81,7 @@ function createFakeChrome() {
       },
       tabs: {
         onUpdated: noopListener,
+        onRemoved: noopListener,
         query: () => Promise.resolve(activeTab ? [activeTab] : []),
       },
     },

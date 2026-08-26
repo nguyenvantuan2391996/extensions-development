@@ -55,12 +55,22 @@
     this.addEventListener("loadend", function () {
       try {
         let contentType = this.getResponseHeader("content-type") || "";
+        // this.responseText throws for any responseType other than ""/"text"
+        // (json/arraybuffer/blob/document) — read as much as we safely can
+        // rather than losing the capture (and leaving a stuck FIFO entry in
+        // background.js's pendingBodyMatchesByUrl) for those requests.
+        let isTextReadable = this.responseType === "" || this.responseType === "text";
+        let body = isTextReadable
+          ? this.responseText
+          : this.responseType === "json"
+          ? JSON.stringify(this.response)
+          : "";
         if (contentType && (this.responseURL || this.__detectorApisUrl)) {
           dispatchCapture({
             url: this.responseURL || this.__detectorApisUrl,
             status: this.status,
             contentType: contentType,
-            body: truncate(this.responseText),
+            body: truncate(body),
           });
         }
       } catch (e) {}

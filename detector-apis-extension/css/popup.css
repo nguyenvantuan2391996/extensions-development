@@ -779,6 +779,11 @@ input:checked + .slider:before {
     color: var(--danger-text);
 }
 
+.status-redirect {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
 .status-pending {
     background: var(--pending-bg);
     color: var(--pending-text);
