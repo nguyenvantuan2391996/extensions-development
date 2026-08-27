@@ -131,22 +131,26 @@ async function deleteGif(event, src) {
     /* global chrome */
     const result = await chrome.storage.local.get([LIST_GIFS, GIF_NAMES, FAVORITE_GIFS])
     const current_gifs = result[LIST_GIFS] || []
+    const removedIndex = current_gifs.indexOf(src)
     const remaining_gifs = current_gifs.filter(item => item !== src)
     await chrome.storage.local.set({ [LIST_GIFS]: remaining_gifs })
     await clearSelectedGifIfMissing(remaining_gifs)
 
     const names = result[GIF_NAMES] || {}
+    const removedName = names[src]
     if (src in names) {
         delete names[src]
         await chrome.storage.local.set({ [GIF_NAMES]: names })
     }
 
     const favorites = result[FAVORITE_GIFS] || []
-    if (favorites.includes(src)) {
+    const wasFavorite = favorites.includes(src)
+    if (wasFavorite) {
         await chrome.storage.local.set({ [FAVORITE_GIFS]: favorites.filter(s => s !== src) })
     }
 
     updateEmptyState()
+    showUndoDelete(src, removedName, wasFavorite, removedIndex)
 }
 
 // If any GIF currently shown on pages was just removed from the library

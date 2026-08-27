@@ -183,6 +183,71 @@
             background: var(--danger);
         }
 
+        .alert-undo {
+            background: rgba(29, 29, 31, 0.92);
+            color: #fff;
+        }
+
+        .alert-undo .alert-icon {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #undo-alert-btn {
+            flex: none;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.18);
+            border: none;
+            border-radius: 980px;
+            padding: 4px 12px;
+            cursor: pointer;
+            transition: background 0.15s var(--ease-standard);
+        }
+
+        #undo-alert-btn:hover {
+            background: rgba(255, 255, 255, 0.28);
+        }
+
+        /* ---------- GIFs tab status banner ---------- */
+        .gif-status-banner[hidden] {
+            display: none;
+        }
+
+        .gif-status-banner {
+            flex: none;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 204, 0, 0.15);
+            color: #7a5c00;
+            font-size: 12.5px;
+            padding: 8px 12px;
+            border-radius: var(--radius-md);
+        }
+
+        .gif-status-banner span {
+            flex: 1 1 auto;
+        }
+
+        #gif-status-banner-action {
+            flex: none;
+            font-size: 12px;
+            font-weight: 600;
+            color: #7a5c00;
+            background: rgba(122, 92, 0, 0.12);
+            border: none;
+            border-radius: 980px;
+            padding: 5px 12px;
+            cursor: pointer;
+            transition: background 0.15s var(--ease-standard);
+        }
+
+        #gif-status-banner-action:hover {
+            background: rgba(122, 92, 0, 0.2);
+        }
+
         /* ---------- Toolbar ---------- */
         .toolbar {
             flex: none;
@@ -199,11 +264,10 @@
             gap: 10px;
         }
 
-        .toolbar-row-secondary {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid var(--separator);
+        .quick-bar {
+            display: flex;
             align-items: center;
+            gap: 10px;
         }
 
         .field {
@@ -305,13 +369,57 @@
             border-color: rgba(255, 59, 48, 0.3);
         }
 
-        .toolbar-spacer {
-            margin-left: auto;
+        .search-field {
+            position: relative;
+            flex: 1 1 140px;
+            min-width: 100px;
+            display: flex;
         }
 
         #gif_search {
-            flex: 1 1 140px;
-            min-width: 100px;
+            width: 100%;
+            padding-right: 26px;
+        }
+
+        .search-clear-btn[hidden] {
+            display: none;
+        }
+
+        .search-clear-btn {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 50%;
+            background: #e5e5ea;
+            color: var(--text-secondary);
+            font-size: 10px;
+            cursor: pointer;
+            transition: background 0.15s var(--ease-standard);
+        }
+
+        .search-clear-btn:hover {
+            background: #d1d1d6;
+        }
+
+        .shortcut-hint {
+            display: inline-block;
+            margin-left: 2px;
+            padding: 1px 6px;
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: #ececed;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-family: -apple-system, monospace;
         }
 
         /* ---------- Inputs ---------- */
@@ -391,22 +499,72 @@
             padding-top: 10px;
             border-top: 1px solid var(--separator);
             display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .add-gif-panel input[type="text"] {
-            flex: 1 1 220px;
+            width: 100%;
         }
 
-        .add-gif-panel .gif-name-input {
-            flex: 1 1 140px;
+        .add-gif-methods {
+            display: flex;
+            align-items: stretch;
+            gap: 10px;
+        }
+
+        .add-gif-method {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
+        .add-gif-url-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .add-gif-url-row input {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        #btn-add-gif:disabled {
+            background: #c7c7cc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .add-gif-divider {
+            flex: none;
+            align-self: center;
+            margin-top: 14px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .add-gif-dropzone {
+            flex: 1 1 auto;
+            display: flex;
+            align-items: center;
+            padding: 2px 8px;
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-sm);
+            background: #fbfbfd;
+            transition: border-color 0.15s var(--ease-standard), background 0.15s var(--ease-standard);
+        }
+
+        .add-gif-dropzone.is-dragover {
+            border-color: var(--accent);
+            background: rgba(0, 113, 227, 0.06);
         }
 
         #gif_file {
             font-size: 12px;
             color: var(--text-secondary);
+            max-width: 100%;
         }
 
         #gif_file::file-selector-button,
@@ -426,12 +584,6 @@
         #gif_file:hover::file-selector-button,
         #gif_file:hover::-webkit-file-upload-button {
             background: rgba(0, 113, 227, 0.18);
-        }
-
-        .panel-icon-actions {
-            display: flex;
-            gap: 8px;
-            margin-left: auto;
         }
 
         .pill-btn {
@@ -715,6 +867,126 @@
             cursor: not-allowed;
         }
 
+        /* ---------- Tabs (GIFs / Settings) ---------- */
+        .tabs {
+            flex: none;
+            display: flex;
+            gap: 4px;
+            background: #e8e8ec;
+            padding: 3px;
+            border-radius: 980px;
+        }
+
+        .tab-btn {
+            flex: 1 1 0;
+            border: none;
+            background: transparent;
+            padding: 7px 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-radius: 980px;
+            cursor: pointer;
+            transition: background 0.18s var(--ease-standard), color 0.18s var(--ease-standard);
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            background: #fff;
+            color: var(--text-primary);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-panel {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .tab-panel[hidden] {
+            display: none;
+        }
+
+        /* ---------- Settings tab ---------- */
+        .settings-scroll {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-right: 2px;
+        }
+
+        .settings-card {
+            flex: none;
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            padding: 14px 16px;
+        }
+
+        .settings-card h2 {
+            font-size: 13.5px;
+            font-weight: 700;
+            margin: 0 0 3px;
+            color: var(--text-primary);
+        }
+
+        .settings-card .card-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin: 0 0 12px;
+        }
+
+        .settings-card .field-preset {
+            margin-top: 10px;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+        }
+
+        .setting-row + .setting-row {
+            border-top: 1px solid var(--separator);
+        }
+
+        .setting-row-text {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .setting-row-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .setting-row-desc {
+            font-size: 11.5px;
+            color: var(--text-secondary);
+            margin-top: 1px;
+            line-height: 1.3;
+        }
+
+        .setting-row .switch {
+            flex-shrink: 0;
+        }
+
+        .library-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
         /* ---------- Unsupported page banner ---------- */
         .page-banner {
             flex: none;
@@ -837,106 +1109,174 @@
         <span class="alert-message" data-default="Something went wrong. Please try again.">Something went wrong. Please try again.</span>
     </div>
 
+    <div class="alert alert-undo" hidden="hidden" role="alert" id="undo-alert">
+        <span class="alert-icon">✓</span>
+        <span class="alert-message" id="undo-alert-message">GIF deleted.</span>
+        <button type="button" id="undo-alert-btn">Undo</button>
+    </div>
+
     <p class="page-banner" id="page-banner" hidden="hidden">
         Bubu Dudu can't run on this page. Display settings won't apply here, but you can still manage your GIF library below.
     </p>
 
-    <!-- Toolbar: display settings + collapsible add-gif panel -->
-    <div class="toolbar">
-        <div class="toolbar-row">
-            <div class="field field-size">
-                <label>Size (px)</label>
-                <input id="gif_size" type="number" value="100" min="20" max="600" step="10">
+    <!-- Tabs: browse GIFs vs. configure settings -->
+    <div class="tabs" role="tablist">
+        <button type="button" class="tab-btn active" id="tab-btn-gifs" role="tab" aria-selected="true" aria-controls="tab-panel-gifs">GIFs</button>
+        <button type="button" class="tab-btn" id="tab-btn-settings" role="tab" aria-selected="false" aria-controls="tab-panel-settings">Settings</button>
+    </div>
+
+    <div class="tab-panel" id="tab-panel-gifs" role="tabpanel">
+        <p class="gif-status-banner" id="gif-status-banner" hidden="hidden">
+            <span id="gif-status-banner-text"></span>
+            <button type="button" id="gif-status-banner-action"></button>
+        </p>
+
+        <div class="toolbar">
+            <div class="quick-bar">
+                <div class="search-field">
+                    <input type="text" id="gif_search" placeholder="Search your GIFs...">
+                    <button type="button" id="gif_search_clear" class="search-clear-btn" aria-label="Clear search" hidden="hidden">✕</button>
+                </div>
+                <button type="button" id="toggle-add-gif" aria-expanded="false">+ Add GIF</button>
             </div>
-            <div class="field field-position">
-                <label>Position</label>
-                <select id="gif_position">
-                    <option value="top" selected>Top</option>
-                    <option value="bottom">Bottom</option>
-                </select>
-            </div>
-            <div class="field field-direction">
-                <label>Direction <span class="info-dot" title="Position only applies when Direction is Left → Right or Right → Left.">i</span></label>
-                <select id="gif_animation">
-                    <option value="left" selected>Left → Right</option>
-                    <option value="right">Right → Left</option>
-                    <option value="top">Top → Bottom</option>
-                    <option value="bottom">Bottom → Top</option>
-                </select>
-            </div>
-            <div class="field field-duration">
-                <label>Duration (s)</label>
-                <input id="gif_duration" type="number" value="60" min="5" max="300" step="5">
-            </div>
-            <div class="field field-preset">
-                <label>Preset</label>
-                <div class="preset-controls">
-                    <select id="preset_select">
-                        <option value="" selected disabled>None</option>
-                    </select>
-                    <button type="button" id="btn-save-preset" class="mini-icon-btn" title="Save current settings as a preset" aria-label="Save preset">💾</button>
-                    <button type="button" id="btn-delete-preset" class="mini-icon-btn mini-icon-btn-danger" title="Delete this preset" aria-label="Delete preset" hidden="hidden">✕</button>
+
+            <div class="add-gif-panel" id="add-gif-panel" hidden="hidden">
+                <div class="field">
+                    <label for="gif_name">Name (optional)</label>
+                    <input type="text" placeholder="e.g. Bubu waving" id="gif_name">
+                </div>
+
+                <div class="add-gif-methods">
+                    <div class="field add-gif-method">
+                        <label for="gif_url">GIF URL</label>
+                        <div class="add-gif-url-row">
+                            <input type="text" placeholder="https://example.com/cute.gif" id="gif_url">
+                            <button id="btn-add-gif" disabled>Add</button>
+                        </div>
+                    </div>
+
+                    <div class="add-gif-divider"><span>or</span></div>
+
+                    <div class="field add-gif-method">
+                        <label for="gif_file">Upload a .gif file</label>
+                        <div class="add-gif-dropzone" id="add-gif-dropzone" title="You can also drag and drop a .gif file here">
+                            <input type="file" accept="image/gif" id="gif_file">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="toolbar-row toolbar-row-secondary">
-            <div class="field switch-field">
-                <label for="site_toggle">Show on this site</label>
-                <label class="switch">
-                    <input type="checkbox" id="site_toggle" checked>
-                    <span class="switch-slider"></span>
-                </label>
+        <!-- GIF List -->
+        <div id="gifContainer">
+            <div class="gif-loading" id="gif-loading">
+                <div class="spinner"></div>
+                <p>Loading your GIFs…</p>
             </div>
-            <div class="field switch-field">
-                <label for="site_mode_toggle" title="Off: hidden only on sites you turn off below. On: hidden everywhere except sites you turn on.">Allowlist mode</label>
-                <label class="switch">
-                    <input type="checkbox" id="site_mode_toggle">
-                    <span class="switch-slider"></span>
-                </label>
-            </div>
-            <div class="field switch-field">
-                <label for="random_mode_toggle">Random each visit</label>
-                <label class="switch">
-                    <input type="checkbox" id="random_mode_toggle">
-                    <span class="switch-slider"></span>
-                </label>
-            </div>
-            <div class="field switch-field">
-                <label for="multi_gif_toggle">Show multiple</label>
-                <label class="switch">
-                    <input type="checkbox" id="multi_gif_toggle">
-                    <span class="switch-slider"></span>
-                </label>
-            </div>
-            <input type="text" id="gif_search" class="toolbar-spacer" placeholder="Search your GIFs...">
-            <button type="button" id="toggle-add-gif" aria-expanded="false">+ Add GIF</button>
+            <p class="empty-hint" id="gif-empty-hint" hidden="hidden">No GIFs yet — add one above with "+ Add GIF" 👆</p>
+            <p class="empty-hint" id="gif-search-empty-hint" hidden="hidden">No GIFs match your search.</p>
+            <button type="button" id="btn-load-more-gifs" class="pill-btn" hidden="hidden">Load more</button>
         </div>
-
-        <div class="add-gif-panel" id="add-gif-panel" hidden="hidden">
-            <input type="text" placeholder="https://example.com/cute.gif" id="gif_url">
-            <input type="text" placeholder="Name (optional)" id="gif_name" class="gif-name-input">
-            <button id="btn-add-gif">Add</button>
-            <input type="file" accept="image/gif" id="gif_file">
-            <div class="panel-icon-actions">
-                <button type="button" id="btn-export-gifs" class="pill-btn">Export list</button>
-                <button type="button" id="btn-import-gifs" class="pill-btn">Import list</button>
-                <input type="file" accept="application/json,.json" id="import_file" hidden="hidden">
-                <button type="button" id="btn-reset-gifs" class="pill-btn pill-btn-danger">Reset to defaults</button>
-            </div>
-        </div>
-
     </div>
 
-    <!-- GIF List -->
-    <div id="gifContainer">
-        <div class="gif-loading" id="gif-loading">
-            <div class="spinner"></div>
-            <p>Loading your GIFs…</p>
+    <div class="tab-panel" id="tab-panel-settings" role="tabpanel" hidden="hidden">
+        <div class="settings-scroll">
+            <section class="settings-card">
+                <h2>Display</h2>
+                <p class="card-desc">How the floating GIF badge looks and moves on every page.</p>
+                <div class="toolbar-row">
+                    <div class="field field-size">
+                        <label>Size (px)</label>
+                        <input id="gif_size" type="number" value="100" min="20" max="600" step="10">
+                    </div>
+                    <div class="field field-position">
+                        <label>Position</label>
+                        <select id="gif_position">
+                            <option value="top" selected>Top</option>
+                            <option value="bottom">Bottom</option>
+                        </select>
+                    </div>
+                    <div class="field field-direction">
+                        <label>Direction <span class="info-dot" title="Position only applies when Direction is Left → Right or Right → Left.">i</span></label>
+                        <select id="gif_animation">
+                            <option value="left" selected>Left → Right</option>
+                            <option value="right">Right → Left</option>
+                            <option value="top">Top → Bottom</option>
+                            <option value="bottom">Bottom → Top</option>
+                        </select>
+                    </div>
+                    <div class="field field-duration">
+                        <label>Duration (s)</label>
+                        <input id="gif_duration" type="number" value="60" min="5" max="300" step="5">
+                    </div>
+                </div>
+                <div class="field field-preset">
+                    <label>Preset</label>
+                    <div class="preset-controls">
+                        <select id="preset_select">
+                            <option value="" selected disabled>None</option>
+                        </select>
+                        <button type="button" id="btn-save-preset" class="mini-icon-btn" title="Save current settings as a preset" aria-label="Save preset">💾</button>
+                        <button type="button" id="btn-delete-preset" class="mini-icon-btn mini-icon-btn-danger" title="Delete this preset" aria-label="Delete preset" hidden="hidden">✕</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-card">
+                <h2>Behavior</h2>
+                <div class="setting-row">
+                    <div class="setting-row-text">
+                        <div class="setting-row-title">Show on this site</div>
+                        <div class="setting-row-desc">Turn the floating GIF badge off just for the site you're on right now. <span class="shortcut-hint" id="shortcut-hint"></span></div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="site_toggle" checked>
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-row-text">
+                        <div class="setting-row-title">Allowlist mode</div>
+                        <div class="setting-row-desc">Off: hidden only on sites you turn off. On: hidden everywhere except sites you turn on.</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="site_mode_toggle">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-row-text">
+                        <div class="setting-row-title">Random each visit</div>
+                        <div class="setting-row-desc">Rotate to a random GIF from your list on every page visit.</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="random_mode_toggle">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-row-text">
+                        <div class="setting-row-title">Show multiple</div>
+                        <div class="setting-row-desc">Select more than one GIF to display on the page at once.</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="multi_gif_toggle">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+            </section>
+
+            <section class="settings-card">
+                <h2>Library</h2>
+                <p class="card-desc">Back up, restore, or reset your GIF collection.</p>
+                <div class="library-actions">
+                    <button type="button" id="btn-export-gifs" class="pill-btn">Export list</button>
+                    <button type="button" id="btn-import-gifs" class="pill-btn">Import list</button>
+                    <input type="file" accept="application/json,.json" id="import_file" hidden="hidden">
+                    <button type="button" id="btn-reset-gifs" class="pill-btn pill-btn-danger">Reset to defaults</button>
+                </div>
+            </section>
         </div>
-        <p class="empty-hint" id="gif-empty-hint" hidden="hidden">No GIFs yet — add one above with "+ Add GIF" 👆</p>
-        <p class="empty-hint" id="gif-search-empty-hint" hidden="hidden">No GIFs match your search.</p>
-        <button type="button" id="btn-load-more-gifs" class="pill-btn" hidden="hidden">Load more</button>
     </div>
 
     <footer class="app-footer">

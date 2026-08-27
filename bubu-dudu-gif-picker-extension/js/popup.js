@@ -114,6 +114,7 @@ document.addEventListener("DOMContentLoaded",  async function () {
           : !(result[DISABLED_HOSTS] || []).includes(currentHostname))
         document.getElementById("random_mode_toggle").checked = !!result[RANDOM_MODE]
         document.getElementById("multi_gif_toggle").checked = !!result[MULTI_GIF_MODE]
+        updateGifStatusBanner()
       })
 
     await displayCheckmark()
@@ -133,7 +134,9 @@ function updateEmptyState() {
 }
 
 function applyGifSearchFilter() {
-  const query = document.getElementById("gif_search").value.trim().toLowerCase()
+  const rawQuery = document.getElementById("gif_search").value
+  const query = rawQuery.trim().toLowerCase()
+  document.getElementById("gif_search_clear").hidden = rawQuery.length === 0
   document.querySelectorAll("#gifContainer .gif-item").forEach(item => {
     const src = item.querySelector("img").src.toLowerCase()
     const name = (item.title || "").toLowerCase()
@@ -145,6 +148,53 @@ function applyGifSearchFilter() {
 }
 
 document.getElementById("gif_search").addEventListener("input", applyGifSearchFilter)
+
+const gifSearchClearBtn = document.getElementById("gif_search_clear")
+gifSearchClearBtn.addEventListener("click", function () {
+  const searchInput = document.getElementById("gif_search")
+  searchInput.value = ""
+  applyGifSearchFilter()
+  searchInput.focus()
+})
+
+// Explains why picking a GIF might not show up anywhere: the site is turned
+// off, or Random mode is overriding manual picks. Both toggles live in the
+// Settings tab, out of sight from here, so this surfaces the reason directly.
+function updateGifStatusBanner() {
+  const banner = document.getElementById("gif-status-banner")
+  const text = document.getElementById("gif-status-banner-text")
+  const action = document.getElementById("gif-status-banner-action")
+
+  if (!tabSupported) {
+    banner.hidden = true
+    return
+  }
+
+  const siteOn = document.getElementById("site_toggle").checked
+  const randomOn = document.getElementById("random_mode_toggle").checked
+
+  if (!siteOn) {
+    text.textContent = "Bubu Dudu is off for this site — your picks won't show here."
+    action.textContent = "Turn on"
+    action.onclick = () => {
+      const toggle = document.getElementById("site_toggle")
+      toggle.checked = true
+      toggle.dispatchEvent(new Event("change"))
+    }
+    banner.hidden = false
+  } else if (randomOn) {
+    text.textContent = "Random mode is on — a random GIF shows instead of your pick."
+    action.textContent = "Turn off"
+    action.onclick = () => {
+      const toggle = document.getElementById("random_mode_toggle")
+      toggle.checked = false
+      toggle.dispatchEvent(new Event("change"))
+    }
+    banner.hidden = false
+  } else {
+    banner.hidden = true
+  }
+}
 
 function addGifToDOM(src, name, prepend = false) {
   const gifContainer = document.getElementById("gifContainer")
@@ -223,6 +273,51 @@ function addGifToDOM(src, name, prepend = false) {
   updateEmptyState()
 }
 
+let undoTimeoutId = null
+
+// Gives a few seconds to restore an accidentally-deleted GIF before the undo
+// option disappears. The deletion itself already happened in storage — this
+// just re-inserts everything (list entry, name, favorite status) if clicked.
+function showUndoDelete(src, name, wasFavorite, index) {
+  const undoAlert = document.getElementById("undo-alert")
+  const undoBtn = document.getElementById("undo-alert-btn")
+  const undoMessage = document.getElementById("undo-alert-message")
+
+  clearTimeout(undoTimeoutId)
+  undoMessage.textContent = name ? `"${name}" deleted.` : "GIF deleted."
+  undoAlert.removeAttribute("hidden")
+
+  const cleanup = () => {
+    clearTimeout(undoTimeoutId)
+    undoAlert.setAttribute("hidden", "hidden")
+    undoBtn.removeEventListener("click", onUndo)
+  }
+
+  const onUndo = async () => {
+    /* global chrome */
+    cleanup()
+    const result = await chrome.storage.local.get([LIST_GIFS])
+    const gifs = result[LIST_GIFS] || []
+    if (!gifs.includes(src)) {
+      const insertAt = index >= 0 && index <= gifs.length ? index : gifs.length
+      gifs.splice(insertAt, 0, src)
+      await chrome.storage.local.set({ [LIST_GIFS]: gifs })
+    }
+    if (name) {
+      gifNames[src] = name
+      await chrome.storage.local.set({ [GIF_NAMES]: gifNames })
+    }
+    if (wasFavorite) {
+      favoriteGifs = Array.from(new Set([...favoriteGifs, src]))
+      await chrome.storage.local.set({ [FAVORITE_GIFS]: favoriteGifs })
+    }
+    addGifToDOM(src, name, true)
+  }
+
+  undoBtn.addEventListener("click", onUndo, { once: true })
+  undoTimeoutId = setTimeout(cleanup, 5000)
+}
+
 document.getElementById("gif_size").onchange = async function (event) {
   const value = Number(event.target.value)
   if (!Number.isFinite(value) || value < GIF_SIZE_MIN || value > GIF_SIZE_MAX) {
@@ -262,6 +357,7 @@ document.getElementById("site_toggle").onchange = async function (event) {
   } else {
     await setSiteDisabled(currentHostname, !event.target.checked)
   }
+  updateGifStatusBanner()
 }
 
 document.getElementById("site_mode_toggle").onchange = async function (event) {
@@ -278,10 +374,12 @@ document.getElementById("site_mode_toggle").onchange = async function (event) {
     : !(result[DISABLED_HOSTS] || []).includes(currentHostname))
 
   await notifyActiveTab({ from: POPUP_SCREEN, subject: HANDLE_SET_DISABLED_HOSTS })
+  updateGifStatusBanner()
 }
 
 document.getElementById("random_mode_toggle").onchange = async function (event) {
   await setRandomMode(event.target.checked)
+  updateGifStatusBanner()
 }
 
 document.getElementById("multi_gif_toggle").onchange = async function (event) {
@@ -295,7 +393,21 @@ async function saveGifName(src, name) {
   await chrome.storage.local.set({ [GIF_NAMES]: gifNames })
 }
 
-document.getElementById("btn-add-gif").addEventListener("click", async function () {
+const addGifBtn = document.getElementById("btn-add-gif")
+const gifUrlInput = document.getElementById("gif_url")
+
+gifUrlInput.addEventListener("input", function () {
+  addGifBtn.disabled = gifUrlInput.value.trim().length === 0
+})
+
+gifUrlInput.addEventListener("keydown", function (event) {
+  if (event.key === "Enter" && !addGifBtn.disabled) {
+    event.preventDefault()
+    addGifBtn.click()
+  }
+})
+
+addGifBtn.addEventListener("click", async function () {
   /* global chrome */
   const urlInput = document.getElementById("gif_url")
   const url = urlInput.value.trim()
@@ -334,6 +446,7 @@ document.getElementById("btn-add-gif").addEventListener("click", async function 
     addGifToDOM(url, name || undefined)
     urlInput.value = ""
     nameInput.value = ""
+    addGifBtn.disabled = true
     closeAddGifPanel()
     alert(SUCCESS_ALERT)
   }
@@ -397,6 +510,28 @@ fileInput.addEventListener('change', async function () {
 
   reader.readAsDataURL(file);
 });
+
+const addGifDropzone = document.getElementById("add-gif-dropzone")
+;["dragenter", "dragover"].forEach(eventName => {
+  addGifDropzone.addEventListener(eventName, function (event) {
+    event.preventDefault()
+    addGifDropzone.classList.add("is-dragover")
+  })
+})
+;["dragleave", "drop"].forEach(eventName => {
+  addGifDropzone.addEventListener(eventName, function (event) {
+    event.preventDefault()
+    addGifDropzone.classList.remove("is-dragover")
+  })
+})
+addGifDropzone.addEventListener("drop", function (event) {
+  const file = event.dataTransfer.files[0]
+  if (!file) return
+  const dataTransfer = new DataTransfer()
+  dataTransfer.items.add(file)
+  fileInput.files = dataTransfer.files
+  fileInput.dispatchEvent(new Event("change"))
+})
 
 document.getElementById("btn-export-gifs").addEventListener("click", async function () {
   /* global chrome */
@@ -610,6 +745,24 @@ document.getElementById("btn-delete-preset").addEventListener("click", async fun
   await renderPresetOptions()
 })
 
+const tabBtnGifs = document.getElementById('tab-btn-gifs');
+const tabBtnSettings = document.getElementById('tab-btn-settings');
+const tabPanelGifs = document.getElementById('tab-panel-gifs');
+const tabPanelSettings = document.getElementById('tab-panel-settings');
+
+function activateTab(name) {
+  const isGifs = name === 'gifs'
+  tabBtnGifs.classList.toggle('active', isGifs)
+  tabBtnSettings.classList.toggle('active', !isGifs)
+  tabBtnGifs.setAttribute('aria-selected', String(isGifs))
+  tabBtnSettings.setAttribute('aria-selected', String(!isGifs))
+  tabPanelGifs.hidden = !isGifs
+  tabPanelSettings.hidden = isGifs
+}
+
+tabBtnGifs.addEventListener('click', () => activateTab('gifs'))
+tabBtnSettings.addEventListener('click', () => activateTab('settings'))
+
 const toggleAddGifBtn = document.getElementById('toggle-add-gif');
 const addGifPanel = document.getElementById('add-gif-panel');
 
@@ -636,3 +789,9 @@ toggleAddGifBtn.addEventListener('click', function () {
     openAddGifPanel()
   }
 });
+
+const shortcutHintEl = document.getElementById('shortcut-hint')
+if (shortcutHintEl) {
+  const isMac = /Mac/i.test(navigator.platform || navigator.userAgent)
+  shortcutHintEl.textContent = isMac ? '⌘⇧U' : 'Ctrl+Shift+U'
+}
