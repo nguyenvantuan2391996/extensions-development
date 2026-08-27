@@ -172,6 +172,18 @@
       background: var(--input-bg);
       color: var(--text-primary);
       outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    /* In Check mode the field becomes a live input instead of a read-only
+       display — give it a visibly distinct, "editable" treatment. */
+    #password:not([readonly]) {
+      border-style: dashed;
+      border-color: var(--accent);
+    }
+
+    #password:not([readonly]):focus {
+      box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
     #copy {
@@ -663,9 +675,9 @@
 
   <div class="card">
     <div class="segmented" role="tablist">
-      <button type="button" class="segment active" data-mode="password" id="mode-password">Password</button>
-      <button type="button" class="segment" data-mode="passphrase" id="mode-passphrase">Passphrase</button>
-      <button type="button" class="segment" data-mode="check" id="mode-check">Check</button>
+      <button type="button" class="segment active" role="tab" aria-selected="true" data-mode="password" id="mode-password">Password</button>
+      <button type="button" class="segment" role="tab" aria-selected="false" data-mode="passphrase" id="mode-passphrase">Passphrase</button>
+      <button type="button" class="segment" role="tab" aria-selected="false" data-mode="check" id="mode-check">Check</button>
     </div>
     <input type="hidden" id="mode" value="password" />
 
@@ -677,8 +689,8 @@
     <div class="strength-meter" id="strength-meter">
       <div class="strength-bar" id="strength-bar"></div>
     </div>
-    <p class="strength-label" id="strength-label">&nbsp;</p>
-    <p class="warning-text" id="warning-text" hidden>Select at least 1 character type</p>
+    <p class="strength-label" id="strength-label" aria-live="polite">&nbsp;</p>
+    <p class="warning-text" id="warning-text" aria-live="polite" hidden>Select at least 1 character type</p>
     <p class="check-hint" id="check-hint" hidden>Estimate only — based on length and character variety, not a dictionary/breach check.</p>
 
     <form id="generator-form">

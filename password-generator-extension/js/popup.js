@@ -127,7 +127,9 @@ function normalizeMode(value) {
 function syncModeUI() {
     const mode = normalizeMode(modeField.value);
     segments.forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.mode === mode);
+        const isActive = btn.dataset.mode === mode;
+        btn.classList.toggle("active", isActive);
+        btn.setAttribute("aria-selected", String(isActive));
     });
     passwordOptions.hidden = mode !== "password";
     passphraseOptions.hidden = mode !== "passphrase";
@@ -145,11 +147,21 @@ function syncSliderLabels() {
     wordsValue.textContent = wordsRange.value;
 }
 
-function showWarning() {
+function showWarning(message) {
+    warningText.textContent = message || "Select at least 1 character type";
     warningText.hidden = false;
     strengthMeter.style.visibility = "hidden";
     strengthLabel.style.visibility = "hidden";
     passwordField.value = "";
+}
+
+// Keep the Length slider/number/badge in sync with what was actually generated —
+// the requested length can shrink (clamped to 6-64, or further clamped when
+// "Exclude duplicates" can't fill the requested length from the available pool).
+function syncLengthDisplay(actualLength) {
+    lengthInput.value = actualLength;
+    lengthRange.value = actualLength;
+    lengthValue.textContent = actualLength;
 }
 
 function hideWarning() {
@@ -318,7 +330,14 @@ function applyGeneratedResult(result) {
     }
 }
 
+// Guards against a field's own change/input handler and the form's implicit
+// submit-on-Enter both firing generate() for the same keystroke.
+let lastGenerateAt = 0;
 function generate() {
+    const now = Date.now();
+    if (now - lastGenerateAt < 100) return;
+    lastGenerateAt = now;
+
     saveSettings();
 
     const mode = normalizeMode(modeField.value);
@@ -344,6 +363,8 @@ function generate() {
 
     currentPassphrase = null;
     chipRow.hidden = true;
+    const anyTypeSelected = ["include-lower", "include-upper", "include-number", "include-symbol", "include-other"]
+        .some((id) => document.getElementById(id).checked);
     const result = generatePasswordFromOptions({
         length: lengthInput.value,
         includeLower: document.getElementById("include-lower").checked,
@@ -358,10 +379,13 @@ function generate() {
     });
 
     if (result.error) {
-        showWarning();
+        showWarning(anyTypeSelected
+            ? "No characters left — your exclusions removed every character in the selected types"
+            : "Select at least 1 character type");
         return;
     }
 
+    syncLengthDisplay(result.value.length);
     applyGeneratedResult(result);
 }
 
@@ -376,6 +400,13 @@ form.addEventListener("submit", (e) => {
 
 copyBtn.addEventListener("click", () => {
     copyToClipboard(passwordField.value);
+});
+
+// In Password/Passphrase mode the field is read-only and only exists to be
+// copied — auto-select its contents so a manual Cmd/Ctrl+C works immediately.
+// Skipped in Check mode, where the field is a live input the user is editing.
+passwordField.addEventListener("focus", () => {
+    if (passwordField.readOnly) passwordField.select();
 });
 
 clearHistoryBtn.addEventListener("click", () => {
@@ -414,15 +445,19 @@ lengthInput.addEventListener("input", () => {
 });
 lengthInput.addEventListener("change", generate);
 
+let lengthRangeDebounce;
 lengthRange.addEventListener("input", () => {
     lengthInput.value = lengthRange.value;
     lengthValue.textContent = lengthRange.value;
-    generate();
+    clearTimeout(lengthRangeDebounce);
+    lengthRangeDebounce = setTimeout(generate, 120);
 });
 
+let wordsRangeDebounce;
 wordsRange.addEventListener("input", () => {
     wordsValue.textContent = wordsRange.value;
-    generate();
+    clearTimeout(wordsRangeDebounce);
+    wordsRangeDebounce = setTimeout(generate, 120);
 });
 
 let excludeDebounce;

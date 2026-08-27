@@ -40,6 +40,18 @@ Perfect for developers, security-conscious users, or anyone needing safe, random
 
 ## Changelog
 
+### 1.0.5
+- Fixed: the Length slider/number/badge could show a value that didn't match the password actually generated (e.g. typing an out-of-range number, or "Exclude duplicates" shrinking the usable pool) — the display now always reflects the real generated length
+- Fixed: the "no password generated" warning always said "Select at least 1 character type," even when a type was selected but exclusions had removed every character from it — it now shows the correct message for each case
+- Fixed: reloading/updating the extension could throw a silent "duplicate id" error when recreating the right-click "Generate & Fill Password" menu item
+- Fixed: "Generate & Fill Password" could leave an unhandled error in the background console on pages where script injection isn't allowed (e.g. `chrome://` pages)
+- Added ARIA roles/labels to the Password/Passphrase/Check mode switch and live-region announcements for the strength label and warnings, for better screen-reader support
+- Fixed: dragging the Length or Word Count slider regenerated (and re-saved settings, and pushed to history) on every tick instead of once you settle on a value — could spam the recent-history list and hit Chrome's storage write-rate limit during a fast drag
+- UX: "Generate & Fill Password" (right-click menu) now gives visible feedback — the filled field flashes green, and the toolbar badge shows a ✓ or ! so you know it worked (or why it didn't) even with the popup closed
+- UX: the password field auto-selects its contents when focused in Password/Passphrase mode, so Cmd/Ctrl+C copies immediately without manually selecting the text
+- UX: the field gets a distinct dashed, accent-colored border in Check mode so it's visually clear it's now an editable input rather than a read-only result
+- Fixed: pressing Enter in the Length or "Exclude specific characters" field could fire two generations back-to-back (the field's own change/input handler, plus the form's implicit submit), pushing a duplicate entry into history — confirmed and fixed with a small re-entrancy guard in `generate()`
+
 ### 1.0.4
 - Added a **Check** mode: paste or type any password to get a live strength estimate (based on character variety, length, and repeated/sequential-run patterns — an approximation, not a dictionary or breach check)
 - Passphrase words and the trailing number are now individually clickable chips — reroll just one word instead of regenerating the whole passphrase

@@ -4,10 +4,12 @@ const MENU_ID = "generate-fill-password";
 const SETTINGS_STORAGE_KEY = "passwordGeneratorSettings";
 
 chrome.runtime.onInstalled.addListener(() => {
-    chrome.contextMenus.create({
-        id: MENU_ID,
-        title: "Generate & Fill Password",
-        contexts: ["editable"]
+    chrome.contextMenus.removeAll(() => {
+        chrome.contextMenus.create({
+            id: MENU_ID,
+            title: "Generate & Fill Password",
+            contexts: ["editable"]
+        });
     });
 });
 
@@ -38,19 +40,36 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
                 customExclude: settings["custom-exclude"] ?? ""
             });
 
-        if (result.error || !result.value) return;
+        if (result.error || !result.value) {
+            flashBadge("!", "#ff3b30");
+            return;
+        }
 
         chrome.scripting.executeScript({
             target: { tabId: tab.id },
             func: fillActiveElement,
             args: [result.value]
+        }).then((results) => {
+            const filled = Array.isArray(results) && results.some((r) => r.result === true);
+            flashBadge(filled ? "✓" : "!", filled ? "#34c759" : "#ff3b30");
+        }).catch(() => {
+            // Restricted page (chrome://, Web Store, etc.) — nothing we can do.
+            flashBadge("!", "#ff3b30");
         });
     });
 });
 
+// Brief badge pulse so a right-click "Generate & Fill" gives visible feedback
+// even though there's no popup open to show a result in.
+function flashBadge(text, color) {
+    chrome.action.setBadgeBackgroundColor({ color });
+    chrome.action.setBadgeText({ text });
+    setTimeout(() => chrome.action.setBadgeText({ text: "" }), 1500);
+}
+
 function fillActiveElement(value) {
     const el = document.activeElement;
-    if (!el || (el.tagName !== "INPUT" && el.tagName !== "TEXTAREA")) return;
+    if (!el || (el.tagName !== "INPUT" && el.tagName !== "TEXTAREA")) return false;
 
     const proto = el.tagName === "TEXTAREA" ? window.HTMLTextAreaElement : window.HTMLInputElement;
     const setter = Object.getOwnPropertyDescriptor(proto.prototype, "value").set;
@@ -58,4 +77,16 @@ function fillActiveElement(value) {
 
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
+
+    // Flash the field itself so it's obvious which one just got filled.
+    const originalOutline = el.style.outline;
+    const originalOffset = el.style.outlineOffset;
+    el.style.outline = "2px solid #34c759";
+    el.style.outlineOffset = "1px";
+    setTimeout(() => {
+        el.style.outline = originalOutline;
+        el.style.outlineOffset = originalOffset;
+    }, 700);
+
+    return true;
 }
