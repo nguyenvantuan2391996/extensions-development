@@ -70,6 +70,28 @@ test("buildPostmanRequestBody: urlencoded content-type produces key/value pairs"
   ]);
 });
 
+test("buildPostmanRequestBody: urlencoded values keep '=' and come back decoded", () => {
+  const body = g.buildPostmanRequestBody(
+    // "=" inside a value (base64 padding) used to be truncated away, and the
+    // percent-encoded/"+" text was handed to Postman still encoded.
+    { requestBody: "token=YWJj%3D%3D&q=a%26b&name=John+Doe" },
+    "application/x-www-form-urlencoded"
+  );
+  assert.deepEqual(toPlain(body.urlencoded), [
+    { key: "token", value: "YWJj==" },
+    { key: "q", value: "a&b" },
+    { key: "name", value: "John Doe" },
+  ]);
+});
+
+test("buildPostmanRequestBody: a malformed percent-escape falls back to raw text instead of throwing", () => {
+  const body = g.buildPostmanRequestBody(
+    { requestBody: "broken=%E2%80" },
+    "application/x-www-form-urlencoded"
+  );
+  assert.deepEqual(toPlain(body.urlencoded), [{ key: "broken", value: "%E2%80" }]);
+});
+
 test("buildPostmanRequestBody: JSON content-type produces raw json body", () => {
   const body = g.buildPostmanRequestBody(
     { requestBody: '{"a":1}' },

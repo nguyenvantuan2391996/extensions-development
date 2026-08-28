@@ -5,6 +5,7 @@ const { loadScripts } = require("./helpers/loadGlobals");
 function createFakeChrome() {
   let store = {};
   let failNextSetCalls = 0;
+  let failNextSetMessage = "Resource::kQuotaBytes quota exceeded";
   let badgeText = "";
   let activeTab = null;
 
@@ -25,9 +26,7 @@ function createFakeChrome() {
     set: (obj) => {
       if (failNextSetCalls > 0) {
         failNextSetCalls--;
-        return Promise.reject(
-          new Error("Resource::kQuotaBytes quota exceeded")
-        );
+        return Promise.reject(new Error(failNextSetMessage));
       }
       Object.assign(store, obj);
       return Promise.resolve();
@@ -56,9 +55,6 @@ function createFakeChrome() {
           return Promise.resolve();
         },
         setBadgeBackgroundColor: () => Promise.resolve(),
-        setTitle: () => Promise.resolve(),
-        setPopup: () => Promise.resolve(),
-        onClicked: noopListener,
       },
       webRequest: {
         onBeforeRequest: noopListener,
@@ -70,10 +66,6 @@ function createFakeChrome() {
         onMessage: noopListener,
         onInstalled: noopListener,
         onStartup: noopListener,
-        getManifest: () => ({ name: "Detector APIs Extension" }),
-        requestUpdateCheck: () => Promise.resolve({ status: "no_update" }),
-        reload: () => {},
-        id: "test-extension-id",
       },
       alarms: {
         create: () => {},
@@ -86,8 +78,9 @@ function createFakeChrome() {
       },
     },
     dump: () => store,
-    failNextSet: (n) => {
+    failNextSet: (n, message) => {
       failNextSetCalls = n;
+      failNextSetMessage = message || "Resource::kQuotaBytes quota exceeded";
     },
     badgeText: () => badgeText,
     setActiveTab: (tab) => {
@@ -124,6 +117,44 @@ test("safeStorageSet swallows a quota-exceeded rejection instead of throwing", a
   assert.equal(dump()["some-key"], undefined, "the failed write never landed");
 });
 
+test("safeStorageSet rebuilds a corrupted storage.local, keeps preferences, and retries the write (regression: a corrupt LevelDB failed every write forever, so nothing was captured until the extension was reinstalled)", async () => {
+  const { sandbox, dump, failNextSet } = buildBackgroundSandbox();
+  await sandbox.chrome.storage.local.set({
+    [sandbox.PRESERVE_LOG_KEY]: true,
+    [sandbox.MAX_TRACKED_REQUESTS_KEY]: 250,
+    "stale-req-url": "https://old.example/a",
+  });
+
+  // The exact error a real user's console reported.
+  failNextSet(1, "Corruption: block checksum mismatch");
+  await sandbox.safeStorageSet({ "new-req-url": "https://live.example/a" });
+
+  const stored = dump();
+  assert.equal(
+    stored["stale-req-url"],
+    undefined,
+    "the damaged database is thrown away rather than written to forever"
+  );
+  assert.equal(stored[sandbox.PRESERVE_LOG_KEY], true, "preferences survive");
+  assert.equal(stored[sandbox.MAX_TRACKED_REQUESTS_KEY], 250, "preferences survive");
+  assert.equal(
+    stored["new-req-url"],
+    "https://live.example/a",
+    "the write that hit the corruption is retried against the rebuilt database"
+  );
+});
+
+test("safeStorageSet does NOT wipe storage for an ordinary quota error", async () => {
+  const { sandbox, dump, failNextSet } = buildBackgroundSandbox();
+  await sandbox.chrome.storage.local.set({ "keep-me": 1 });
+
+  failNextSet(1);
+  await sandbox.safeStorageSet({ dropped: 2 });
+
+  assert.equal(dump()["keep-me"], 1, "a full disk must never clear the database");
+  assert.equal(dump()["dropped"], undefined);
+});
+
 test("trackAndEvict doesn't throw even if persisting the updated order fails (regression: a rejected set() used to abort the rest of the listener)", async () => {
   const { sandbox, failNextSet } = buildBackgroundSandbox();
   failNextSet(1);
@@ -143,6 +174,81 @@ test("trackAndEvict appends requestIds in the order they're seen", async () => {
   assert.equal(order[0], "req-1");
   assert.equal(order[1], "req-2");
   assert.equal(order[2], "req-3");
+});
+
+test("trackAndEvict doesn't let a stale requestId from a previous browser session evict the live request reusing that id (regression: this is what made the extension stop capturing until it was uninstalled+reinstalled)", async () => {
+  const { sandbox, dump } = buildBackgroundSandbox();
+
+  // chrome.webRequest requestIds are only unique *within a browser session*,
+  // but chrome.storage.local survives across sessions — so after a restart the
+  // order array still holds last session's ids and the new session's ids
+  // collide with them, starting from a low number.
+  await sandbox.chrome.storage.local.set({
+    [sandbox.MAX_TRACKED_REQUESTS_KEY]: 3,
+    [sandbox.REQUEST_ORDER_KEY]: ["1", "2", "3"],
+  });
+
+  // New session: a real request arrives, is also assigned id "1", and
+  // onBeforeRequest writes its keys (overwriting last session's "1" data).
+  await sandbox.chrome.storage.local.set({ "1-url": "https://live.example/api" });
+  await sandbox.trackAndEvict("1");
+
+  const stored = dump();
+  assert.equal(
+    stored["1-url"],
+    "https://live.example/api",
+    "the live request's data must survive — evicting the stale duplicate used to delete it"
+  );
+  assert.deepEqual(
+    [...stored[sandbox.REQUEST_ORDER_KEY]],
+    ["2", "3", "1"],
+    "the stale duplicate is dropped from the order, the live id stays at the end"
+  );
+});
+
+test("buildFormDataBody keeps every value of a repeated field, percent-encodes names/values, and leaves no trailing separator", () => {
+  const { sandbox } = buildBackgroundSandbox();
+
+  // A checkbox group sends the same name several times — only the first value
+  // used to survive.
+  assert.equal(
+    sandbox.buildFormDataBody({ tag: ["a", "b", "c"] }),
+    "tag=a&tag=b&tag=c"
+  );
+
+  // Values arrive already decoded, so "&"/"=" inside one used to corrupt every
+  // field after it when concatenated raw.
+  assert.equal(
+    sandbox.buildFormDataBody({ q: ["a&b=c"], next: ["/home"] }),
+    "q=a%26b%3Dc&next=%2Fhome"
+  );
+
+  // No dangling "&" — servers read that as an extra empty-named field.
+  assert.equal(sandbox.buildFormDataBody({ a: ["1"] }), "a=1");
+  assert.equal(sandbox.buildFormDataBody({}), "");
+});
+
+test("startSession clears the previous session's tracked requests but keeps user preferences", async () => {
+  const { sandbox, dump } = buildBackgroundSandbox();
+
+  await sandbox.chrome.storage.local.set({
+    [sandbox.REQUEST_ORDER_KEY]: ["1", "2"],
+    "1-url": "https://stale.example/a",
+    "2-url": "https://stale.example/b",
+    [sandbox.PRESERVE_LOG_KEY]: true,
+    [sandbox.SHOW_ALL_TABS_KEY]: false,
+    [sandbox.MAX_TRACKED_REQUESTS_KEY]: 250,
+  });
+
+  await sandbox.startSession("test");
+
+  const stored = dump();
+  assert.equal(stored[sandbox.REQUEST_ORDER_KEY], undefined);
+  assert.equal(stored["1-url"], undefined, "stale per-request data is gone");
+  assert.equal(stored["2-url"], undefined, "stale per-request data is gone");
+  assert.equal(stored[sandbox.PRESERVE_LOG_KEY], true, "preferences untouched");
+  assert.equal(stored[sandbox.SHOW_ALL_TABS_KEY], false, "preferences untouched");
+  assert.equal(stored[sandbox.MAX_TRACKED_REQUESTS_KEY], 250, "preferences untouched");
 });
 
 test("trackAndEvict serializes concurrent calls instead of losing one to a read-modify-write race (regression: two requestIds starting in the same tick used to silently drop one from REQUEST_ORDER_KEY, even though its own data was written fine)", async () => {
@@ -461,7 +567,12 @@ test("handleRequestError writes a Failed/Canceled row (with the raw error preser
   });
 
   const state = dump();
-  assert.equal(state["req-1-pending"], undefined);
+  // Cleared to "" inside the same set() rather than removed in a second
+  // transaction; renderTable tests this for truthiness, so both read alike.
+  assert.ok(
+    !state["req-1-pending"],
+    "the pending marker is cleared once the request has an outcome"
+  );
   assert.equal(
     state["req-1"],
     "Failed GET|||net::ERR_CONNECTION_REFUSED"

@@ -1,33 +1,67 @@
 importScripts("constants.js");
 importScripts("utils.js");
 
-// Users have reported that after a *silent* Chrome Web Store auto-update
-// (extension updates in the background while the browser stays open, no
-// restart), the extension stops capturing requests entirely — and unlike
-// the known MV3 "manual dev-mode Reload doesn't re-register listeners"
-// quirk, toggling the extension off/on does NOT recover it; only a full
-// uninstall+reinstall does. All of chrome.webRequest.*.addListener below
-// run synchronously at the top of this file, so if this script runs at
-// all post-update, they register — this smells like a Chromium-side issue
-// where the service worker itself doesn't get cleanly restarted against
-// the new version until something more forceful happens (browser restart,
-// reinstall). There's no documented API to force that from inside the
-// extension, but chrome.alarms firing on a schedule keeps this service
-// worker from sitting fully idle, which is Chrome's own recommended
-// mitigation for MV3 service-worker reliability issues in general — and
-// onInstalled/onStartup logging here means the *next* report of this can
-// actually be diagnosed (did the service worker even run post-update?)
-// instead of guessing blind again.
+// Users reported that after an update the extension stopped capturing
+// requests entirely, and that neither toggling it off/on nor the dev-mode
+// Reload button recovered it — only a full uninstall+reinstall did. That was
+// long assumed here to be a Chromium-side MV3 service-worker issue with no
+// fix available from extension code. It was not: see startSession below for
+// the actual root cause (stale chrome.webRequest requestIds surviving in
+// chrome.storage.local across a browser session, which made eviction delete
+// live requests) and the fix. Uninstall+reinstall "worked" only because it is
+// the one action that wipes chrome.storage.local.
+//
+// The chrome.alarms heartbeat below predates that discovery and is kept
+// regardless: firing on a schedule keeps this service worker from sitting
+// fully idle, Chrome's own recommended mitigation for MV3 service-worker
+// reliability in general, and it's what keeps the toolbar badge from staying
+// stale if it ever desyncs from storage.
 const HEARTBEAT_ALARM_NAME = "detector-apis-heartbeat";
 
-chrome.runtime.onInstalled.addListener((details) => {
-  console.log("detector-apis-extension: onInstalled, reason=" + details.reason);
+// ROOT CAUSE of the "stops capturing after an update, only uninstall+reinstall
+// fixes it" bug — it was never a Chromium listener-routing issue, it's this:
+//
+// chrome.webRequest's `details.requestId` is only documented to be unique
+// "within a browser session". A new session (browser restart, and in practice
+// the restart users do around an update) restarts that counter from a low
+// number, but chrome.storage.local SURVIVES — so REQUEST_ORDER_KEY still holds
+// up to MAX_TRACKED_REQUESTS ids from the *previous* session, and the new
+// session's ids collide with them one by one. What that does to trackAndEvict:
+//
+//   order = ["1"(stale), "2"(stale), ... 500 stale ids]   <- at the cap already
+//   new request arrives, also called "1"
+//   onBeforeRequest writes 1-url / 1-tab-id / 1-pending / 1-start-time
+//   trackAndEvict pushes "1" -> length 501 > cap -> evicts order[0], which is
+//   the STALE "1" -> requestKeySuffixes("1") removes 1-url, 1-tab-id,
+//   1-pending, 1-start-time ... i.e. the keys the LIVE request just wrote.
+//
+// The request is deleted microseconds after being captured. It never renders,
+// so the popup looks permanently empty and the All tabs / Preserve log toggles
+// look dead too (they work fine — there is simply nothing left to show or
+// preserve). Because the poison is the persisted order array, chrome.runtime
+// .reload() and toggling the extension off/on both fail to fix it, while
+// uninstall+reinstall works — that's the one action that wipes storage. Which
+// is exactly the "only a reinstall helps" symptom, explained without any
+// Chromium bug at all.
+//
+// Fix: drop the previous session's tracked requests whenever a new session or
+// a new version starts, which is all the reinstall was really achieving. Only
+// per-request data is cleared (clearAllRequests leaves Preserve log / All tabs
+// / max-tracked-requests and every other preference untouched), and "preserve
+// log across a browser restart" was never a thing this extension offered —
+// DevTools' own Preserve log is per-session in the same way.
+async function startSession(reason) {
+  console.log("detector-apis-extension: startSession, reason=" + reason);
   chrome.alarms.create(HEARTBEAT_ALARM_NAME, { periodInMinutes: 1 });
+  await clearAllRequests();
+}
+
+chrome.runtime.onInstalled.addListener((details) => {
+  startSession("onInstalled/" + details.reason);
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  console.log("detector-apis-extension: onStartup (browser launched)");
-  chrome.alarms.create(HEARTBEAT_ALARM_NAME, { periodInMinutes: 1 });
+  startSession("onStartup");
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -39,160 +73,129 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   // done here. Also keeps the toolbar badge from staying stale if it ever
   // desyncs from storage for any reason.
   updateBadgeCount();
-  checkWebRequestHealth();
 });
 
-// Best-effort auto-recovery for the silent-update bug described at the top
-// of this file. See js/constants.js for why this compares two timestamps
-// from real traffic instead of firing a synthetic probe request (both
-// obvious probe designs — content-script fetch, service-worker fetch — turn
-// out to false-positive on a perfectly healthy install, from page CSP and
-// from chrome.webRequest's own by-design blind spot for extension-initiated
-// requests, respectively).
+// THE actual cause of "stops capturing requests until you uninstall and
+// reinstall", confirmed from a real user console:
 //
-// If LAST_PAGE_TRAFFIC_KEY keeps advancing (real page traffic is happening
-// and reaching background.js via messaging) while LAST_WEBREQUEST_SEEN_KEY
-// falls behind it by more than WEBREQUEST_STALE_THRESHOLD_MS, that's
-// evidence this service worker instance is alive and running JS — the
-// heartbeat alarm firing, and the message itself arriving, both prove that
-// — but chrome.webRequest specifically isn't routing events to it anymore.
-// LAST_WEBREQUEST_SEEN_KEY is stamped on both onBeforeRequest (request
-// start) and onHeadersReceived (response arrival) — using only the former
-// would make a single slow request (long-poll, large upload/download) look
-// like a growing gap for its entire duration, since LAST_PAGE_TRAFFIC_KEY
-// only advances once the page side sees its response, comparing "when did
-// this request start" against "when did some response finish" is comparing
-// two different things whenever more than one request is in flight.
+//   storage.local.set failed Error: Corruption: block checksum mismatch
 //
-// chrome.runtime.reload() is the same soft-restart the "Reload" button in
-// chrome://extensions triggers; unlike uninstall+reinstall it does not
-// clear chrome.storage.local. Whether it actually clears the underlying
-// Chromium-side routing bug is NOT confirmed (see CHANGELOG) — live testing
-// found it does NOT reliably fix this — this is a best-effort attempt, not a
-// proven fix, and it's also not the only explanation for a persistent gap: a
-// page whose Service Worker answers fetch() from Cache Storage never
-// touches the network layer webRequest observes at all, so its traffic
-// would look "invisible to webRequest" forever even though nothing is
-// actually broken. chrome.runtime.requestUpdateCheck() is tried first each
-// attempt — a distinct mechanism (asks Chrome to check for/apply a real
-// update right now instead of a soft restart) that might reset whatever
-// reload() doesn't, though this is equally unconfirmed and likely a no-op
-// once already on the latest version. RELOAD_ATTEMPT_COUNT_KEY caps recovery
-// attempts at MAX_AUTO_RELOAD_ATTEMPTS so a gap neither mechanism can (or
-// was ever going to) close stops interrupting the user's session every
-// WEBREQUEST_STALE_THRESHOLD_MS forever; once attempts are exhausted,
-// syncBrokenWarningUI switches the toolbar into a visible warning instead of
-// continuing to fail silently. The count (and warning) reset once a check
-// finds the gap closed, so a later, distinct incident gets the full retry
-// budget again.
-async function checkWebRequestHealth() {
-  const {
-    [LAST_PAGE_TRAFFIC_KEY]: lastPageTraffic,
-    [LAST_WEBREQUEST_SEEN_KEY]: lastWebRequestSeen,
-    [RELOAD_ATTEMPT_COUNT_KEY]: reloadAttempts,
-  } = await chrome.storage.local.get([
-    LAST_PAGE_TRAFFIC_KEY,
-    LAST_WEBREQUEST_SEEN_KEY,
-    RELOAD_ATTEMPT_COUNT_KEY,
-  ]);
+// chrome.storage.local is backed by LevelDB, and once that database is
+// corrupted on disk EVERY subsequent write fails, permanently. That is the
+// whole symptom set at once: requests can't be persisted so nothing is
+// captured, and the Preserve log / All tabs toggles write to the same store so
+// they appear dead too. chrome.runtime.reload() and toggling the extension
+// off/on can't help — the damaged files are still sitting there — while
+// uninstall+reinstall always does, because uninstalling deletes the
+// extension's storage directory and a reinstall builds a fresh database. It
+// was never a Chromium listener-routing bug, and the earlier requestId
+// collision (see startSession) was a genuine but separate bug.
+//
+// Worse, this used to fail *silently*: the catch below only logged, so the
+// extension went on looking healthy while recording nothing.
+//
+// Recovery: a corrupt database can't be repaired from extension code, but it
+// can be thrown away and rebuilt — which is exactly what the manual reinstall
+// was achieving. Preferences are read back first (best-effort; those reads can
+// hit the damaged block too) and restored afterwards, so the user loses
+// captured history but keeps their settings.
+function isStorageCorruptionError(err) {
+  const message = String((err && err.message) || err || "");
+  return /corruption|checksum|IO error|Damaged/i.test(message);
+}
 
-  if (!lastPageTraffic) {
-    // No real page traffic observed yet — nothing to compare against, and
-    // no evidence either way.
-    return;
+// Small preference keys worth carrying across a corruption wipe. Deliberately
+// excludes every per-request key: those are the bulk of the data and are what
+// needs discarding.
+const PREFERENCE_KEYS = [
+  PRESERVE_LOG_KEY,
+  SHOW_ALL_TABS_KEY,
+  MAX_TRACKED_REQUESTS_KEY,
+  REVEAL_SENSITIVE_KEY,
+  POPUP_UI_STATE_KEY,
+];
+
+// One shared attempt: a corrupt database fails every in-flight write at once,
+// so without this a burst of requests would each kick off their own wipe.
+let storageRecoveryInFlight = null;
+
+function recoverFromCorruptStorage() {
+  if (storageRecoveryInFlight) {
+    return storageRecoveryInFlight;
   }
-
-  const gap = lastPageTraffic - (lastWebRequestSeen || 0);
-  if (gap < WEBREQUEST_STALE_THRESHOLD_MS) {
-    if (reloadAttempts) {
-      await safeStorageSet({ [RELOAD_ATTEMPT_COUNT_KEY]: 0 });
-    }
-    await syncBrokenWarningUI(false);
-    return;
-  }
-
-  const attempts = reloadAttempts || 0;
-  if (attempts >= MAX_AUTO_RELOAD_ATTEMPTS) {
-    // Already tried MAX_AUTO_RELOAD_ATTEMPTS times without the gap closing —
-    // neither recovery mechanism fixes whatever this is, or it's the
-    // Service Worker/Cache Storage case above where there was never
-    // anything to fix. Stop retrying and make sure the user actually
-    // notices instead of silently sitting broken.
-    await syncBrokenWarningUI(true);
-    return;
-  }
-
-  console.warn(
-    "detector-apis-extension: webRequest health check failed — page traffic " +
-      "is reaching background.js via messaging, but chrome.webRequest hasn't " +
-      "reported a request in " +
-      Math.round(gap / 1000) +
-      "s. Attempting recovery (attempt " +
-      (attempts + 1) +
-      "/" +
-      MAX_AUTO_RELOAD_ATTEMPTS +
-      ")."
-  );
-  await safeStorageSet({
-    [LAST_WEBREQUEST_SEEN_KEY]: Date.now(),
-    [RELOAD_ATTEMPT_COUNT_KEY]: attempts + 1,
-  });
-  try {
-    const updateCheck = await chrome.runtime.requestUpdateCheck();
+  storageRecoveryInFlight = (async () => {
     console.warn(
-      "detector-apis-extension: requestUpdateCheck status=" + updateCheck.status
+      "detector-apis-extension: chrome.storage.local looks corrupted — " +
+        "clearing it and rebuilding. Captured requests are lost; preferences " +
+        "are preserved where still readable."
     );
-  } catch (err) {
-    console.warn("detector-apis-extension: requestUpdateCheck failed", err);
-  }
-  chrome.runtime.reload();
+    let preferences = {};
+    try {
+      preferences = await chrome.storage.local.get(PREFERENCE_KEYS);
+    } catch (err) {
+      // Reads can hit the same damaged block. Settings then fall back to
+      // their defaults, which beats staying permanently unable to record.
+      console.warn("detector-apis-extension: could not read back settings", err);
+    }
+
+    try {
+      await chrome.storage.local.clear();
+    } catch (err) {
+      console.warn("detector-apis-extension: clearing storage failed", err);
+      return false;
+    }
+
+    // In-memory bookkeeping refers to requestIds that no longer exist.
+    pendingBodyMatchesByUrl.clear();
+
+    try {
+      if (Object.keys(preferences).length > 0) {
+        await chrome.storage.local.set(preferences);
+      }
+      return true;
+    } catch (err) {
+      // The wipe itself succeeded, which is what unblocks capturing again —
+      // only restoring the settings failed.
+      console.warn("detector-apis-extension: could not restore settings", err);
+      return true;
+    }
+  })();
+
+  storageRecoveryInFlight.finally(() => {
+    storageRecoveryInFlight = null;
+  });
+  return storageRecoveryInFlight;
 }
 
-// Toolbar warning for when auto-recovery gives up (see checkWebRequestHealth
-// above). Overrides the normal count badge with a red "!" and disables the
-// popup so the toolbar icon click opens chrome://extensions instead of an
-// empty, broken capture popup — reinstalling is still manual, but at least
-// visible instead of a user only noticing when they happen to check an
-// empty popup. Re-derives the actual chrome.action state every call instead
-// of trusting EXTENSION_BROKEN_KEY alone, since Chrome doesn't guarantee
-// action overrides survive a full browser restart.
-async function syncBrokenWarningUI(isBroken) {
-  await safeStorageSet({ [EXTENSION_BROKEN_KEY]: isBroken });
-  if (isBroken) {
-    await chrome.action.setBadgeText({ text: "!" });
-    await chrome.action.setBadgeBackgroundColor({ color: "#d70015" });
-    await chrome.action.setTitle({
-      title:
-        (chrome.runtime.getManifest().name || "Detector APIs Extension") +
-        ": request capture appears broken after an update. Click to open " +
-        "chrome://extensions and remove + reinstall.",
-    });
-    await chrome.action.setPopup({ popup: "" });
-  } else {
-    await chrome.action.setTitle({ title: chrome.runtime.getManifest().name || "" });
-    await chrome.action.setPopup({ popup: "src/popup.html" });
-    await updateBadgeCount();
-  }
-}
-
-chrome.action.onClicked.addListener(function () {
-  // Only ever fires while the popup is unset (syncBrokenWarningUI(true))
-  // above — a default_popup in the manifest otherwise means Chrome opens
-  // the popup itself and never dispatches this event at all.
-  chrome.tabs.create({ url: "chrome://extensions/?id=" + chrome.runtime.id });
-});
-
-// chrome.storage.local.set() can reject (e.g. Resource::kQuotaBytes quota
-// exceeded). Every listener below does more work after its set() calls
-// (removing the "-pending" marker, registering a body match, updating the
-// badge) — an uncaught rejection would abort the rest of that async
-// function, leaving a request stuck "pending" forever. Swallow-and-log
-// instead so one failed write can't cascade into skipped bookkeeping.
+// chrome.storage.local.set() can also reject for ordinary reasons (e.g.
+// Resource::kQuotaBytes quota exceeded). Every listener below does more work
+// after its set() calls (removing the "-pending" marker, registering a body
+// match, updating the badge) — an uncaught rejection would abort the rest of
+// that async function, leaving a request stuck "pending" forever. Swallow-and-
+// log instead so one failed write can't cascade into skipped bookkeeping.
 async function safeStorageSet(items) {
   try {
     await chrome.storage.local.set(items);
   } catch (err) {
-    console.warn("detector-apis-extension: storage.local.set failed", err);
+    if (!isStorageCorruptionError(err)) {
+      console.warn("detector-apis-extension: storage.local.set failed", err);
+      return;
+    }
+    const recovered = await recoverFromCorruptStorage();
+    if (!recovered) {
+      return;
+    }
+    // Retry once against the rebuilt database, so the request that happened to
+    // trigger recovery still gets captured instead of being the one write
+    // thrown away.
+    try {
+      await chrome.storage.local.set(items);
+    } catch (retryErr) {
+      console.warn(
+        "detector-apis-extension: storage.local.set failed after recovery",
+        retryErr
+      );
+    }
   }
 }
 
@@ -223,10 +226,49 @@ function isTrackableRequest(details) {
   return details.type === XHR_RESOURCE_TYPE && details.method !== "OPTIONS";
 }
 
+// This used to be two separate onBeforeRequest listeners — one registering the
+// request, a second (further down, with the "requestBody" extraInfoSpec)
+// persisting its body — which meant two independent chrome.storage.local
+// writes for every single request that carried a body. One listener asking for
+// "requestBody" does both jobs in a single write. Fewer, larger writes is the
+// point: chrome.storage.local is a LevelDB database, every set() is its own
+// transaction appended to the write-ahead log, and this extension is on the
+// hot path of every fetch/XHR the browser makes. See safeStorageSet above for
+// why keeping that write volume down matters.
 chrome.webRequest.onBeforeRequest.addListener(
   async function (details) {
     if (!isTrackableRequest(details)) {
       return;
+    }
+
+    const record = {
+      [details.requestId + "-url"]: details.url,
+      [details.requestId + "-tab-id"]: details.tabId,
+      [details.requestId + "-pending"]: details.method,
+      // webRequest's own timeStamp on every event for this request, used to
+      // compute how long it took once it completes/fails (onHeadersReceived
+      // / handleRequestError below).
+      [details.requestId + "-start-time"]: details.timeStamp,
+    };
+
+    // Deliberately no method whitelist. This used to be `POST` and `PUT` only,
+    // which silently dropped the body of every PATCH request — a method the
+    // popup's own filter dropdown offers, and the standard verb for partial
+    // updates in most REST APIs — so copying a PATCH as curl/fetch produced a
+    // command that sent no body at all and quietly did the wrong thing when
+    // run. DELETE and other body-carrying requests were affected the same way.
+    // Chrome only populates details.requestBody for requests that actually
+    // have one, so the guards below are all the filtering needed.
+    const requestBody = details.requestBody;
+    if (requestBody && requestBody.raw && requestBody.raw[0]) {
+      const decoded = new TextDecoder("utf-8").decode(
+        new Uint8Array(requestBody.raw[0].bytes)
+      );
+      record[details.requestId + "-request-body"] = truncateBody(decoded);
+    } else if (requestBody && requestBody.formData) {
+      record[details.requestId + "-request-body"] = truncateBody(
+        buildFormDataBody(requestBody.formData)
+      );
     }
 
     // Written before trackAndEvict, not after: trackAndEvict serializes on a
@@ -236,21 +278,11 @@ chrome.webRequest.onBeforeRequest.addListener(
     // queue gets to this call — writing this request's own keys first (they
     // don't depend on the shared order array) keeps that window as small as
     // a single storage.local.set instead of however long the queue is.
-    await safeStorageSet({
-      [details.requestId + "-url"]: details.url,
-      [details.requestId + "-tab-id"]: details.tabId,
-      [details.requestId + "-pending"]: details.method,
-      // webRequest's own timeStamp on every event for this request, used to
-      // compute how long it took once it completes/fails (onHeadersReceived
-      // / handleRequestError below).
-      [details.requestId + "-start-time"]: details.timeStamp,
-      // Proof chrome.webRequest itself is alive and seeing real requests —
-      // see checkWebRequestHealth's big comment above for how this is used.
-      [LAST_WEBREQUEST_SEEN_KEY]: Date.now(),
-    });
+    await safeStorageSet(record);
     await trackAndEvict(details.requestId);
   },
-  { urls: ["<all_urls>"] }
+  { urls: ["<all_urls>"] },
+  ["requestBody"]
 );
 
 // net::ERR_ABORTED is what Chrome reports for a request the page itself
@@ -290,10 +322,15 @@ async function handleRequestError(details) {
     return;
   }
   untrackPendingBodyMatch(details.requestId);
-  await chrome.storage.local.remove(details.requestId + "-pending");
   const duration = await computeDuration(details.requestId, details.timeStamp);
 
   await safeStorageSet({
+    // Cleared by writing "" in this same set() rather than a separate
+    // storage.local.remove() call — one LevelDB transaction instead of two per
+    // finished request. The only reader (renderTable in js/popup.js) tests it
+    // for truthiness, so an empty string reads exactly like an absent key, and
+    // eviction removes the key outright along with the rest of the request.
+    [details.requestId + "-pending"]: "",
     [details.requestId]:
       networkErrorLabel(details.error) +
       " " +
@@ -359,6 +396,18 @@ function trackAndEvict(requestId) {
       REQUEST_ORDER_KEY
     );
     let order = storedOrder || [];
+    // Defence in depth for the requestId-collision bug documented at
+    // startSession above: if this id is somehow already in the array (a
+    // session boundary neither onInstalled nor onStartup caught), drop the
+    // stale entry now. Deliberately WITHOUT removing its storage keys —
+    // onBeforeRequest has already overwritten those with the live request's
+    // data, so deleting them is exactly the data loss being prevented. Left
+    // in place, the stale entry would sit at the front of the array and be
+    // the first thing eviction throws away, taking the live request with it.
+    const staleIndex = order.indexOf(requestId);
+    if (staleIndex !== -1) {
+      order.splice(staleIndex, 1);
+    }
     order.push(requestId);
 
     let keysToRemove = [];
@@ -472,13 +521,10 @@ chrome.webRequest.onHeadersReceived.addListener(
       ),
       [details.requestId + "-duration"]: duration,
       [details.requestId + "-size"]: size,
-      // Response-side proof chrome.webRequest is alive, timed comparably to
-      // LAST_PAGE_TRAFFIC_KEY (also stamped on response arrival) — see
-      // checkWebRequestHealth's comment for why request-start alone isn't
-      // enough.
-      [LAST_WEBREQUEST_SEEN_KEY]: Date.now(),
+      // Cleared in this same write instead of a follow-up
+      // storage.local.remove() — see handleRequestError above.
+      [details.requestId + "-pending"]: "",
     });
-    await chrome.storage.local.remove(details.requestId + "-pending");
 
     // Register for body capture whenever there's *any* content-type — not
     // narrowed to JSON-ish types anymore, so REST responses with vendor/other
@@ -513,17 +559,6 @@ chrome.webRequest.onHeadersReceived.addListener(
 // toggle, so switching "All tabs" off made the popup show a filtered
 // single-tab subset while the badge kept showing the old global count.
 async function updateBadgeCount() {
-  // Stand down while the toolbar is showing checkWebRequestHealth's broken
-  // warning (syncBrokenWarningUI) — otherwise this would silently overwrite
-  // that "!" badge with a normal request count on the very next completed
-  // request or heartbeat tick, defeating the point of the warning.
-  const { [EXTENSION_BROKEN_KEY]: isBroken } = await chrome.storage.local.get(
-    EXTENSION_BROKEN_KEY
-  );
-  if (isBroken) {
-    return;
-  }
-
   const { [REQUEST_ORDER_KEY]: order } = await chrome.storage.local.get(
     REQUEST_ORDER_KEY
   );
@@ -604,63 +639,39 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
   ["requestHeaders", "extraHeaders"]
 );
 
-// Captures the request body for methods that can carry one. Only the plain
-// decoded string is persisted (-request-body) — popup.js's on-demand curl
-// snippet builder (buildCurlSnippet) and buildFetchSnippet both format it
-// themselves (as --data-raw / a fetch() body respectively) from this same
-// value, instead of this listener pre-formatting a curl-specific fragment.
-chrome.webRequest.onBeforeRequest.addListener(
-  async function (details) {
-    if (!isTrackableRequest(details)) {
-      return;
+// Rebuilds an application/x-www-form-urlencoded body string from the parsed
+// field map chrome.webRequest hands over in details.requestBody.formData.
+// Chrome gives every field a *list* of values (one HTML form can legitimately
+// send the same name more than once — checkbox groups, multi-selects, repeated
+// inputs) and hands those values back already percent-decoded.
+// Three bugs this replaces, all of which produced a body that didn't match
+// what the page actually sent, and so a curl/fetch snippet that misbehaved
+// when run: only formData[key][0] was read, so every value after the first was
+// dropped; neither name nor value was re-encoded, so any field containing "&"
+// or "=" corrupted every field after it; and a trailing "&" was always left on
+// the end, which servers parse as an extra empty-named field.
+function buildFormDataBody(formData) {
+  const parts = [];
+  for (const key in formData) {
+    if (!Object.prototype.hasOwnProperty.call(formData, key)) {
+      continue;
     }
-    if (details.method !== "POST" && details.method !== "PUT") {
-      return;
+    const values = formData[key];
+    if (!Array.isArray(values)) {
+      continue;
     }
-
-    const requestBody = details.requestBody;
-    if (requestBody && requestBody.raw && requestBody.raw[0]) {
-      const uint8Array = new Uint8Array(requestBody.raw[0].bytes);
-      const textDecoder = new TextDecoder("utf-8");
-      const decodedString = truncateBody(textDecoder.decode(uint8Array));
-
-      await safeStorageSet({
-        [details.requestId + "-request-body"]: decodedString,
-      });
+    for (const value of values) {
+      parts.push(encodeURIComponent(key) + "=" + encodeURIComponent(value));
     }
-
-    // form data
-    if (requestBody && requestBody.formData) {
-      let rawDataBody = "";
-      for (const key in requestBody.formData) {
-        if (requestBody.formData.hasOwnProperty(key)) {
-          rawDataBody += `${key}=${requestBody.formData[key][0]}&`;
-        }
-      }
-      rawDataBody = truncateBody(rawDataBody);
-
-      await safeStorageSet({
-        [details.requestId + "-request-body"]: rawDataBody,
-      });
-    }
-  },
-  { urls: ["<all_urls>"] },
-  ["requestBody"]
-);
+  }
+  return parts.join("&");
+}
 
 // Response bodies are captured in the page's own JS context (via
 // js/response-capture.js hooking fetch/XHR, since chrome.webRequest cannot
 // read response bodies) and relayed here through js/response-bridge.js.
 chrome.runtime.onMessage.addListener(function (message) {
   if (message && message.type === "DETECTOR_APIS_RESPONSE_BODY") {
-    // Stamped unconditionally, before the claim attempt below — this is
-    // proof a page made a real completed fetch/XHR call and the
-    // content-script -> background messaging channel is alive, regardless
-    // of whether claimPendingBodyMatch below finds a match (that match only
-    // exists if chrome.webRequest's own onHeadersReceived already ran,
-    // which is exactly what checkWebRequestHealth is trying to detect the
-    // absence of). See js/constants.js for the full reasoning.
-    safeStorageSet({ [LAST_PAGE_TRAFFIC_KEY]: Date.now() });
     handleResponseBodyCapture(message);
   } else if (message && message.type === "DETECTOR_APIS_CLEAR_ALL") {
     clearAllRequests();

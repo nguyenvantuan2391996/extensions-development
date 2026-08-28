@@ -71,12 +71,20 @@ async function setupOpenInTab() {
   });
 }
 
-function getActiveTabId() {
-  return new Promise(function (resolve) {
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      resolve(tabs && tabs[0] ? tabs[0].id : null);
-    });
-  });
+async function getActiveTabId() {
+  // Undocked into a normal tab via "Open in Tab"? Then the active tab in this
+  // window is the popup page ITSELF, which never has captured requests of its
+  // own — scoping to it left the list permanently empty for anyone who also
+  // had "All tabs" switched off, with no hint as to why. There is no
+  // meaningful "page tab" to scope to in that mode (the popup outlives
+  // whatever tab it was opened from, which is the entire point of undocking),
+  // so report unknown and let renderTable's existing fallback show everything.
+  const currentTab = await chrome.tabs.getCurrent();
+  if (currentTab) {
+    return null;
+  }
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tabs && tabs[0] ? tabs[0].id : null;
 }
 
 function getShowAllTabsPreference() {
@@ -148,14 +156,25 @@ function getTbody() {
   return document.querySelector("#table-result-detector-apis>tbody");
 }
 
-function firstPendingRow(tbody) {
-  return tbody.querySelector("tr.pending-row");
+function firstDataRow(tbody) {
+  return tbody.querySelector("tr.data-row");
 }
 
-// data rows are always grouped above pending rows, so a freshly-seen data
-// row is inserted right before the first pending row instead of at the end
+// Newest-first. The list used to append, so new requests landed at the bottom
+// — and since nothing here auto-scrolls and the popup is a fixed 550px window
+// showing roughly ten rows, live traffic quietly piled up below the fold where
+// it was never seen. (DevTools appends too, but it has a full-height panel and
+// its own auto-scroll; neither applies here.)
+//
+// Layout is therefore: in-flight rows at the very top, then completed rows
+// newest to oldest. renderTable still walks REQUEST_ORDER_KEY oldest-first, so
+// inserting each new data row directly above the previous ones — rather than
+// appending — produces newest-first for a bulk first render and for a single
+// request arriving later alike. Anchoring on the first *data* row (not the
+// first pending one) is what keeps a just-completed request below anything
+// still in flight instead of jumping above it.
 function insertDataRow(tr, tbody) {
-  const anchor = firstPendingRow(tbody);
+  const anchor = firstDataRow(tbody);
   if (anchor) {
     tbody.insertBefore(tr, anchor);
   } else {
@@ -332,7 +351,9 @@ function upsertPendingRow(requestId, url, method, tbody) {
     return;
   }
   let tr = buildPendingRowElement(requestId, url, method);
-  tbody.appendChild(tr);
+  // Top of the list: a request that has only just started is the newest thing
+  // there is, and an in-flight row is also the one worth watching.
+  tbody.insertBefore(tr, tbody.firstChild);
   rowsByRequestId.set(requestId, { tr: tr, kind: "pending" });
 }
 
@@ -826,6 +847,18 @@ function findHeaderValue(headers, name) {
   return "";
 }
 
+// Decodes one application/x-www-form-urlencoded name or value. "+" means a
+// literal space in that encoding, which decodeURIComponent does not handle,
+// and a malformed percent-escape (e.g. a truncated body ending mid-"%E2%80")
+// makes it throw — returning the raw text beats losing the whole export.
+function formUrlDecode(text) {
+  try {
+    return decodeURIComponent(text.replace(/\+/g, " "));
+  } catch (e) {
+    return text;
+  }
+}
+
 function buildPostmanRequestBody(info, contentType) {
   if (!info.requestBody) {
     return undefined;
@@ -838,8 +871,17 @@ function buildPostmanRequestBody(info, contentType) {
         return pair.length > 0;
       })
       .map(function (pair) {
-        let [key, value] = pair.split("=");
-        return { key: key || "", value: value || "" };
+        // Split on the FIRST "=" only. `pair.split("=")` + destructuring threw
+        // away everything after the second one, silently truncating any value
+        // that legitimately contains "=" — base64 padding and JWTs being the
+        // everyday cases ("t=abc==" exported as "abc").
+        const separatorIndex = pair.indexOf("=");
+        const rawKey = separatorIndex === -1 ? pair : pair.slice(0, separatorIndex);
+        const rawValue = separatorIndex === -1 ? "" : pair.slice(separatorIndex + 1);
+        // Postman stores urlencoded fields decoded and re-encodes them when
+        // sending, so handing it the still-encoded text made it double-encode
+        // on replay ("a%26b" going out as "a%2526b").
+        return { key: formUrlDecode(rawKey), value: formUrlDecode(rawValue) };
       });
     return { mode: "urlencoded", urlencoded };
   }
@@ -1134,9 +1176,10 @@ function sortValueFor(column, row) {
 }
 
 // Reorders the existing .data-row elements in place (no rebuild) according
-// to the active sort; pending rows are left untouched, already trailing
-// after the data rows per insertDataRow's own invariant. A no-op when
-// sortColumn is null, leaving rows in their natural arrival order.
+// to the active sort; pending rows are left untouched, already sitting above
+// the data rows per insertDataRow's own invariant, so appending the sorted
+// rows in order rebuilds exactly that layout. A no-op when sortColumn is null,
+// leaving rows in their natural newest-first order.
 function applySort() {
   updateSortIndicators();
   if (!sortColumn) {
@@ -1152,9 +1195,16 @@ function applySort() {
     return sortDir === "asc" ? cmp : -cmp;
   });
 
-  let anchor = firstPendingRow(tbody);
   for (const row of rows) {
-    tbody.insertBefore(row, anchor);
+    // An expanded row's detail panel is a separate <tr> sitting immediately
+    // after it (see the insertAdjacentElement in the row click handler), and
+    // it is not a .data-row — so moving rows without it left the open panel
+    // stranded under whichever unrelated request happened to land there.
+    const detail = row.nextElementSibling;
+    tbody.appendChild(row);
+    if (detail && detail.classList.contains("detail-row")) {
+      tbody.appendChild(detail);
+    }
   }
 }
 
