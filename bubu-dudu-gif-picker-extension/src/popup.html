@@ -23,6 +23,83 @@
             --separator: rgba(60, 60, 67, 0.12);
             --ease-spring: cubic-bezier(0.34, 1.35, 0.64, 1);
             --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+            /* Neutral fills reused across inputs, pills, and icon buttons —
+               kept as tokens (rather than inline greys) so dark mode only has
+               to redefine them here instead of hunting every usage. */
+            --fill-input: #fbfbfd;
+            --fill-muted: #e5e5ea;
+            --fill-muted-hover: #dcdce1;
+            --fill-strong: #d1d1d6;
+            --fill-hover: #f0f0f2;
+            --fill-track: #ececed;
+            --fill-divider: #e8e8ec;
+            --scrollbar-thumb: rgba(0, 0, 0, 0.18);
+
+            --warn-bg: rgba(255, 204, 0, 0.15);
+            --warn-text: #7a5c00;
+            --warn-action-hover: rgba(122, 92, 0, 0.12);
+            --warn-action-active: rgba(122, 92, 0, 0.2);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #1c1c1e;
+                --card-bg: #2c2c2e;
+                --text-primary: #f5f5f7;
+                --text-secondary: #98989d;
+                --border: #48484a;
+                --accent: #409cff;
+                --accent-hover: #5eabff;
+                --accent-active: #2f8cf0;
+                --success: #32d74b;
+                --danger: #ff453a;
+                --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+                --separator: rgba(255, 255, 255, 0.12);
+
+                --fill-input: #3a3a3c;
+                --fill-muted: #3a3a3c;
+                --fill-muted-hover: #48484a;
+                --fill-strong: #545456;
+                --fill-hover: #444446;
+                --fill-track: #3a3a3c;
+                --fill-divider: #3a3a3c;
+                --scrollbar-thumb: rgba(255, 255, 255, 0.22);
+
+                --warn-bg: rgba(255, 214, 10, 0.16);
+                --warn-text: #ffd60a;
+                --warn-action-hover: rgba(255, 214, 10, 0.16);
+                --warn-action-active: rgba(255, 214, 10, 0.26);
+            }
+        }
+
+        :root[data-theme="dark"] {
+            --bg: #1c1c1e;
+            --card-bg: #2c2c2e;
+            --text-primary: #f5f5f7;
+            --text-secondary: #98989d;
+            --border: #48484a;
+            --accent: #409cff;
+            --accent-hover: #5eabff;
+            --accent-active: #2f8cf0;
+            --success: #32d74b;
+            --danger: #ff453a;
+            --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+            --separator: rgba(255, 255, 255, 0.12);
+
+            --fill-input: #3a3a3c;
+            --fill-muted: #3a3a3c;
+            --fill-muted-hover: #48484a;
+            --fill-strong: #545456;
+            --fill-hover: #444446;
+            --fill-track: #3a3a3c;
+            --fill-divider: #3a3a3c;
+            --scrollbar-thumb: rgba(255, 255, 255, 0.22);
+
+            --warn-bg: rgba(255, 214, 10, 0.16);
+            --warn-text: #ffd60a;
+            --warn-action-hover: rgba(255, 214, 10, 0.16);
+            --warn-action-active: rgba(255, 214, 10, 0.26);
         }
 
         * {
@@ -123,17 +200,29 @@
             transition-duration: 0.1s;
         }
 
-        /* ---------- Alerts (floating toast, no layout shift) ---------- */
-        .alert[hidden] {
-            display: none;
-        }
-
-        .alert {
+        /* ---------- Alerts (floating toast stack, no layout shift) ---------- */
+        /* All three alerts (success/error/undo) share this stack instead of each
+           positioning itself at the same fixed spot, so a toast that's still
+           showing doesn't sit underneath the next one. */
+        .toast-stack {
             position: fixed;
             top: 10px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .alert[hidden] {
+            display: none;
+        }
+
+        .alert {
+            pointer-events: auto;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -149,8 +238,8 @@
         }
 
         @keyframes alertDropIn {
-            0% { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.96); }
-            100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+            0% { opacity: 0; transform: translateY(-6px) scale(0.96); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .alert-icon {
@@ -220,8 +309,8 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            background: rgba(255, 204, 0, 0.15);
-            color: #7a5c00;
+            background: var(--warn-bg);
+            color: var(--warn-text);
             font-size: 12.5px;
             padding: 8px 12px;
             border-radius: var(--radius-md);
@@ -235,8 +324,8 @@
             flex: none;
             font-size: 12px;
             font-weight: 600;
-            color: #7a5c00;
-            background: rgba(122, 92, 0, 0.12);
+            color: var(--warn-text);
+            background: var(--warn-action-hover);
             border: none;
             border-radius: 980px;
             padding: 5px 12px;
@@ -245,7 +334,7 @@
         }
 
         #gif-status-banner-action:hover {
-            background: rgba(122, 92, 0, 0.2);
+            background: var(--warn-action-active);
         }
 
         /* ---------- Toolbar ---------- */
@@ -268,6 +357,17 @@
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        .gif-count {
+            margin: 6px 0 0;
+            font-size: 11.5px;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .gif-count[hidden] {
+            display: none;
         }
 
         .field {
@@ -294,7 +394,7 @@
             width: 13px;
             height: 13px;
             border-radius: 50%;
-            background: #e5e5ea;
+            background: var(--fill-muted);
             color: var(--text-secondary);
             font-size: 10px;
             font-weight: 700;
@@ -339,6 +439,21 @@
             min-width: 0;
         }
 
+        .preset-controls[hidden],
+        .preset-save-row[hidden] {
+            display: none;
+        }
+
+        .preset-save-row {
+            display: flex;
+            gap: 4px;
+        }
+
+        .preset-save-row input[type="text"] {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
         .mini-icon-btn {
             flex-shrink: 0;
             width: 30px;
@@ -350,14 +465,14 @@
             font-size: 13px;
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
-            background: #fbfbfd;
+            background: var(--fill-input);
             color: var(--text-secondary);
             cursor: pointer;
             transition: background 0.15s var(--ease-standard);
         }
 
         .mini-icon-btn:hover {
-            background: #f0f0f2;
+            background: var(--fill-hover);
         }
 
         .mini-icon-btn[hidden] {
@@ -398,7 +513,7 @@
             justify-content: center;
             border: none;
             border-radius: 50%;
-            background: #e5e5ea;
+            background: var(--fill-muted);
             color: var(--text-secondary);
             font-size: 10px;
             cursor: pointer;
@@ -406,7 +521,7 @@
         }
 
         .search-clear-btn:hover {
-            background: #d1d1d6;
+            background: var(--fill-strong);
         }
 
         .shortcut-hint {
@@ -416,7 +531,7 @@
             font-size: 10.5px;
             font-weight: 600;
             color: var(--text-secondary);
-            background: #ececed;
+            background: var(--fill-track);
             border: 1px solid var(--border);
             border-radius: 5px;
             font-family: -apple-system, monospace;
@@ -429,7 +544,7 @@
             font-size: 13px;
             font-family: inherit;
             color: var(--text-primary);
-            background: #fbfbfd;
+            background: var(--fill-input);
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             padding: 7px 9px;
@@ -458,6 +573,20 @@
         }
 
         /* ---------- Buttons ---------- */
+        .tab-btn:focus-visible,
+        .pill-btn:focus-visible,
+        #toggle-add-gif:focus-visible,
+        #btn-add-gif:focus-visible,
+        .mini-icon-btn:focus-visible,
+        .search-clear-btn:focus-visible,
+        #undo-alert-btn:focus-visible,
+        #gif-status-banner-action:focus-visible,
+        .managed-sites-toggle:focus-visible,
+        .managed-site-remove:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
         #toggle-add-gif,
         #btn-add-gif {
             font-size: 13px;
@@ -486,8 +615,17 @@
         }
 
         #toggle-add-gif.is-open {
-            background: #e5e5ea;
+            background: var(--fill-muted);
             color: var(--text-primary);
+        }
+
+        .add-gif-icon {
+            display: inline-block;
+            transition: transform 0.2s var(--ease-standard);
+        }
+
+        #toggle-add-gif.is-open .add-gif-icon {
+            transform: rotate(45deg);
         }
 
         .add-gif-panel[hidden] {
@@ -552,7 +690,7 @@
             padding: 2px 8px;
             border: 1px dashed var(--border);
             border-radius: var(--radius-sm);
-            background: #fbfbfd;
+            background: var(--fill-input);
             transition: border-color 0.15s var(--ease-standard), background 0.15s var(--ease-standard);
         }
 
@@ -595,17 +733,17 @@
             cursor: pointer;
             white-space: nowrap;
             color: var(--text-secondary);
-            background: #e5e5ea;
+            background: var(--fill-muted);
             transition: background 0.15s var(--ease-standard), transform 0.2s var(--ease-spring);
         }
 
         .pill-btn:hover {
-            background: #dcdce1;
+            background: var(--fill-muted-hover);
             transform: translateY(-1px);
         }
 
         .pill-btn:active {
-            background: #d1d1d6;
+            background: var(--fill-strong);
             transform: scale(0.95);
             transition-duration: 0.1s;
         }
@@ -638,6 +776,34 @@
             align-content: flex-start;
         }
 
+        #gif-hover-preview {
+            position: fixed;
+            z-index: 60;
+            pointer-events: none;
+            width: 168px;
+            height: 168px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: var(--card-bg);
+            border: 2px solid var(--card-bg);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+            opacity: 0;
+            transform: scale(0.92);
+            transition: opacity 0.12s var(--ease-standard), transform 0.12s var(--ease-standard);
+        }
+
+        #gif-hover-preview.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        #gif-hover-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
         .gif-item {
             position: relative;
             aspect-ratio: 1 / 1;
@@ -667,6 +833,28 @@
             box-shadow: 0 0 0 3px var(--success), 0 6px 16px rgba(0, 0, 0, 0.1);
         }
 
+        .gif-rename-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.72);
+        }
+
+        .gif-rename-overlay input {
+            width: 100%;
+            font-size: 10.5px;
+            text-align: center;
+            padding: 3px 4px;
+            border: none;
+            border-radius: 5px;
+            background: #fff;
+            color: #1d1d1f;
+        }
+
         .checkmark {
             position: absolute;
             top: 5px;
@@ -689,6 +877,15 @@
             0% { transform: scale(0); opacity: 0; }
             60% { transform: scale(1.2); opacity: 1; }
             100% { transform: scale(1); }
+        }
+
+        .delete-icon,
+        .favorite-icon {
+            border: none;
+            padding: 0;
+            font-family: inherit;
+            -webkit-appearance: none;
+            appearance: none;
         }
 
         .delete-icon {
@@ -715,6 +912,13 @@
         .gif-item:focus-within .delete-icon {
             opacity: 1;
             transform: scale(1);
+        }
+
+        .delete-icon:focus-visible,
+        .favorite-icon:focus-visible {
+            opacity: 1;
+            outline: 2px solid #fff;
+            outline-offset: 1px;
         }
 
         .favorite-icon {
@@ -756,12 +960,35 @@
             display: block;
         }
 
+        .gif-item.is-broken {
+            background: var(--bg);
+        }
+
+        .gif-item.is-broken img {
+            visibility: hidden;
+        }
+
+        .gif-item.is-broken::after {
+            content: "\26A0";
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--text-secondary);
+        }
+
         .empty-hint {
             grid-column: 1 / -1;
             text-align: center;
             color: var(--text-secondary);
             font-size: 13px;
             padding: 48px 12px;
+        }
+
+        .empty-hint .pill-btn {
+            margin-top: 10px;
         }
 
         .empty-hint[hidden] {
@@ -836,9 +1063,13 @@
             position: absolute;
             inset: 0;
             cursor: pointer;
-            background: #e5e5ea;
+            background: var(--fill-muted);
             border-radius: 999px;
-            transition: background 0.18s var(--ease-standard);
+            transition: background 0.18s var(--ease-standard), box-shadow 0.15s var(--ease-standard);
+        }
+
+        .switch input:focus-visible + .switch-slider {
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.35);
         }
 
         .switch-slider::before {
@@ -872,7 +1103,7 @@
             flex: none;
             display: flex;
             gap: 4px;
-            background: #e8e8ec;
+            background: var(--fill-divider);
             padding: 3px;
             border-radius: 980px;
         }
@@ -895,7 +1126,7 @@
         }
 
         .tab-btn.active {
-            background: #fff;
+            background: var(--card-bg);
             color: var(--text-primary);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
@@ -906,6 +1137,10 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
+        }
+
+        .tab-panel:focus-visible {
+            outline: none;
         }
 
         .tab-panel[hidden] {
@@ -959,6 +1194,99 @@
             border-top: 1px solid var(--separator);
         }
 
+        .managed-sites {
+            border-top: 1px solid var(--separator);
+            padding: 8px 0;
+        }
+
+        .managed-sites + .setting-row {
+            border-top: 1px solid var(--separator);
+        }
+
+        .managed-sites-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: none;
+            border: none;
+            padding: 2px 0;
+            cursor: pointer;
+        }
+
+        .managed-sites-toggle:hover {
+            color: var(--text-primary);
+        }
+
+        .managed-sites-chevron {
+            font-size: 10px;
+            transition: transform 0.15s var(--ease-standard);
+        }
+
+        .managed-sites-toggle[aria-expanded="true"] .managed-sites-chevron {
+            transform: rotate(180deg);
+        }
+
+        .managed-sites-list {
+            margin-top: 8px;
+            max-height: 130px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .managed-sites-list[hidden] {
+            display: none;
+        }
+
+        .managed-sites-empty {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin: 4px 0;
+        }
+
+        .managed-site-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 8px;
+            border-radius: var(--radius-sm);
+            background: var(--fill-input);
+        }
+
+        .managed-site-host {
+            flex: 1 1 auto;
+            min-width: 0;
+            font-size: 12px;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .managed-site-remove {
+            flex: none;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            border: none;
+            border-radius: 50%;
+            background: var(--fill-muted);
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .managed-site-remove:hover {
+            background: rgba(255, 59, 48, 0.18);
+            color: var(--danger);
+        }
+
         .setting-row-text {
             flex: 1 1 auto;
             min-width: 0;
@@ -987,11 +1315,39 @@
             gap: 8px;
         }
 
+        .reset-confirm {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 59, 48, 0.08);
+            border: 1px solid rgba(255, 59, 48, 0.25);
+        }
+
+        .reset-confirm[hidden] {
+            display: none;
+        }
+
+        .reset-confirm-text {
+            flex: 1 1 200px;
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+
+        .reset-confirm-actions {
+            display: flex;
+            gap: 8px;
+            flex: none;
+        }
+
         /* ---------- Unsupported page banner ---------- */
         .page-banner {
             flex: none;
-            background: rgba(255, 204, 0, 0.15);
-            color: #7a5c00;
+            background: var(--warn-bg);
+            color: var(--warn-text);
             font-size: 12.5px;
             padding: 8px 14px;
             border-radius: var(--radius-md);
@@ -1033,11 +1389,14 @@
         }
 
         .footer-contact {
+            flex: none;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            margin-top: 5px;
+            padding-top: 10px;
+            margin-top: 4px;
+            border-top: 1px solid var(--separator);
         }
 
         .footer-contact-label {
@@ -1058,7 +1417,7 @@
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: #f0f0f2;
+            background: var(--fill-hover);
             color: var(--text-secondary);
             transition: background 0.15s var(--ease-standard), color 0.15s var(--ease-standard), transform 0.2s var(--ease-spring);
         }
@@ -1076,12 +1435,21 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.18);
+            background: var(--scrollbar-thumb);
             border-radius: 10px;
         }
 
         ::-webkit-scrollbar-track {
             background: transparent;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
         }
     </style>
 </head>
@@ -1099,20 +1467,22 @@
         </a>
     </div>
 
-    <div class="alert" hidden="hidden" role="alert" id="success-alert">
-        <span class="alert-icon">✓</span>
-        <span class="alert-message" data-default="Your action has been completed successfully.">Your action has been completed successfully.</span>
-    </div>
+    <div class="toast-stack">
+        <div class="alert" hidden="hidden" role="alert" id="success-alert">
+            <span class="alert-icon">✓</span>
+            <span class="alert-message" data-default="Your action has been completed successfully.">Your action has been completed successfully.</span>
+        </div>
 
-    <div class="alert" hidden="hidden" role="alert" id="error-alert">
-        <span class="alert-icon">!</span>
-        <span class="alert-message" data-default="Something went wrong. Please try again.">Something went wrong. Please try again.</span>
-    </div>
+        <div class="alert" hidden="hidden" role="alert" id="error-alert">
+            <span class="alert-icon">!</span>
+            <span class="alert-message" data-default="Something went wrong. Please try again.">Something went wrong. Please try again.</span>
+        </div>
 
-    <div class="alert alert-undo" hidden="hidden" role="alert" id="undo-alert">
-        <span class="alert-icon">✓</span>
-        <span class="alert-message" id="undo-alert-message">GIF deleted.</span>
-        <button type="button" id="undo-alert-btn">Undo</button>
+        <div class="alert alert-undo" hidden="hidden" role="alert" id="undo-alert">
+            <span class="alert-icon">✓</span>
+            <span class="alert-message" id="undo-alert-message">GIF deleted.</span>
+            <button type="button" id="undo-alert-btn">Undo</button>
+        </div>
     </div>
 
     <p class="page-banner" id="page-banner" hidden="hidden">
@@ -1121,11 +1491,11 @@
 
     <!-- Tabs: browse GIFs vs. configure settings -->
     <div class="tabs" role="tablist">
-        <button type="button" class="tab-btn active" id="tab-btn-gifs" role="tab" aria-selected="true" aria-controls="tab-panel-gifs">GIFs</button>
-        <button type="button" class="tab-btn" id="tab-btn-settings" role="tab" aria-selected="false" aria-controls="tab-panel-settings">Settings</button>
+        <button type="button" class="tab-btn active" id="tab-btn-gifs" role="tab" aria-selected="true" aria-controls="tab-panel-gifs" tabindex="0">GIFs</button>
+        <button type="button" class="tab-btn" id="tab-btn-settings" role="tab" aria-selected="false" aria-controls="tab-panel-settings" tabindex="-1">Settings</button>
     </div>
 
-    <div class="tab-panel" id="tab-panel-gifs" role="tabpanel">
+    <div class="tab-panel" id="tab-panel-gifs" role="tabpanel" aria-labelledby="tab-btn-gifs" tabindex="0">
         <p class="gif-status-banner" id="gif-status-banner" hidden="hidden">
             <span id="gif-status-banner-text"></span>
             <button type="button" id="gif-status-banner-action"></button>
@@ -1137,8 +1507,9 @@
                     <input type="text" id="gif_search" placeholder="Search your GIFs...">
                     <button type="button" id="gif_search_clear" class="search-clear-btn" aria-label="Clear search" hidden="hidden">✕</button>
                 </div>
-                <button type="button" id="toggle-add-gif" aria-expanded="false">+ Add GIF</button>
+                <button type="button" id="toggle-add-gif" aria-expanded="false"><span class="add-gif-icon" aria-hidden="true">+</span> Add GIF</button>
             </div>
+            <p class="gif-count" id="gif-count" hidden="hidden"></p>
 
             <div class="add-gif-panel" id="add-gif-panel" hidden="hidden">
                 <div class="field">
@@ -1174,30 +1545,37 @@
                 <p>Loading your GIFs…</p>
             </div>
             <p class="empty-hint" id="gif-empty-hint" hidden="hidden">No GIFs yet — add one above with "+ Add GIF" 👆</p>
-            <p class="empty-hint" id="gif-search-empty-hint" hidden="hidden">No GIFs match your search.</p>
+            <p class="empty-hint" id="gif-search-empty-hint" hidden="hidden">
+                No GIFs match your search.<br>
+                <button type="button" class="pill-btn" id="btn-clear-search-empty">Clear search</button>
+            </p>
             <button type="button" id="btn-load-more-gifs" class="pill-btn" hidden="hidden">Load more</button>
+        </div>
+
+        <div id="gif-hover-preview" aria-hidden="true">
+            <img alt="">
         </div>
     </div>
 
-    <div class="tab-panel" id="tab-panel-settings" role="tabpanel" hidden="hidden">
+    <div class="tab-panel" id="tab-panel-settings" role="tabpanel" aria-labelledby="tab-btn-settings" tabindex="0" hidden="hidden">
         <div class="settings-scroll">
             <section class="settings-card">
                 <h2>Display</h2>
                 <p class="card-desc">How the floating GIF badge looks and moves on every page.</p>
                 <div class="toolbar-row">
                     <div class="field field-size">
-                        <label>Size (px)</label>
+                        <label for="gif_size">Size (px)</label>
                         <input id="gif_size" type="number" value="100" min="20" max="600" step="10">
                     </div>
                     <div class="field field-position">
-                        <label>Position</label>
+                        <label for="gif_position">Position</label>
                         <select id="gif_position">
                             <option value="top" selected>Top</option>
                             <option value="bottom">Bottom</option>
                         </select>
                     </div>
                     <div class="field field-direction">
-                        <label>Direction <span class="info-dot" title="Position only applies when Direction is Left → Right or Right → Left.">i</span></label>
+                        <label for="gif_animation">Direction <span class="info-dot" title="Position only applies when Direction is Left → Right or Right → Left.">i</span></label>
                         <select id="gif_animation">
                             <option value="left" selected>Left → Right</option>
                             <option value="right">Right → Left</option>
@@ -1206,18 +1584,23 @@
                         </select>
                     </div>
                     <div class="field field-duration">
-                        <label>Duration (s)</label>
+                        <label for="gif_duration">Duration (s)</label>
                         <input id="gif_duration" type="number" value="60" min="5" max="300" step="5">
                     </div>
                 </div>
                 <div class="field field-preset">
-                    <label>Preset</label>
-                    <div class="preset-controls">
+                    <label for="preset_select">Preset</label>
+                    <div class="preset-controls" id="preset-controls">
                         <select id="preset_select">
-                            <option value="" selected disabled>None</option>
+                            <option value="" selected disabled>Load preset…</option>
                         </select>
                         <button type="button" id="btn-save-preset" class="mini-icon-btn" title="Save current settings as a preset" aria-label="Save preset">💾</button>
                         <button type="button" id="btn-delete-preset" class="mini-icon-btn mini-icon-btn-danger" title="Delete this preset" aria-label="Delete preset" hidden="hidden">✕</button>
+                    </div>
+                    <div class="preset-save-row" id="preset-save-row" hidden="hidden">
+                        <input type="text" id="preset_name_input" placeholder="Preset name" maxlength="40">
+                        <button type="button" id="btn-preset-save-confirm" class="mini-icon-btn" title="Save preset" aria-label="Confirm save preset">✓</button>
+                        <button type="button" id="btn-preset-save-cancel" class="mini-icon-btn mini-icon-btn-danger" title="Cancel" aria-label="Cancel save preset">✕</button>
                     </div>
                 </div>
             </section>
@@ -1244,6 +1627,13 @@
                         <span class="switch-slider"></span>
                     </label>
                 </div>
+                <div class="managed-sites">
+                    <button type="button" class="managed-sites-toggle" id="managed-sites-toggle" aria-expanded="false" aria-controls="managed-sites-list">
+                        <span id="managed-sites-label">Managed sites (0)</span>
+                        <span class="managed-sites-chevron" aria-hidden="true">▾</span>
+                    </button>
+                    <div class="managed-sites-list" id="managed-sites-list" hidden="hidden"></div>
+                </div>
                 <div class="setting-row">
                     <div class="setting-row-text">
                         <div class="setting-row-title">Random each visit</div>
@@ -1268,23 +1658,23 @@
 
             <section class="settings-card">
                 <h2>Library</h2>
-                <p class="card-desc">Back up, restore, or reset your GIF collection.</p>
+                <p class="card-desc">Back up, restore, or reset your GIF collection. <span id="storage-usage"></span></p>
                 <div class="library-actions">
                     <button type="button" id="btn-export-gifs" class="pill-btn">Export list</button>
                     <button type="button" id="btn-import-gifs" class="pill-btn">Import list</button>
                     <input type="file" accept="application/json,.json" id="import_file" hidden="hidden">
                     <button type="button" id="btn-reset-gifs" class="pill-btn pill-btn-danger">Reset to defaults</button>
                 </div>
+                <div class="reset-confirm" id="reset-confirm" hidden="hidden" role="alert">
+                    <span class="reset-confirm-text">Replace your GIF list with the default collection? This can't be undone.</span>
+                    <div class="reset-confirm-actions">
+                        <button type="button" id="btn-reset-cancel" class="pill-btn">Cancel</button>
+                        <button type="button" id="btn-reset-confirm" class="pill-btn pill-btn-danger">Yes, reset</button>
+                    </div>
+                </div>
             </section>
         </div>
-    </div>
 
-    <footer class="app-footer">
-        <div class="footer-meta">
-            <span>© 2026 Bubu Dudu GIF Picker Extension</span>
-            <span class="footer-dot">&middot;</span>
-            <a class="footer-email-link" href="mailto:nguyenvantuan2391996@gmail.com">nguyenvantuan2391996@gmail.com</a>
-        </div>
         <div class="footer-contact">
             <span class="footer-contact-label">Feedback or found a bug?</span>
             <div class="footer-socials">
@@ -1299,11 +1689,18 @@
                 </a>
             </div>
         </div>
+    </div>
+
+    <footer class="app-footer">
+        <div class="footer-meta">
+            <span>© 2026 Bubu Dudu GIF Picker Extension</span>
+            <span class="footer-dot">&middot;</span>
+            <a class="footer-email-link" href="mailto:nguyenvantuan2391996@gmail.com">nguyenvantuan2391996@gmail.com</a>
+        </div>
     </footer>
 </div>
+<script src="../js/constants.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/popup.js"></script>
 </body>
 </html>
-
-<script src="../js/popup.js"></script>
-<script src="../js/utils.js"></script>
-<script src="../js/constants.js"></script>

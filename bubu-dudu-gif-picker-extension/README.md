@@ -34,6 +34,25 @@ Whether you're spicing up a presentation, surprising a friend, or just enjoying 
 3. Adjust Size, Position, Direction, and Duration from the toolbar — changes apply instantly to the current tab.
 4. Use the **Show on this site** switch to turn Bubu Dudu off just for the site you're on, or **Random GIF each visit** to get a surprise pick every time.
 
+## What's new in 1.0.7
+- New: dark mode — the popup now follows your system/browser theme automatically
+- New: double-click a GIF to rename it — no more deleting and re-adding just to fix a typo
+- New: see and manage the sites you've turned Bubu Dudu off (or on, in Allowlist mode) for, right from Settings, instead of only being able to change the one you're currently on
+- New: a GIF count next to the search box, showing your library size and how many results match while searching
+- New: keyboard shortcuts in the popup — `/` jumps to search, `Esc` clears the search or closes the Add GIF panel
+- New: hover a GIF for a moment to see a bigger preview — handy once your library has a lot of similar-looking GIFs
+- New: the popup now reopens on whichever tab (GIFs/Settings) you last had open, and scrolls straight to your currently selected GIF
+- Fixed: on some websites, adding a GIF used to shift the page's layout or fight with the site's own styles — this no longer happens
+- Fixed: search only used to find GIFs already scrolled into view — it now searches your whole library, even in large collections
+- Fixed: changing a setting felt sluggish because of a hidden 3-second delay before it took effect — settings now apply instantly
+- Fixed: notifications could overlap or disappear early when several fired close together
+- Fixed: undoing a deleted GIF right after deleting a second one could restore the wrong one — undo now always restores exactly what it says it will
+- Fixed: "Reset to defaults" and saving a preset used browser popups that could silently fail inside the extension — both now use on-screen confirmation instead
+- Fixed: GIFs that fail to load now show a clear placeholder instead of a broken image icon
+- Fixed: removed the ~10MB storage ceiling on uploaded `.gif` files, and Settings now shows how much storage your library is using
+- Fixed: Bubu Dudu could disappear on single-page sites like Facebook or YouTube after navigating without a full page reload — it now reappears on its own
+- Accessibility: the delete/pin buttons, toggle switches, tabs, and search field are all keyboard-navigable now, with visible focus outlines and support for "reduce motion"
+
 ## What's new in 1.0.6
 - New: name your GIFs when adding them (via URL or file upload) — search now matches on that name too, which fixes search being useless for uploaded files (they had no filename to match against before)
 - New: pin your favorite GIFs with the ★ icon on each thumbnail — favorited GIFs always sort to the front of the library

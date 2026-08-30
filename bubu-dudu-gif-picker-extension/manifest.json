@@ -1,7 +1,7 @@
 {
   "name": "Bubu Dudu GIF Picker Extension",
   "description": "Bubu Dudu GIF Picker Extension is a simple and cute extension that lets you select your favorite GIFs with just one click.",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "action": {
     "default_popup": "src/popup.html",
     "default_icon": {
@@ -23,9 +23,9 @@
         "<all_urls>"
       ],
       "js": [
-        "js/content.js",
         "js/constants.js",
-        "js/utils.js"
+        "js/utils.js",
+        "js/content.js"
       ],
       "run_at": "document_start"
     }
@@ -37,8 +37,8 @@
     "*://*/*"
   ],
   "permissions": [
-    "webNavigation",
     "storage",
+    "unlimitedStorage",
     "scripting",
     "contextMenus"
   ],

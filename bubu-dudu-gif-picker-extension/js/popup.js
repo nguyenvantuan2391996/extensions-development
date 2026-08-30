@@ -1,9 +1,14 @@
 let currentHostname = null
 let tabSupported = false
-const GIF_PAGE_SIZE = 48
+const GIF_PAGE_SIZE = 32
 let pendingGifs = []
 let gifNames = {}
 let favoriteGifs = []
+// Full, ordered list of every GIF in the library (favorites first), independent
+// of how many are currently rendered/paginated. Search filters against this,
+// not the DOM, so it can find GIFs that haven't been paged into view yet.
+let allGifs = []
+let isSearchActive = false
 
 function renderMoreGifs() {
   const nextBatch = pendingGifs.splice(0, GIF_PAGE_SIZE)
@@ -27,6 +32,11 @@ document.addEventListener("DOMContentLoaded",  async function () {
     document.getElementById("site_toggle").disabled = true
   }
 
+  const tabState = await chrome.storage.local.get([LAST_ACTIVE_TAB])
+  if (tabState[LAST_ACTIVE_TAB] === "settings") {
+    activateTab("settings")
+  }
+
   if (isFirstRun) {
     // The content script only auto-injects into pages that were (re)loaded
     // after install. If the current tab was already open before that, it
@@ -42,7 +52,7 @@ document.addEventListener("DOMContentLoaded",  async function () {
         try {
           await chrome.scripting.executeScript({
             target: { tabId: activeTab.id },
-            files: ["js/content.js", "js/constants.js", "js/utils.js"]
+            files: ["js/constants.js", "js/utils.js", "js/content.js"]
           })
         } catch (e2) {
           // Injection can fail on restricted pages (chrome://, the Web Store, etc.) — nothing to do.
@@ -69,6 +79,7 @@ document.addEventListener("DOMContentLoaded",  async function () {
     const favoritesInList = gifs.filter(src => favoriteGifs.includes(src))
     const restOfList = gifs.filter(src => !favoriteGifs.includes(src))
     pendingGifs = [...favoritesInList, ...restOfList]
+    allGifs = [...pendingGifs]
     renderMoreGifs()
     if (isFirstRun) {
       await chrome.storage.local.set({ [IS_INIT]: true })
@@ -79,7 +90,7 @@ document.addEventListener("DOMContentLoaded",  async function () {
       ["gif_size", "gif_position", "gif_animation", "gif_duration", DISABLED_HOSTS, ENABLED_HOSTS, SITE_MODE, RANDOM_MODE, MULTI_GIF_MODE],
       (result) => {
         if (chrome.runtime.lastError) {
-          alert(ERROR_ALERT)
+          showToast(ERROR_ALERT)
           return
         }
 
@@ -115,47 +126,82 @@ document.addEventListener("DOMContentLoaded",  async function () {
         document.getElementById("random_mode_toggle").checked = !!result[RANDOM_MODE]
         document.getElementById("multi_gif_toggle").checked = !!result[MULTI_GIF_MODE]
         updateGifStatusBanner()
+        renderManagedSites()
       })
 
     await displayCheckmark()
+    await updateStorageUsage()
   }
 
   await renderGifs()
 })
 
 function updateEmptyState() {
-  const items = Array.from(document.querySelectorAll("#gifContainer .gif-item"))
-  const hasItems = items.length > 0
+  const hasItems = allGifs.length > 0
   document.getElementById("gif-empty-hint").hidden = hasItems
 
   const query = document.getElementById("gif_search").value.trim()
-  const visibleCount = items.filter(item => !item.hidden).length
-  document.getElementById("gif-search-empty-hint").hidden = !(hasItems && query.length > 0 && visibleCount === 0)
+  const renderedCount = document.querySelectorAll("#gifContainer .gif-item").length
+  document.getElementById("gif-search-empty-hint").hidden = !(hasItems && query.length > 0 && renderedCount === 0)
+
+  const countEl = document.getElementById("gif-count")
+  if (!hasItems) {
+    countEl.hidden = true
+  } else {
+    countEl.textContent = query.length > 0
+      ? `${renderedCount} of ${allGifs.length} match${renderedCount === 1 ? "" : "es"}`
+      : `${allGifs.length} GIF${allGifs.length === 1 ? "" : "s"}`
+    countEl.hidden = false
+  }
 }
 
+function clearRenderedGifs() {
+  document.querySelectorAll("#gifContainer .gif-item").forEach(item => item.remove())
+}
+
+// Searches the full library (allGifs), not just the GIFs currently paged into
+// the DOM, so results aren't limited to the first GIF_PAGE_SIZE items.
 function applyGifSearchFilter() {
   const rawQuery = document.getElementById("gif_search").value
   const query = rawQuery.trim().toLowerCase()
   document.getElementById("gif_search_clear").hidden = rawQuery.length === 0
-  document.querySelectorAll("#gifContainer .gif-item").forEach(item => {
-    const src = item.querySelector("img").src.toLowerCase()
-    const name = (item.title || "").toLowerCase()
-    item.hidden = query.length > 0 && !src.includes(query) && !name.includes(query)
+
+  if (query.length === 0) {
+    if (isSearchActive) {
+      isSearchActive = false
+      clearRenderedGifs()
+      pendingGifs = [...allGifs]
+      renderMoreGifs()
+    }
+    updateEmptyState()
+    return
+  }
+
+  isSearchActive = true
+  clearRenderedGifs()
+  const matches = allGifs.filter(src => {
+    const name = (gifNames[src] || "").toLowerCase()
+    return src.toLowerCase().includes(query) || name.includes(query)
   })
-  // Loading more unfiltered GIFs while a search is active would be confusing.
-  document.getElementById("btn-load-more-gifs").hidden = query.length > 0 || pendingGifs.length === 0
+  matches.forEach(src => addGifToDOM(src, gifNames[src]))
+  // Loading more unfiltered GIFs while a search is active would be confusing —
+  // all matches are already rendered above.
+  document.getElementById("btn-load-more-gifs").hidden = true
   updateEmptyState()
 }
 
 document.getElementById("gif_search").addEventListener("input", applyGifSearchFilter)
 
 const gifSearchClearBtn = document.getElementById("gif_search_clear")
-gifSearchClearBtn.addEventListener("click", function () {
+function clearGifSearch() {
   const searchInput = document.getElementById("gif_search")
   searchInput.value = ""
   applyGifSearchFilter()
   searchInput.focus()
-})
+}
+
+gifSearchClearBtn.addEventListener("click", clearGifSearch)
+document.getElementById("btn-clear-search-empty").addEventListener("click", clearGifSearch)
 
 // Explains why picking a GIF might not show up anywhere: the site is turned
 // off, or Random mode is overriding manual picks. Both toggles live in the
@@ -196,6 +242,112 @@ function updateGifStatusBanner() {
   }
 }
 
+// Lets the user see and undo the "Show on this site" toggle they flipped on
+// other sites, since that list is otherwise invisible once you've left the
+// page — especially confusing in allowlist mode, where flipping the mode on
+// hides Bubu Dudu everywhere except the sites listed here.
+async function renderManagedSites() {
+  /* global chrome */
+  const result = await chrome.storage.local.get([DISABLED_HOSTS, ENABLED_HOSTS, SITE_MODE])
+  const siteMode = result[SITE_MODE] || "blocklist"
+  const isAllowlist = siteMode === "allowlist"
+  const hosts = (isAllowlist ? result[ENABLED_HOSTS] : result[DISABLED_HOSTS]) || []
+
+  document.getElementById("managed-sites-label").textContent = `Managed sites (${hosts.length})`
+
+  const listEl = document.getElementById("managed-sites-list")
+  listEl.innerHTML = ""
+
+  if (hosts.length === 0) {
+    const empty = document.createElement("p")
+    empty.className = "managed-sites-empty"
+    empty.textContent = isAllowlist ? "No sites allowed yet." : "No sites turned off yet."
+    listEl.appendChild(empty)
+    return
+  }
+
+  hosts.slice().sort().forEach(host => {
+    const row = document.createElement("div")
+    row.className = "managed-site-row"
+
+    const hostLabel = document.createElement("span")
+    hostLabel.className = "managed-site-host"
+    hostLabel.textContent = host
+    hostLabel.title = host
+
+    const removeBtn = document.createElement("button")
+    removeBtn.type = "button"
+    removeBtn.className = "managed-site-remove"
+    removeBtn.textContent = "✕"
+    removeBtn.setAttribute("aria-label", `Remove ${host} from managed sites`)
+    removeBtn.addEventListener("click", async () => {
+      if (isAllowlist) {
+        await setSiteEnabled(host, false)
+      } else {
+        await setSiteDisabled(host, false)
+      }
+      if (host === currentHostname) {
+        document.getElementById("site_toggle").checked = isAllowlist ? false : true
+        updateGifStatusBanner()
+      }
+      await renderManagedSites()
+    })
+
+    row.appendChild(hostLabel)
+    row.appendChild(removeBtn)
+    listEl.appendChild(row)
+  })
+}
+
+document.getElementById("managed-sites-toggle").addEventListener("click", async function () {
+  const isOpen = this.getAttribute("aria-expanded") === "true"
+  if (!isOpen) {
+    await renderManagedSites()
+  }
+  this.setAttribute("aria-expanded", String(!isOpen))
+  document.getElementById("managed-sites-list").hidden = isOpen
+})
+
+// Thumbnails in the grid are tiny (~65px) and many of the built-in GIFs look
+// similar at that size — hovering a tile for a moment shows a bigger preview
+// so you can actually tell them apart before picking one.
+let hoverPreviewTimeoutId = null
+const hoverPreviewEl = document.getElementById('gif-hover-preview')
+const hoverPreviewImg = hoverPreviewEl.querySelector('img')
+
+function hideHoverPreview() {
+  clearTimeout(hoverPreviewTimeoutId)
+  hoverPreviewEl.classList.remove('visible')
+}
+
+function attachHoverPreview(div, src) {
+  div.addEventListener('mouseenter', () => {
+    clearTimeout(hoverPreviewTimeoutId)
+    hoverPreviewTimeoutId = setTimeout(() => {
+      hoverPreviewImg.src = src
+      const previewSize = 168
+      const margin = 6
+      const rect = div.getBoundingClientRect()
+
+      let left = rect.right + margin
+      if (left + previewSize > window.innerWidth) {
+        left = rect.left - previewSize - margin
+      }
+      left = Math.max(margin, Math.min(left, window.innerWidth - previewSize - margin))
+
+      let top = rect.top
+      top = Math.max(margin, Math.min(top, window.innerHeight - previewSize - margin))
+
+      hoverPreviewEl.style.left = `${left}px`
+      hoverPreviewEl.style.top = `${top}px`
+      hoverPreviewEl.classList.add('visible')
+    }, 500)
+  })
+  div.addEventListener('mouseleave', hideHoverPreview)
+}
+
+document.getElementById('gifContainer').addEventListener('scroll', hideHoverPreview)
+
 function addGifToDOM(src, name, prepend = false) {
   const gifContainer = document.getElementById("gifContainer")
 
@@ -212,24 +364,31 @@ function addGifToDOM(src, name, prepend = false) {
   const img = document.createElement('img')
   img.src = src
   img.alt = name || 'GIF thumbnail'
+  img.loading = 'lazy'
+  img.decoding = 'async'
+  attachHoverPreview(div, src)
+  img.onerror = () => {
+    div.classList.add('is-broken')
+    div.title = "Couldn't load this GIF — click ✕ to remove it."
+  }
 
-  const deleteBtn = document.createElement('div')
+  const deleteBtn = document.createElement('button')
+  deleteBtn.type = 'button'
   deleteBtn.className = 'delete-icon'
   deleteBtn.textContent = '✕'
-  deleteBtn.setAttribute('role', 'button')
   deleteBtn.setAttribute('aria-label', 'Delete this GIF')
   deleteBtn.addEventListener('click', (e) => {
     e.stopPropagation()
     deleteGif(e, src)
   })
 
-  const favoriteBtn = document.createElement('div')
+  const favoriteBtn = document.createElement('button')
+  favoriteBtn.type = 'button'
   favoriteBtn.className = 'favorite-icon'
   if (favoriteGifs.includes(src)) {
     favoriteBtn.classList.add('is-favorite')
   }
   favoriteBtn.textContent = '★'
-  favoriteBtn.setAttribute('role', 'button')
   favoriteBtn.setAttribute('aria-label', 'Pin this GIF to the top')
   favoriteBtn.setAttribute('aria-pressed', String(favoriteGifs.includes(src)))
   favoriteBtn.addEventListener('click', (e) => {
@@ -258,10 +417,65 @@ function addGifToDOM(src, name, prepend = false) {
 
   div.addEventListener('click', selectThisGif)
   div.addEventListener('keydown', (e) => {
+    // Ignore keydowns bubbling up from the delete/favorite buttons — they're
+    // real <button>s now and handle their own Enter/Space activation.
+    if (e.target !== div) return
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       selectThisGif()
     }
+  })
+
+  // Double-click a tile to rename it in place — the only other way to fix a
+  // typo'd name was to delete the GIF and re-add it.
+  div.addEventListener('dblclick', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (div.querySelector('.gif-rename-overlay')) return
+
+    const overlay = document.createElement('div')
+    overlay.className = 'gif-rename-overlay'
+    overlay.addEventListener('click', (ev) => ev.stopPropagation())
+    overlay.addEventListener('dblclick', (ev) => ev.stopPropagation())
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.maxLength = 60
+    input.placeholder = 'Name this GIF'
+    input.value = gifNames[src] || ''
+    overlay.appendChild(input)
+    div.appendChild(overlay)
+    input.focus()
+    input.select()
+
+    let settled = false
+    const commit = async () => {
+      if (settled) return
+      settled = true
+      const newName = input.value.trim()
+      overlay.remove()
+      await saveGifName(src, newName)
+      div.title = newName || ''
+      div.setAttribute('aria-label', newName ? `Select ${newName}` : 'Select this GIF')
+      img.alt = newName || 'GIF thumbnail'
+    }
+    const cancel = () => {
+      settled = true
+      overlay.remove()
+    }
+
+    input.addEventListener('click', (ev) => ev.stopPropagation())
+    input.addEventListener('dblclick', (ev) => ev.stopPropagation())
+    input.addEventListener('keydown', (ev) => {
+      ev.stopPropagation()
+      if (ev.key === 'Enter') {
+        ev.preventDefault()
+        commit()
+      } else if (ev.key === 'Escape') {
+        ev.preventDefault()
+        cancel()
+      }
+    })
+    input.addEventListener('blur', commit)
   })
 
   if (prepend) {
@@ -274,6 +488,7 @@ function addGifToDOM(src, name, prepend = false) {
 }
 
 let undoTimeoutId = null
+let undoClickHandler = null
 
 // Gives a few seconds to restore an accidentally-deleted GIF before the undo
 // option disappears. The deletion itself already happened in storage — this
@@ -284,6 +499,12 @@ function showUndoDelete(src, name, wasFavorite, index) {
   const undoMessage = document.getElementById("undo-alert-message")
 
   clearTimeout(undoTimeoutId)
+  // Deleting a second GIF before the first undo expires must drop the first
+  // GIF's still-pending "click" listener — otherwise both restore on one click.
+  if (undoClickHandler) {
+    undoBtn.removeEventListener("click", undoClickHandler)
+    undoClickHandler = null
+  }
   undoMessage.textContent = name ? `"${name}" deleted.` : "GIF deleted."
   undoAlert.removeAttribute("hidden")
 
@@ -291,6 +512,7 @@ function showUndoDelete(src, name, wasFavorite, index) {
     clearTimeout(undoTimeoutId)
     undoAlert.setAttribute("hidden", "hidden")
     undoBtn.removeEventListener("click", onUndo)
+    undoClickHandler = null
   }
 
   const onUndo = async () => {
@@ -303,6 +525,10 @@ function showUndoDelete(src, name, wasFavorite, index) {
       gifs.splice(insertAt, 0, src)
       await chrome.storage.local.set({ [LIST_GIFS]: gifs })
     }
+    if (!allGifs.includes(src)) {
+      const allGifsInsertAt = index >= 0 && index <= allGifs.length ? index : allGifs.length
+      allGifs.splice(allGifsInsertAt, 0, src)
+    }
     if (name) {
       gifNames[src] = name
       await chrome.storage.local.set({ [GIF_NAMES]: gifNames })
@@ -312,8 +538,10 @@ function showUndoDelete(src, name, wasFavorite, index) {
       await chrome.storage.local.set({ [FAVORITE_GIFS]: favoriteGifs })
     }
     addGifToDOM(src, name, true)
+    updateStorageUsage()
   }
 
+  undoClickHandler = onUndo
   undoBtn.addEventListener("click", onUndo, { once: true })
   undoTimeoutId = setTimeout(cleanup, 5000)
 }
@@ -321,7 +549,7 @@ function showUndoDelete(src, name, wasFavorite, index) {
 document.getElementById("gif_size").onchange = async function (event) {
   const value = Number(event.target.value)
   if (!Number.isFinite(value) || value < GIF_SIZE_MIN || value > GIF_SIZE_MAX) {
-    alert(ERROR_ALERT, `Size must be between ${GIF_SIZE_MIN} and ${GIF_SIZE_MAX}px.`)
+    showToast(ERROR_ALERT, `Size must be between ${GIF_SIZE_MIN} and ${GIF_SIZE_MAX}px.`)
     event.target.value = GIF_SIZE_DEFAULT
     await setGifSize(GIF_SIZE_DEFAULT)
     return
@@ -340,7 +568,7 @@ document.getElementById("gif_animation").onchange = async function (event) {
 document.getElementById("gif_duration").onchange = async function (event) {
   const value = Number(event.target.value)
   if (!Number.isFinite(value) || value < GIF_DURATION_MIN || value > GIF_DURATION_MAX) {
-    alert(ERROR_ALERT, `Duration must be between ${GIF_DURATION_MIN} and ${GIF_DURATION_MAX}s.`)
+    showToast(ERROR_ALERT, `Duration must be between ${GIF_DURATION_MIN} and ${GIF_DURATION_MAX}s.`)
     event.target.value = GIF_DURATION_DEFAULT
     await setGifDuration(GIF_DURATION_DEFAULT)
     return
@@ -358,6 +586,7 @@ document.getElementById("site_toggle").onchange = async function (event) {
     await setSiteDisabled(currentHostname, !event.target.checked)
   }
   updateGifStatusBanner()
+  renderManagedSites()
 }
 
 document.getElementById("site_mode_toggle").onchange = async function (event) {
@@ -375,6 +604,7 @@ document.getElementById("site_mode_toggle").onchange = async function (event) {
 
   await notifyActiveTab({ from: POPUP_SCREEN, subject: HANDLE_SET_DISABLED_HOSTS })
   updateGifStatusBanner()
+  renderManagedSites()
 }
 
 document.getElementById("random_mode_toggle").onchange = async function (event) {
@@ -413,19 +643,19 @@ addGifBtn.addEventListener("click", async function () {
   const url = urlInput.value.trim()
 
   if (!url) {
-    alert(ERROR_ALERT, "Please enter a GIF URL.")
+    showToast(ERROR_ALERT, "Please enter a GIF URL.")
     return
   }
 
   if (!(await isGifUrl(url))) {
-    alert(ERROR_ALERT, "That doesn't look like a GIF. Please check the URL.")
+    showToast(ERROR_ALERT, "That doesn't look like a GIF. Please check the URL.")
     return
   }
 
   const result = await chrome.storage.local.get([LIST_GIFS])
   const gifs_storage = result[LIST_GIFS] || []
   if (gifs_storage.includes(url)) {
-    alert(ERROR_ALERT, "This GIF is already in your list.")
+    showToast(ERROR_ALERT, "This GIF is already in your list.")
     return
   }
 
@@ -435,23 +665,26 @@ addGifBtn.addEventListener("click", async function () {
     try {
       await chrome.storage.local.set({ [LIST_GIFS]: gifs_storage })
     } catch (e) {
-      alert(ERROR_ALERT, "Couldn't save — storage is full. Try removing some GIFs first.")
+      showToast(ERROR_ALERT, "Couldn't save — storage is full. Try removing some GIFs first.")
       return
     }
+    allGifs.push(url)
     const nameInput = document.getElementById("gif_name")
     const name = nameInput.value.trim()
     if (name) {
       await saveGifName(url, name)
     }
     addGifToDOM(url, name || undefined)
+    applyGifSearchFilter()
+    updateStorageUsage()
     urlInput.value = ""
     nameInput.value = ""
     addGifBtn.disabled = true
     closeAddGifPanel()
-    alert(SUCCESS_ALERT)
+    showToast(SUCCESS_ALERT)
   }
   testImg.onerror = () => {
-    alert(ERROR_ALERT, "Couldn't load that GIF. Check the URL and try again.")
+    showToast(ERROR_ALERT, "Couldn't load that GIF. Check the URL and try again.")
   }
   testImg.src = url
 })
@@ -463,13 +696,13 @@ fileInput.addEventListener('change', async function () {
   if (!file) return
 
   if (file.type !== "image/gif") {
-    alert(ERROR_ALERT, "Please choose a .gif file.")
+    showToast(ERROR_ALERT, "Please choose a .gif file.")
     fileInput.value = ""
     return
   }
 
   if (file.size > MAX_GIF_FILE_SIZE_BYTES) {
-    alert(ERROR_ALERT, `GIF is too large (max ${Math.round(MAX_GIF_FILE_SIZE_BYTES / (1024 * 1024))}MB). Please choose a smaller file.`)
+    showToast(ERROR_ALERT, `GIF is too large (max ${Math.round(MAX_GIF_FILE_SIZE_BYTES / (1024 * 1024))}MB). Please choose a smaller file.`)
     fileInput.value = ""
     return
   }
@@ -482,7 +715,7 @@ fileInput.addEventListener('change', async function () {
     const gifs_storage = result[LIST_GIFS] || [];
 
     if (gifs_storage.includes(dataUrl)) {
-      alert(ERROR_ALERT, "This GIF is already in your list.")
+      showToast(ERROR_ALERT, "This GIF is already in your list.")
       fileInput.value = ""
       return
     }
@@ -491,10 +724,11 @@ fileInput.addEventListener('change', async function () {
     try {
       await chrome.storage.local.set({ [LIST_GIFS]: gifs_storage });
     } catch (e) {
-      alert(ERROR_ALERT, "Couldn't save — storage is full. Try removing some GIFs first.")
+      showToast(ERROR_ALERT, "Couldn't save — storage is full. Try removing some GIFs first.")
       fileInput.value = ""
       return
     }
+    allGifs.push(dataUrl)
 
     const nameInput = document.getElementById("gif_name")
     const name = nameInput.value.trim()
@@ -502,10 +736,12 @@ fileInput.addEventListener('change', async function () {
       await saveGifName(dataUrl, name)
     }
     addGifToDOM(dataUrl, name || undefined);
+    applyGifSearchFilter()
+    updateStorageUsage()
     fileInput.value = ""
     nameInput.value = ""
     closeAddGifPanel()
-    alert(SUCCESS_ALERT);
+    showToast(SUCCESS_ALERT);
   };
 
   reader.readAsDataURL(file);
@@ -555,9 +791,11 @@ document.getElementById("btn-export-gifs").addEventListener("click", async funct
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url
-  a.download = "bubu-dudu-gifs.json"
+  a.download = `bubu-dudu-gifs-${new Date().toISOString().slice(0, 10)}.json`
   a.click()
-  URL.revokeObjectURL(url)
+  // Revoking immediately after click() can race the download starting,
+  // especially if the popup closes right after — give it a moment first.
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 })
 
 const importFileInput = document.getElementById("import_file")
@@ -607,15 +845,18 @@ importFileInput.addEventListener("change", async function () {
       }
     }
 
+    allGifs.push(...newOnes)
     newOnes.forEach(src => addGifToDOM(src, gifNames[src]))
+    applyGifSearchFilter()
+    updateStorageUsage()
 
     if (!Array.isArray(parsed) && parsed.settings && typeof parsed.settings === "object") {
       await applyImportedSettings(parsed.settings)
     }
 
-    alert(SUCCESS_ALERT, `Imported ${newOnes.length} new GIF${newOnes.length === 1 ? "" : "s"}.`)
+    showToast(SUCCESS_ALERT, `Imported ${newOnes.length} new GIF${newOnes.length === 1 ? "" : "s"}.`)
   } catch (e) {
-    alert(ERROR_ALERT, "Couldn't import that file — make sure it's a GIF list exported from this extension.")
+    showToast(ERROR_ALERT, "Couldn't import that file — make sure it's a GIF list exported from this extension.")
   } finally {
     importFileInput.value = ""
   }
@@ -649,11 +890,29 @@ async function applyImportedSettings(settings) {
   }
 }
 
-document.getElementById("btn-reset-gifs").addEventListener("click", async function () {
+// Native confirm()/prompt() dialogs are unreliable inside an extension popup
+// (some Chrome versions block them outright, or the dialog steals focus and
+// the popup closes, losing the action) — so reset and preset naming use
+// inline UI instead.
+const resetConfirmEl = document.getElementById("reset-confirm")
+let resetConfirmTimeoutId = null
+
+function hideResetConfirm() {
+  clearTimeout(resetConfirmTimeoutId)
+  resetConfirmEl.setAttribute("hidden", "hidden")
+}
+
+document.getElementById("btn-reset-gifs").addEventListener("click", function () {
+  resetConfirmEl.removeAttribute("hidden")
+  clearTimeout(resetConfirmTimeoutId)
+  resetConfirmTimeoutId = setTimeout(hideResetConfirm, 8000)
+})
+
+document.getElementById("btn-reset-cancel").addEventListener("click", hideResetConfirm)
+
+document.getElementById("btn-reset-confirm").addEventListener("click", async function () {
   /* global chrome */
-  if (!window.confirm("Replace your current GIF list with the default Bubu Dudu collection? This can't be undone.")) {
-    return
-  }
+  hideResetConfirm()
 
   await chrome.storage.local.set({ [LIST_GIFS]: LIST_GIFS_DEFAULT })
 
@@ -663,11 +922,16 @@ document.getElementById("btn-reset-gifs").addEventListener("click", async functi
 
   document.getElementById("gifContainer").querySelectorAll(".gif-item").forEach(el => el.remove())
   pendingGifs = []
+  allGifs = [...LIST_GIFS_DEFAULT]
+  isSearchActive = false
+  document.getElementById("gif_search").value = ""
+  document.getElementById("gif_search_clear").hidden = true
   document.getElementById("btn-load-more-gifs").hidden = true
   LIST_GIFS_DEFAULT.forEach(src => addGifToDOM(src))
   await clearSelectedGifIfMissing(LIST_GIFS_DEFAULT)
   await displayCheckmark()
-  alert(SUCCESS_ALERT, "Restored the default GIF collection.")
+  await updateStorageUsage()
+  showToast(SUCCESS_ALERT, "Restored the default GIF collection.")
 })
 
 async function renderPresetOptions() {
@@ -705,13 +969,48 @@ document.getElementById("preset_select").addEventListener("change", async functi
   document.getElementById("btn-delete-preset").hidden = false
 })
 
-document.getElementById("btn-save-preset").addEventListener("click", async function () {
+const presetControlsEl = document.getElementById("preset-controls")
+const presetSaveRowEl = document.getElementById("preset-save-row")
+const presetNameInput = document.getElementById("preset_name_input")
+
+function openPresetNameRow() {
+  presetControlsEl.setAttribute("hidden", "hidden")
+  presetSaveRowEl.removeAttribute("hidden")
+  presetNameInput.value = ""
+  presetNameInput.focus()
+}
+
+function closePresetNameRow() {
+  presetSaveRowEl.setAttribute("hidden", "hidden")
+  presetControlsEl.removeAttribute("hidden")
+}
+
+document.getElementById("btn-save-preset").addEventListener("click", openPresetNameRow)
+document.getElementById("btn-preset-save-cancel").addEventListener("click", closePresetNameRow)
+
+presetNameInput.addEventListener("keydown", function (event) {
+  if (event.key === "Enter") {
+    event.preventDefault()
+    event.stopPropagation()
+    document.getElementById("btn-preset-save-confirm").click()
+  } else if (event.key === "Escape") {
+    event.preventDefault()
+    event.stopPropagation()
+    closePresetNameRow()
+  }
+})
+
+document.getElementById("btn-preset-save-confirm").addEventListener("click", async function () {
   /* global chrome */
-  const name = window.prompt("Name this preset:")
-  if (!name || !name.trim()) return
+  const name = presetNameInput.value.trim()
+  if (!name) {
+    showToast(ERROR_ALERT, "Please enter a preset name.")
+    presetNameInput.focus()
+    return
+  }
 
   const preset = {
-    name: name.trim(),
+    name,
     gif_size: document.getElementById("gif_size").value,
     gif_position: document.getElementById("gif_position").value,
     gif_animation: document.getElementById("gif_animation").value,
@@ -729,7 +1028,8 @@ document.getElementById("btn-save-preset").addEventListener("click", async funct
 
   await chrome.storage.local.set({ [PRESETS]: presets })
   await renderPresetOptions()
-  alert(SUCCESS_ALERT, `Saved preset "${preset.name}".`)
+  closePresetNameRow()
+  showToast(SUCCESS_ALERT, `Saved preset "${preset.name}".`)
 })
 
 document.getElementById("btn-delete-preset").addEventListener("click", async function () {
@@ -750,34 +1050,58 @@ const tabBtnSettings = document.getElementById('tab-btn-settings');
 const tabPanelGifs = document.getElementById('tab-panel-gifs');
 const tabPanelSettings = document.getElementById('tab-panel-settings');
 
-function activateTab(name) {
+function activateTab(name, focusTab = false) {
   const isGifs = name === 'gifs'
   tabBtnGifs.classList.toggle('active', isGifs)
   tabBtnSettings.classList.toggle('active', !isGifs)
   tabBtnGifs.setAttribute('aria-selected', String(isGifs))
   tabBtnSettings.setAttribute('aria-selected', String(!isGifs))
+  tabBtnGifs.tabIndex = isGifs ? 0 : -1
+  tabBtnSettings.tabIndex = isGifs ? -1 : 0
   tabPanelGifs.hidden = !isGifs
   tabPanelSettings.hidden = isGifs
+  if (focusTab) {
+    (isGifs ? tabBtnGifs : tabBtnSettings).focus()
+  }
+  /* global chrome */
+  chrome.storage.local.set({ [LAST_ACTIVE_TAB]: name })
 }
 
 tabBtnGifs.addEventListener('click', () => activateTab('gifs'))
 tabBtnSettings.addEventListener('click', () => activateTab('settings'))
+
+// Standard ARIA tabs keyboard pattern: Left/Right (or Up/Down) moves focus
+// and activates the other tab (there are only two); Home/End jump to the
+// first/last tab.
+document.querySelector('.tabs').addEventListener('keydown', (e) => {
+  const isGifsFocused = document.activeElement === tabBtnGifs
+  if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
+    e.preventDefault()
+  }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    activateTab(isGifsFocused ? 'settings' : 'gifs', true)
+  } else if (e.key === 'Home') {
+    activateTab('gifs', true)
+  } else if (e.key === 'End') {
+    activateTab('settings', true)
+  }
+})
 
 const toggleAddGifBtn = document.getElementById('toggle-add-gif');
 const addGifPanel = document.getElementById('add-gif-panel');
 
 function closeAddGifPanel() {
   addGifPanel.setAttribute('hidden', 'hidden')
-  toggleAddGifBtn.textContent = '+ Add GIF'
   toggleAddGifBtn.classList.remove('is-open')
   toggleAddGifBtn.setAttribute('aria-expanded', 'false')
+  toggleAddGifBtn.setAttribute('aria-label', 'Add a GIF')
 }
 
 function openAddGifPanel() {
   addGifPanel.removeAttribute('hidden')
-  toggleAddGifBtn.textContent = 'Close'
   toggleAddGifBtn.classList.add('is-open')
   toggleAddGifBtn.setAttribute('aria-expanded', 'true')
+  toggleAddGifBtn.setAttribute('aria-label', 'Close the add GIF panel')
   document.getElementById('gif_url').focus()
 }
 
@@ -795,3 +1119,37 @@ if (shortcutHintEl) {
   const isMac = /Mac/i.test(navigator.platform || navigator.userAgent)
   shortcutHintEl.textContent = isMac ? '⌘⇧U' : 'Ctrl+Shift+U'
 }
+
+// Popup-wide shortcuts: "/" or Ctrl/Cmd+F jumps to search; Escape backs out
+// one step at a time (clear search, then close the Add GIF panel) instead of
+// immediately closing the whole popup.
+document.addEventListener('keydown', function (e) {
+  const activeTag = (document.activeElement && document.activeElement.tagName) || ''
+  const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT'
+
+  if (e.key === '/' && !isTyping) {
+    e.preventDefault()
+    document.getElementById('gif_search').focus()
+    return
+  }
+
+  if ((e.key === 'f' || e.key === 'F') && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault()
+    document.getElementById('gif_search').focus()
+    return
+  }
+
+  if (e.key === 'Escape') {
+    const searchInput = document.getElementById('gif_search')
+    if (searchInput.value.length > 0) {
+      e.preventDefault()
+      searchInput.value = ''
+      applyGifSearchFilter()
+      return
+    }
+    if (!addGifPanel.hasAttribute('hidden')) {
+      e.preventDefault()
+      closeAddGifPanel()
+    }
+  }
+})

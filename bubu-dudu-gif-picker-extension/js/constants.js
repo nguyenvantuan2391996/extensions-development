@@ -13,6 +13,7 @@ MULTI_GIF_MODE = "multi_gif_mode"
 GIF_NAMES = "gif_names"
 FAVORITE_GIFS = "favorite_gifs"
 PRESETS = "presets"
+LAST_ACTIVE_TAB = "last_active_tab"
 
 TOP = "top"
 BOTTOM = "bottom"
@@ -31,6 +32,8 @@ GIF_DURATION_MAX = 300
 GIF_DURATION_DEFAULT = 60
 
 MAX_GIF_FILE_SIZE_BYTES = 3 * 1024 * 1024
+
+MAX_MULTI_GIF_SELECTED = 5
 
 LIST_GIFS_DEFAULT = [
     "https://media.tenor.com/E-OQudBhX7UAAAAj/bubu-running-gif.gif",
@@ -62,7 +65,6 @@ LIST_GIFS_DEFAULT = [
 const BACKGROUND_SCREEN = "background"
 const POPUP_SCREEN = "popup"
 
-const HANDLE_MAIN_WEBSITE_LOADED = "main-website-loaded"
 const HANDLE_SET_GIF_SIZE = "handle-set-gif-size";
 const HANDLE_SET_GIF_POSITION = "handle-set-gif-position"
 const HANDLE_SET_GIF_ANIMATION = "handle-set-gif-animation"

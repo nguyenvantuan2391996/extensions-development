@@ -1,6 +1,11 @@
 const STYLE_ID = "bubu-dudu-gif-picker-style"
 const CONTAINER_ID = "bubu-dudu-gif-picker"
 
+// Tracks whether the GIF is supposed to be showing right now, so the
+// MutationObserver below (see bottom of file) can tell "we hid it on
+// purpose" apart from "a single-page app wiped it out from under us".
+let gifShouldBeVisible = false
+
 chrome.runtime.onMessage.addListener(async function(msg) {
     if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SET_GIF_SIZE) {
         await chrome.storage.local.set({ gif_size: msg.gif_size })
@@ -41,11 +46,18 @@ chrome.runtime.onMessage.addListener(async function(msg) {
     if (msg.from === POPUP_SCREEN && msg.subject === HANDLE_SETTINGS_IMPORTED) {
         await handleWebsiteLoaded()
     }
-
-    if (msg.from === BACKGROUND_SCREEN && msg.subject === HANDLE_MAIN_WEBSITE_LOADED) {
-        await handleWebsiteLoaded()
-    }
 });
+
+// Content scripts inject at document_start, before the DOM the GIF needs to
+// attach to (document.head / document.body) reliably exists. Wait for the
+// page's own DOMContentLoaded instead of relying on the background script's
+// webNavigation event, which needs a broad "read your browsing activity"
+// permission just for this one signal.
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", handleWebsiteLoaded, { once: true })
+} else {
+    handleWebsiteLoaded()
+}
 
 async function handleWebsiteLoaded() {
     const result = await chrome.storage.local.get([
@@ -67,6 +79,7 @@ async function handleWebsiteLoaded() {
         : !(result.disabled_hosts || []).includes(window.location.hostname)
 
     if (!siteActive) {
+        gifShouldBeVisible = false
         removeGif()
         return
     }
@@ -90,15 +103,25 @@ function removeGif() {
     if (container) {
         container.remove()
     }
+    const style = document.getElementById(STYLE_ID)
+    if (style) {
+        style.remove()
+    }
 }
 
 function render(result) {
     if (!result.gif_srcs || result.gif_srcs.length === 0) {
+        gifShouldBeVisible = false
         removeGif()
         return
     }
 
+    gifShouldBeVisible = true
     removeGif()
+
+    // Respect the user's OS-level "reduce motion" setting: show the GIF at a
+    // fixed resting spot instead of animating it across the screen.
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
     let style = document.getElementById(STYLE_ID)
     if (!style) {
@@ -106,11 +129,7 @@ function render(result) {
         style.id = STYLE_ID
         document.head.appendChild(style)
     }
-    style.textContent = `body {
-              margin: 0;
-            }
-
-            .character {
+    style.textContent = `.bubu-dudu-character {
               position: absolute;
               bottom: 0;
               width: ${result.gif_size}px;
@@ -121,25 +140,25 @@ function render(result) {
               pointer-events: none;
             }
 
-            @keyframes moveLeftToRight {
+            @keyframes bubuDuduMoveLeftToRight {
               0% { left: -100px; transform: scaleX(1); }
               50% { left: 45vw; transform: scaleX(1); }
               100% { left: 110vw; transform: scaleX(1); }
             }
 
-            @keyframes moveRightToLeft {
+            @keyframes bubuDuduMoveRightToLeft {
               0% { right: -100px; transform: scaleX(1); }
               50% { right: 45vw; transform: scaleX(1); }
               100% { right: 110vw; transform: scaleX(1); }
             }
 
-            @keyframes moveTopToBottom {
+            @keyframes bubuDuduMoveTopToBottom {
               0% { top: -100px; }
               50% { top: 45vh; }
               100% { top: 110vh; }
             }
 
-            @keyframes moveBottomToTop {
+            @keyframes bubuDuduMoveBottomToTop {
               0% { bottom: -100px; }
               50% { bottom: 45vh; }
               100% { bottom: 110vh; }
@@ -159,31 +178,33 @@ function render(result) {
         const bubu_dudu = document.createElement("img")
         bubu_dudu.src = src
         bubu_dudu.alt = src
-        bubu_dudu.className = "character"
+        bubu_dudu.className = "bubu-dudu-character"
 
         bubu_dudu.style.zIndex = "9999"
         bubu_dudu.style.position = "fixed"
-        bubu_dudu.style.animationDelay = `-${index * delayStep}s`
+        if (!reducedMotion) {
+            bubu_dudu.style.animationDelay = `-${index * delayStep}s`
+        }
 
         switch (result.gif_animation) {
             case RIGHT:
-                bubu_dudu.style.animationName = "moveRightToLeft"
-                bubu_dudu.style.right = "-200px"
+                if (!reducedMotion) bubu_dudu.style.animationName = "bubuDuduMoveRightToLeft"
+                bubu_dudu.style.right = reducedMotion ? "20px" : "-200px"
                 break
             case TOP:
-                bubu_dudu.style.animationName = "moveTopToBottom"
-                bubu_dudu.style.top = "-200px"
+                if (!reducedMotion) bubu_dudu.style.animationName = "bubuDuduMoveTopToBottom"
+                bubu_dudu.style.top = reducedMotion ? "20px" : "-200px"
                 bubu_dudu.style.left = `calc(50% - ${Number(result.gif_size) / 2}px)`
                 break
             case BOTTOM:
-                bubu_dudu.style.animationName = "moveBottomToTop"
-                bubu_dudu.style.bottom = "-200px"
+                if (!reducedMotion) bubu_dudu.style.animationName = "bubuDuduMoveBottomToTop"
+                bubu_dudu.style.bottom = reducedMotion ? "20px" : "-200px"
                 bubu_dudu.style.left = `calc(50% - ${Number(result.gif_size) / 2}px)`
                 break
             case LEFT:
             default:
-                bubu_dudu.style.animationName = "moveLeftToRight"
-                bubu_dudu.style.left = "-200px"
+                if (!reducedMotion) bubu_dudu.style.animationName = "bubuDuduMoveLeftToRight"
+                bubu_dudu.style.left = reducedMotion ? "20px" : "-200px"
         }
 
         // Position only applies to the horizontal (left/right) animations, since
@@ -206,3 +227,27 @@ function render(result) {
 
     document.body.appendChild(container)
 }
+
+// Single-page apps (Facebook, YouTube, Gmail, ...) often replace large swaths
+// of <body> when navigating between "pages" without a real page load, which
+// can silently take the GIF out along with whatever else was there. Watch
+// for that and put it back, instead of leaving it missing until the next
+// full page load.
+let reattachDebounceId = null
+const bodyObserver = new MutationObserver(function () {
+    if (!gifShouldBeVisible || document.getElementById(CONTAINER_ID)) {
+        return
+    }
+    clearTimeout(reattachDebounceId)
+    reattachDebounceId = setTimeout(handleWebsiteLoaded, 150)
+})
+
+function observeBody() {
+    if (document.body) {
+        bodyObserver.observe(document.body, { childList: true })
+    } else {
+        document.addEventListener("DOMContentLoaded", observeBody, { once: true })
+    }
+}
+
+observeBody()

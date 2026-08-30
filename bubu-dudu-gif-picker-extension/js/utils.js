@@ -1,7 +1,3 @@
-function delay(time) {
-    return new Promise((resolve) => setTimeout(resolve, time));
-}
-
 function isSupportedTabUrl(url) {
     return !!url && /^https?:\/\//i.test(url)
 }
@@ -18,12 +14,16 @@ async function sendToActiveTab(message) {
 async function notifyActiveTab(message) {
     try {
         await sendToActiveTab(message)
-        await alert(SUCCESS_ALERT)
+        // No success toast here on purpose: every caller (settings changes,
+        // picking a GIF) already has its own instant visual feedback — the
+        // slider value, the toggle flipping, the checkmark on the GIF — so a
+        // toast on top of that is just noise. Only the failure paths below
+        // need one, since those aren't otherwise visible anywhere.
     } catch (e) {
         if (e.message === "unsupported-page") {
-            await alert(ERROR_ALERT, "This page doesn't support Bubu Dudu (e.g. a browser settings page).")
+            showToast(ERROR_ALERT, "This page doesn't support Bubu Dudu (e.g. a browser settings page).")
         } else {
-            await alert(ERROR_ALERT, "Couldn't apply this on the current tab. Try reloading the page.")
+            showToast(ERROR_ALERT, "Couldn't apply this on the current tab. Try reloading the page.")
         }
     }
 }
@@ -53,6 +53,10 @@ async function toggleGifSelected(selectedDiv, src) {
     }
 
     const wasSelected = selected.includes(src)
+    if (!wasSelected && selected.length >= MAX_MULTI_GIF_SELECTED) {
+        showToast(ERROR_ALERT, `You can show up to ${MAX_MULTI_GIF_SELECTED} GIFs at once. Unpick one first.`)
+        return
+    }
     selected = wasSelected ? selected.filter(s => s !== src) : [...selected, src]
 
     selectedDiv.classList.toggle("selected", !wasSelected)
@@ -101,9 +105,28 @@ async function displayCheckmark() {
     }
 
     const container = document.getElementById("gifContainer");
+
+    // A selected GIF can live past the first page of pagination — pull any
+    // that haven't been rendered yet into the DOM so it can be marked and
+    // scrolled to below, instead of silently having no visible checkmark.
+    /* global pendingGifs, gifNames, addGifToDOM */
+    const renderedSrcs = new Set(Array.from(container.querySelectorAll(".gif-item img")).map(img => img.src))
+    selected.forEach(src => {
+        if (renderedSrcs.has(src)) {
+            return
+        }
+        const pendingIndex = pendingGifs.indexOf(src)
+        if (pendingIndex !== -1) {
+            pendingGifs.splice(pendingIndex, 1)
+            addGifToDOM(src, gifNames[src])
+            document.getElementById("btn-load-more-gifs").hidden = pendingGifs.length === 0
+        }
+    })
+
     const list_gifs = container.querySelectorAll(".gif-item img");
     const list_div = container.querySelectorAll(".gif-item");
 
+    let firstSelectedEl = null
     for (let i = 0; i < list_gifs.length; i++) {
         if (selected.includes(list_gifs[i].src)) {
             const check = document.createElement("div");
@@ -112,7 +135,14 @@ async function displayCheckmark() {
             list_div[i].appendChild(check);
             list_div[i].classList.add("selected")
             list_div[i].setAttribute('aria-pressed', 'true')
+            if (!firstSelectedEl) {
+                firstSelectedEl = list_div[i]
+            }
         }
+    }
+
+    if (firstSelectedEl) {
+        firstSelectedEl.scrollIntoView({ block: "nearest" })
     }
 }
 
@@ -128,13 +158,14 @@ async function deleteGif(event, src) {
         }
     });
 
-    /* global chrome */
+    /* global chrome, allGifs */
     const result = await chrome.storage.local.get([LIST_GIFS, GIF_NAMES, FAVORITE_GIFS])
     const current_gifs = result[LIST_GIFS] || []
     const removedIndex = current_gifs.indexOf(src)
     const remaining_gifs = current_gifs.filter(item => item !== src)
     await chrome.storage.local.set({ [LIST_GIFS]: remaining_gifs })
     await clearSelectedGifIfMissing(remaining_gifs)
+    allGifs = allGifs.filter(item => item !== src)
 
     const names = result[GIF_NAMES] || {}
     const removedName = names[src]
@@ -150,6 +181,7 @@ async function deleteGif(event, src) {
     }
 
     updateEmptyState()
+    updateStorageUsage()
     showUndoDelete(src, removedName, wasFavorite, removedIndex)
 }
 
@@ -208,18 +240,37 @@ async function isGifUrl(url) {
     }
 }
 
-async function alert(alert_type, message) {
-    let element = document.getElementById(alert_type)
-    let messageEl = element.querySelector('.alert-message')
+async function updateStorageUsage() {
+    /* global chrome */
+    const el = document.getElementById("storage-usage")
+    if (!el || typeof chrome.storage.local.getBytesInUse !== "function") {
+        return
+    }
+    const bytes = await chrome.storage.local.getBytesInUse()
+    const mb = bytes / (1024 * 1024)
+    el.textContent = `Using ${mb < 0.1 ? "< 0.1" : mb.toFixed(1)} MB`
+}
+
+// Keyed by alert_type (there's one element each for success/error/undo) so a
+// second toast of the same type restarts the display timer instead of
+// racing the first one's — otherwise a quick second toast gets hidden early
+// by the first toast's still-pending timeout.
+const alertTimeoutIds = {}
+
+function showToast(alert_type, message) {
+    const element = document.getElementById(alert_type)
+    const messageEl = element.querySelector('.alert-message')
     if (messageEl) {
         messageEl.textContent = message || messageEl.dataset.default
     }
     if (element.hasAttribute('hidden')) {
         element.removeAttribute('hidden')
     }
-    await delay(3000)
 
-    element.setAttribute('hidden', 'hidden')
+    clearTimeout(alertTimeoutIds[alert_type])
+    alertTimeoutIds[alert_type] = setTimeout(() => {
+        element.setAttribute('hidden', 'hidden')
+    }, 3000)
 }
 
 async function setGifSize(size) {
