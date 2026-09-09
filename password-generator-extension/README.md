@@ -50,7 +50,8 @@ Perfect for developers, security-conscious users, or anyone needing safe, random
 - UX: "Generate & Fill Password" (right-click menu) now gives visible feedback — the filled field flashes green, and the toolbar badge shows a ✓ or ! so you know it worked (or why it didn't) even with the popup closed
 - UX: the password field auto-selects its contents when focused in Password/Passphrase mode, so Cmd/Ctrl+C copies immediately without manually selecting the text
 - UX: the field gets a distinct dashed, accent-colored border in Check mode so it's visually clear it's now an editable input rather than a read-only result
-- Fixed: pressing Enter in the Length or "Exclude specific characters" field could fire two generations back-to-back (the field's own change/input handler, plus the form's implicit submit), pushing a duplicate entry into history — confirmed and fixed with a small re-entrancy guard in `generate()`
+- Fixed: pressing Enter in the Length or "Exclude specific characters" field could fire two generations back-to-back (the field's own change handler or a pending debounce, plus the form's implicit submit), pushing a duplicate entry into history — fixed with a re-entrancy guard in `generate()` plus clearing any pending debounce on submit
+- Fixed: a fresh passphrase (or rerolling a single word) could land on the same word twice, e.g. `Ivory-Walnut-Tunic-Prism-Tunic-57` — word picks now exclude the other words already in the passphrase
 
 ### 1.0.4
 - Added a **Check** mode: paste or type any password to get a live strength estimate (based on character variety, length, and repeated/sequential-run patterns — an approximation, not a dictionary or breach check)

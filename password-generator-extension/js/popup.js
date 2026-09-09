@@ -293,7 +293,8 @@ function applyPassphraseUpdate() {
 
 function rerollWord(index) {
     const capitalize = document.getElementById("passphrase-capitalize").checked;
-    currentPassphrase.words[index] = pickRandomWord(capitalize);
+    const otherWords = currentPassphrase.words.filter((_, i) => i !== index);
+    currentPassphrase.words[index] = pickRandomWord(capitalize, otherWords);
     applyPassphraseUpdate();
 }
 
@@ -330,13 +331,16 @@ function applyGeneratedResult(result) {
     }
 }
 
-// Guards against a field's own change/input handler and the form's implicit
-// submit-on-Enter both firing generate() for the same keystroke.
-let lastGenerateAt = 0;
+// Guards against a field's own change handler and the form's implicit
+// submit-on-Enter both firing generate() for the same keystroke — both
+// dispatch synchronously in the same task, so a flag cleared on the next
+// tick blocks only that pairing, not a genuinely separate later call
+// (e.g. a real second click on the Generate button).
+let generating = false;
 function generate() {
-    const now = Date.now();
-    if (now - lastGenerateAt < 100) return;
-    lastGenerateAt = now;
+    if (generating) return;
+    generating = true;
+    setTimeout(() => { generating = false; }, 0);
 
     saveSettings();
 
@@ -395,6 +399,9 @@ loadSettings();
 
 form.addEventListener("submit", (e) => {
     e.preventDefault();
+    // Enter in the Exclude field can fire while its 300ms debounce is still
+    // pending — cancel it so that stale timer doesn't fire a second generate.
+    clearTimeout(excludeDebounce);
     generate();
 });
 

@@ -118,8 +118,16 @@ export function generatePasswordFromOptions(options) {
 
 /* ---------- Passphrase generation ---------- */
 
-export function pickRandomWord(capitalize) {
-    let word = WORDLIST[secureRandomInt(WORDLIST.length)];
+export function pickRandomWord(capitalize, excludeWords) {
+    const exclude = excludeWords && excludeWords.length
+        ? new Set(excludeWords.map((w) => w.toLowerCase()))
+        : null;
+    let word;
+    let attempts = 0;
+    do {
+        word = WORDLIST[secureRandomInt(WORDLIST.length)];
+        attempts++;
+    } while (exclude && exclude.has(word) && attempts < 50);
     if (capitalize) word = word[0].toUpperCase() + word.slice(1);
     return word;
 }
@@ -147,7 +155,7 @@ export function generatePassphraseFromOptions(options) {
 
     const words = [];
     for (let i = 0; i < wordCount; i++) {
-        words.push(pickRandomWord(capitalize));
+        words.push(pickRandomWord(capitalize, words));
     }
     const number = includeNumber ? pickRandomPassphraseNumber() : null;
 
