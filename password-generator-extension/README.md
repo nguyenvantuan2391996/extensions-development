@@ -52,6 +52,7 @@ Perfect for developers, security-conscious users, or anyone needing safe, random
 - UX: the field gets a distinct dashed, accent-colored border in Check mode so it's visually clear it's now an editable input rather than a read-only result
 - Fixed: pressing Enter in the Length or "Exclude specific characters" field could fire two generations back-to-back (the field's own change handler or a pending debounce, plus the form's implicit submit), pushing a duplicate entry into history — fixed with a re-entrancy guard in `generate()` plus clearing any pending debounce on submit
 - Fixed: a fresh passphrase (or rerolling a single word) could land on the same word twice, e.g. `Ivory-Walnut-Tunic-Prism-Tunic-57` — word picks now exclude the other words already in the passphrase
+- Fixed: typing in the Check field and switching to Password/Passphrase mode before its 150ms debounce fired could sneak in a phantom extra generation under the new mode — any explicit generate() call now cancels every pending debounce
 
 ### 1.0.4
 - Added a **Check** mode: paste or type any password to get a live strength estimate (based on character variety, length, and repeated/sequential-run patterns — an approximation, not a dictionary or breach check)

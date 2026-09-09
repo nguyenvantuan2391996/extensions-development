@@ -77,6 +77,15 @@ const historyStorageAvailable = typeof chrome !== "undefined" && !!chrome.storag
 // Passphrase state, kept in sync with the chips so individual words/number can be rerolled.
 let currentPassphrase = null; // { words: string[], number: string|null, separator: string }
 
+// Debounce timers for inputs that regenerate after the user pauses. Declared
+// here (rather than next to their listeners) so generate() can safely clear
+// any of them regardless of call order — it runs as soon as the popup loads,
+// before the rest of the module has executed.
+let checkDebounce;
+let lengthRangeDebounce;
+let wordsRangeDebounce;
+let excludeDebounce;
+
 /* ---------- Settings persistence ---------- */
 
 function loadSettings() {
@@ -342,6 +351,15 @@ function generate() {
     generating = true;
     setTimeout(() => { generating = false; }, 0);
 
+    // Any explicit generate() call supersedes whatever a pending debounced
+    // one was going to do — cancel them so a stale timer (e.g. from typing
+    // in the Check field, then switching modes before it fires) can't sneak
+    // in a phantom regeneration under whatever mode is now active.
+    clearTimeout(checkDebounce);
+    clearTimeout(lengthRangeDebounce);
+    clearTimeout(wordsRangeDebounce);
+    clearTimeout(excludeDebounce);
+
     saveSettings();
 
     const mode = normalizeMode(modeField.value);
@@ -399,9 +417,6 @@ loadSettings();
 
 form.addEventListener("submit", (e) => {
     e.preventDefault();
-    // Enter in the Exclude field can fire while its 300ms debounce is still
-    // pending — cancel it so that stale timer doesn't fire a second generate.
-    clearTimeout(excludeDebounce);
     generate();
 });
 
@@ -439,7 +454,6 @@ segments.forEach((btn) => {
     });
 });
 
-let checkDebounce;
 passwordField.addEventListener("input", () => {
     if (normalizeMode(modeField.value) !== "check") return;
     clearTimeout(checkDebounce);
@@ -452,7 +466,6 @@ lengthInput.addEventListener("input", () => {
 });
 lengthInput.addEventListener("change", generate);
 
-let lengthRangeDebounce;
 lengthRange.addEventListener("input", () => {
     lengthInput.value = lengthRange.value;
     lengthValue.textContent = lengthRange.value;
@@ -460,14 +473,12 @@ lengthRange.addEventListener("input", () => {
     lengthRangeDebounce = setTimeout(generate, 120);
 });
 
-let wordsRangeDebounce;
 wordsRange.addEventListener("input", () => {
     wordsValue.textContent = wordsRange.value;
     clearTimeout(wordsRangeDebounce);
     wordsRangeDebounce = setTimeout(generate, 120);
 });
 
-let excludeDebounce;
 customExcludeInput.addEventListener("input", () => {
     clearTimeout(excludeDebounce);
     excludeDebounce = setTimeout(generate, 300);
