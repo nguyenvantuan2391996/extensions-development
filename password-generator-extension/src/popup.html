@@ -182,7 +182,7 @@
       border-color: var(--accent);
     }
 
-    #password:not([readonly]):focus {
+    #password:focus-visible {
       box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
@@ -410,6 +410,11 @@
       border-radius: 50%;
       background: var(--accent);
       cursor: pointer;
+    }
+
+    /* Removing the default outline above means keyboard focus needs its own cue. */
+    input[type="range"]:focus-visible {
+      box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
     /* ---------- Text-like inputs ---------- */
@@ -683,7 +688,7 @@
 
     <div class="password-field">
       <input id="password" type="text" readonly />
-      <button id="copy" type="button" title="Copy to clipboard">📋</button>
+      <button id="copy" type="button" title="Copy to clipboard" aria-label="Copy to clipboard">📋</button>
     </div>
     <div class="chip-row" id="passphrase-chips" hidden></div>
     <div class="strength-meter" id="strength-meter">
